@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import type { HealthResponse } from "@bazoora/shared";
 
 const app = Fastify();
 
@@ -8,7 +9,7 @@ const start = async () => {
     origin: true,
   });
 
-  app.get("/", async () => {
+  app.get("/", (): HealthResponse => {
     return { status: "ok" };
   });
 
@@ -20,4 +21,7 @@ const start = async () => {
   console.log("Server running on http://localhost:3000");
 };
 
-start();
+start().catch((err: unknown) => {
+  console.error(err);
+  process.exit(1);
+});

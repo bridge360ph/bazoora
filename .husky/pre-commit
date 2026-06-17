@@ -1,1 +1,1 @@
-pnpm --filter frontend run lint
+pnpm turbo run lint

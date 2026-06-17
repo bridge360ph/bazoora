@@ -10,8 +10,11 @@ package-lock.json
 yarn.lock
 
 # Build outputs
-frontend/dist/
-backend/dist/
+**/dist/
+
+# Turborepo
+.turbo
+**/.turbo
 
 # TypeScript build info
 **/*.tsbuildinfo

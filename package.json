@@ -5,15 +5,17 @@
   "description": "Bazoora — Digital Waste Management Platform",
   "packageManager": "pnpm@10.28.1",
   "scripts": {
-    "prepare": "husky",
-    "dev:frontend": "pnpm --filter frontend dev",
-    "dev:backend": "pnpm --filter backend dev",
-    "lint": "pnpm --filter frontend lint",
-    "build": "pnpm --filter frontend build",
-    "typecheck": "pnpm --filter backend typecheck"
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@bazoora/web",
+    "dev:api": "turbo run dev --filter=@bazoora/api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "turbo": "^2.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild"]

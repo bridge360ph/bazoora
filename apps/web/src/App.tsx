@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import type { HealthResponse } from "@bazoora/shared";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-
-interface HealthResponse {
-  status: string;
-}
 
 async function fetchHealth(): Promise<HealthResponse> {
   const res = await fetch(`${API_URL}/`);
