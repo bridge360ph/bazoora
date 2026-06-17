@@ -1,0 +1,2 @@
+pnpm --filter frontend run build || exit 1
+pnpm --filter backend run typecheck || exit 1

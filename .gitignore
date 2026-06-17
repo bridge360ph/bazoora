@@ -5,9 +5,16 @@
 # Dependencies
 **/node_modules/
 
+# Enforce pnpm — no npm/yarn lockfiles
+package-lock.json
+yarn.lock
+
 # Build outputs
 frontend/dist/
 backend/dist/
+
+# TypeScript build info
+**/*.tsbuildinfo
 
 # Logs
 *.log
@@ -19,3 +26,6 @@ Thumbs.db
 # IDE files
 .vscode/
 .idea/
+
+# Claude Code local settings
+.claude/settings.local.json
