@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
 
-const app = Fastify();
+const app = Fastify({ logger: true });
 
 const start = async () => {
   await app.register(cors, {
@@ -13,12 +13,11 @@ const start = async () => {
     return { status: "ok" };
   });
 
+  // With the logger enabled, Fastify logs the listening address itself.
   await app.listen({
     port: 3000,
     host: "0.0.0.0",
   });
-
-  console.log("Server running on http://localhost:3000");
 };
 
 start().catch((err: unknown) => {
