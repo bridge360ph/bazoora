@@ -1,23 +1,28 @@
-import { useEffect, useState } from "react";
-import './App.css'
+import { useQuery } from "@tanstack/react-query";
 
-function App() {
-  const [message, setMessage] = useState("");
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
-  useEffect(() => {
-  fetch("http://localhost:3000/")
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("backend response:", data);
-      setMessage(data.status);
-    })
-    .catch((err) => {
-      console.error("fetch error:", err);
-      setMessage("error");
-    });
-}, []);
-
-  return <h1>Backend Status: {message}</h1>;
+interface HealthResponse {
+  status: string;
 }
 
-export default App
+async function fetchHealth(): Promise<HealthResponse> {
+  const res = await fetch(`${API_URL}/`);
+  if (!res.ok) {
+    throw new Error(`Request failed: ${res.status}`);
+  }
+  return (await res.json()) as HealthResponse;
+}
+
+function App() {
+  const { data, isError } = useQuery({
+    queryKey: ["health"],
+    queryFn: fetchHealth,
+  });
+
+  const status = data ? data.status : isError ? "error" : "loading…";
+
+  return <h1>Backend Status: {status}</h1>;
+}
+
+export default App;
