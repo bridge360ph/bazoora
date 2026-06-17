@@ -1,7 +1,8 @@
-# Bazoora — Frontend
+# @bazoora/web — Frontend
 
 React 19 + TypeScript + Vite PWA client for the Bazoora waste management
-platform. Styling via Tailwind CSS; server state via TanStack Query.
+platform. Styling via Tailwind CSS; server state via TanStack Query. API types
+come from `@bazoora/shared`.
 
 ## Setup
 
@@ -16,7 +17,7 @@ pnpm dev
 ## Scripts
 
 Run from this directory with `pnpm <script>`, or from the root with
-`pnpm --filter frontend <script>`.
+`pnpm --filter @bazoora/web <script>`.
 
 | Script    | Description                          |
 | --------- | ------------------------------------ |
@@ -33,7 +34,8 @@ Run from this directory with `pnpm <script>`, or from the root with
 
 ## TypeScript config
 
-The project uses Vite's standard project-references split:
+The project uses Vite's standard project-references split, each file extending
+the shared base in `@bazoora/config`:
 
 - `tsconfig.json` — solution file; references the two below
 - `tsconfig.app.json` — app/browser code under `src/`
