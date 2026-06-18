@@ -15,5 +15,8 @@
     "noImplicitReturns": true,
     "noImplicitOverride": true
   },
-  "include": ["src"]
+  "include": [
+  "src",
+  "prisma.config.ts"
+]
 }
