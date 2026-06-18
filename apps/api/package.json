@@ -17,7 +17,9 @@
   "dependencies": {
     "@bazoora/shared": "workspace:*",
     "@fastify/cors": "^11.2.0",
-    "fastify": "^5.8.5"
+    "dotenv": "^17.4.2",
+    "fastify": "^5.8.5",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
     "@bazoora/config": "workspace:*",
