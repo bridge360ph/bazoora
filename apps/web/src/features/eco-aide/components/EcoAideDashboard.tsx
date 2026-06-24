@@ -1,7 +1,9 @@
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import { Button } from "../../../components/Button";
 import { StatCard } from "../../../components/StatCard";
 import { StatusBadge } from "../../../components/StatusBadge";
+import { EcoAideManagementPage } from "../../eco-aides/components/EcoAideManagementPage";
 
 type EcoAideAvailability = "Available" | "On Route" | "Off Duty";
 type RequestStatus = "Pending" | "Assigned" | "Completed";
@@ -91,6 +93,8 @@ const routeStats = [
 
 export function EcoAideDashboard() {
   const [activeNav, setActiveNav] = useState("Dashboard");
+
+  const isEcoAideManagementPage = activeNav === "Eco-Aide Management";
 
   return (
     <div
@@ -285,7 +289,7 @@ export function EcoAideDashboard() {
             >
               ≡
             </Button>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>Dashboard</span>
+            <span style={{ fontWeight: 600, fontSize: 15 }}>{activeNav}</span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -325,45 +329,11 @@ export function EcoAideDashboard() {
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-          <section style={{ marginBottom: 24 }}>
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                marginBottom: 14,
-                color: "#111111",
-              }}
-            >
-              Summary statistics
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 14,
-              }}
-            >
-              {summaryStats.map((stat) => (
-                <StatCard
-                  key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section
-            style={{
-              marginBottom: 24,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 14,
-            }}
-          >
-            <div>
+        {isEcoAideManagementPage ? (
+          <EcoAideManagementPage />
+        ) : (
+          <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+            <section style={{ marginBottom: 24 }}>
               <h2
                 style={{
                   fontSize: 16,
@@ -372,17 +342,17 @@ export function EcoAideDashboard() {
                   color: "#111111",
                 }}
               >
-                Quick Status
+                Summary statistics
               </h2>
 
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                   gap: 14,
                 }}
               >
-                {quickStats.map((stat) => (
+                {summaryStats.map((stat) => (
                   <StatCard
                     key={stat.label}
                     label={stat.label}
@@ -390,249 +360,280 @@ export function EcoAideDashboard() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
 
-            <div>
-              <div style={{ height: 42 }} />
-              <div
-                style={{
-                  background: "#1a3a2e",
-                  borderRadius: 10,
-                  padding: "18px 20px",
-                  color: "#ffffff",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
+            <section
+              style={{
+                marginBottom: 24,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div>
+                <h2
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
+                    fontSize: 16,
+                    fontWeight: 700,
                     marginBottom: 14,
+                    color: "#111111",
                   }}
                 >
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>
-                    Route Status Today
-                  </span>
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
-                </div>
+                  Quick Status
+                </h2>
 
-                {routeStats.map((stat) => (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  {quickStats.map((stat) => (
+                    <StatCard
+                      key={stat.label}
+                      label={stat.label}
+                      value={stat.value}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ height: 42 }} />
+                <div
+                  style={{
+                    background: "#1a3a2e",
+                    borderRadius: 10,
+                    padding: "18px 20px",
+                    color: "#ffffff",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
                   <div
-                    key={stat.label}
                     style={{
                       display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
-                      gap: 10,
-                      padding: "6px 0",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
+                      marginBottom: 14,
+                      gap: 12,
                     }}
                   >
-                    <span>▦</span>
-                    <span
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>
+                      Route Status Today
+                    </span>
+                    <Button variant="outline" size="sm">
+                      View All
+                    </Button>
+                  </div>
+
+                  {routeStats.map((stat) => (
+                    <div
+                      key={stat.label}
                       style={{
-                        fontSize: 13,
-                        color: "rgba(255,255,255,0.85)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "6px 0",
+                        borderBottom: "1px solid rgba(255,255,255,0.08)",
                       }}
                     >
-                      {stat.label}: <strong>{stat.value}</strong>
-                    </span>
-                  </div>
-                ))}
+                      <span>▦</span>
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: "rgba(255,255,255,0.85)",
+                        }}
+                      >
+                        {stat.label}: <strong>{stat.value}</strong>
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section>
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                marginBottom: 14,
-                color: "#111111",
-              }}
-            >
-              Overview
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 18,
-                marginBottom: 18,
-              }}
-            >
-              <div
+            <section>
+              <h2
                 style={{
-                  background: "#ffffff",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  overflow: "hidden",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                  color: "#111111",
                 }}
               >
+                Overview
+              </h2>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                  gap: 18,
+                  marginBottom: 18,
+                }}
+              >
+                <div style={cardStyle}>
+                  <div style={cardHeaderStyle}>
+                    <span style={{ fontWeight: 600, fontSize: 14 }}>
+                      Eco-Aide Availability
+                    </span>
+                    <Button size="sm">View All</Button>
+                  </div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table
+                      style={{
+                        width: "100%",
+                        minWidth: 420,
+                        borderCollapse: "collapse",
+                      }}
+                    >
+                      <thead>
+                        <tr style={{ background: "#1a3a2e" }}>
+                          {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
+                            (heading) => (
+                              <th key={heading} style={tableHeaderStyle}>
+                                {heading}
+                              </th>
+                            ),
+                          )}
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {ecoAides.map((ecoAide, index) => (
+                          <tr
+                            key={ecoAide.id}
+                            style={{
+                              background:
+                                index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                              borderBottom: "1px solid #f3f4f6",
+                            }}
+                          >
+                            <td style={tableCellStyle}>{ecoAide.id}</td>
+                            <td style={tableCellStyle}>{ecoAide.name}</td>
+                            <td style={{ padding: "9px 14px" }}>
+                              <StatusBadge status={ecoAide.availability} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
                 <div
                   style={{
+                    ...cardStyle,
+                    minHeight: 220,
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    padding: "14px 18px",
-                    borderBottom: "1px solid #e5e7eb",
+                    justifyContent: "center",
                   }}
                 >
+                  <div style={{ textAlign: "center", color: "#9ca3af" }}>
+                    <div style={{ fontSize: 24 }}>▥</div>
+                    <p style={{ fontSize: 13, marginTop: 8 }}>
+                      Analytics chart coming soon
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div style={cardStyle}>
+                <div style={cardHeaderStyle}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>
-                    Eco-Aide Availability
+                    Request Queue (On-Demand Request)
                   </span>
                   <Button size="sm">View All</Button>
                 </div>
 
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#1a3a2e" }}>
-                      {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
-                        (heading) => (
-                          <th
-                            key={heading}
-                            style={{
-                              padding: "9px 14px",
-                              color: "#ffffff",
-                              fontWeight: 600,
-                              fontSize: 12.5,
-                              textAlign: "left",
-                            }}
-                          >
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      minWidth: 720,
+                      borderCollapse: "collapse",
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: "#1a3a2e" }}>
+                        {[
+                          "Request ID",
+                          "Location",
+                          "Waste Type",
+                          "Status",
+                          "Eco-Aide",
+                        ].map((heading) => (
+                          <th key={heading} style={tableHeaderStyle}>
                             {heading}
                           </th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {ecoAides.map((ecoAide, index) => (
-                      <tr
-                        key={ecoAide.id}
-                        style={{
-                          background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                          borderBottom: "1px solid #f3f4f6",
-                        }}
-                      >
-                        <td style={tableCellStyle}>{ecoAide.id}</td>
-                        <td style={tableCellStyle}>{ecoAide.name}</td>
-                        <td style={{ padding: "9px 14px" }}>
-                          <StatusBadge status={ecoAide.availability} />
-                        </td>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
 
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  overflow: "hidden",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div style={{ textAlign: "center", color: "#9ca3af" }}>
-                  <div style={{ fontSize: 24 }}>▥</div>
-                  <p style={{ fontSize: 13, marginTop: 8 }}>
-                    Analytics chart coming soon
-                  </p>
+                    <tbody>
+                      {requestQueue.map((request, index) => (
+                        <tr
+                          key={request.id}
+                          style={{
+                            background:
+                              index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                            borderBottom: "1px solid #f3f4f6",
+                          }}
+                        >
+                          <td style={tableCellStyle}>{request.id}</td>
+                          <td style={tableCellStyle}>{request.location}</td>
+                          <td style={tableCellStyle}>{request.wasteType}</td>
+                          <td style={{ padding: "9px 14px" }}>
+                            <StatusBadge status={request.status} />
+                          </td>
+                          <td style={tableCellStyle}>{request.ecoAide}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </div>
-
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 10,
-                border: "1px solid #e5e7eb",
-                overflow: "hidden",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "14px 18px",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  Request Queue (On-Demand Request)
-                </span>
-                <Button size="sm">View All</Button>
-              </div>
-
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#1a3a2e" }}>
-                    {[
-                      "Request ID",
-                      "Location",
-                      "Waste Type",
-                      "Status",
-                      "Eco-Aide",
-                    ].map((heading) => (
-                      <th
-                        key={heading}
-                        style={{
-                          padding: "9px 14px",
-                          color: "#ffffff",
-                          fontWeight: 600,
-                          fontSize: 12.5,
-                          textAlign: "left",
-                        }}
-                      >
-                        {heading}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {requestQueue.map((request, index) => (
-                    <tr
-                      key={request.id}
-                      style={{
-                        background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                        borderBottom: "1px solid #f3f4f6",
-                      }}
-                    >
-                      <td style={tableCellStyle}>{request.id}</td>
-                      <td style={tableCellStyle}>{request.location}</td>
-                      <td style={tableCellStyle}>{request.wasteType}</td>
-                      <td style={{ padding: "9px 14px" }}>
-                        <StatusBadge status={request.status} />
-                      </td>
-                      <td style={tableCellStyle}>{request.ecoAide}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </main>
+            </section>
+          </main>
+        )}
       </div>
     </div>
   );
 }
 
-const tableCellStyle = {
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  borderRadius: 10,
+  border: "1px solid #e5e7eb",
+  overflow: "hidden",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+};
+
+const cardHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  padding: "14px 18px",
+  borderBottom: "1px solid #e5e7eb",
+};
+
+const tableHeaderStyle: CSSProperties = {
+  padding: "9px 14px",
+  color: "#ffffff",
+  fontWeight: 600,
+  fontSize: 12.5,
+  textAlign: "left",
+  whiteSpace: "nowrap",
+};
+
+const tableCellStyle: CSSProperties = {
   padding: "9px 14px",
   fontSize: 13,
   color: "#374151",
+  whiteSpace: "nowrap",
 };
