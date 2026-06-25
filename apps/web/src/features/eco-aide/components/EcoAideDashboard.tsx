@@ -1,3 +1,4 @@
+import { FleetManagementPage } from "../../fleet-management/components/FleetManagementPage";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { Button } from "../../../components/Button";
@@ -95,6 +96,7 @@ export function EcoAideDashboard() {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
   const isEcoAideManagementPage = activeNav === "Eco-Aide Management";
+  const isFleetManagementPage = activeNav === "Fleet Management";
 
   return (
     <div
@@ -330,9 +332,11 @@ export function EcoAideDashboard() {
         </header>
 
         {isEcoAideManagementPage ? (
-          <EcoAideManagementPage />
+       <EcoAideManagementPage />
+)      : isFleetManagementPage ? (
+        <FleetManagementPage />
         ) : (
-          <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+         <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             <section style={{ marginBottom: 24 }}>
               <h2
                 style={{
