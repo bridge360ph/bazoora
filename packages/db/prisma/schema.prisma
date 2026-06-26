@@ -1,0 +1,24 @@
+// EXAMPLE FILE
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GOVERNMENT_ADMIN
+  ECO_AIDE
+  CITIZEN
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole
+  createdAt DateTime @default(now())
+}
