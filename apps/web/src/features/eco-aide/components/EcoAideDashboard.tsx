@@ -1,3 +1,4 @@
+import { AnalyticsPage } from "../../analytics/components/AnalyticsPage";
 import { HaulingRequestManagementPage } from "../../hauling-requests/components/HaulingRequestManagementPage";
 import { RouteManagementPage } from "../../route-management/components/RouteManagementPage";
 import { FleetManagementPage } from "../../fleet-management/components/FleetManagementPage";
@@ -102,6 +103,8 @@ export function EcoAideDashboard() {
   const isRouteManagementPage = activeNav === "Route Management";
   const isHaulingRequestManagementPage =
   activeNav === "Hauling Request Management";
+  
+  const isAnalyticsPage = activeNav === "Analytics";
 
   return (
     <div
@@ -337,13 +340,15 @@ export function EcoAideDashboard() {
         </header>
 
         {isEcoAideManagementPage ? (
-    <EcoAideManagementPage />
+  <EcoAideManagementPage />
     ) : isFleetManagementPage ? (
-   <FleetManagementPage />
+  <FleetManagementPage />
     ) : isRouteManagementPage ? (
-      <RouteManagementPage />
+  <RouteManagementPage />
     ) : isHaulingRequestManagementPage ? (
-    <HaulingRequestManagementPage />
+  <HaulingRequestManagementPage />
+    ) : isAnalyticsPage ? (
+  <AnalyticsPage />
     ) : (
           
          <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
