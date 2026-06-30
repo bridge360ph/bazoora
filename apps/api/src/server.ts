@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
@@ -13,9 +15,10 @@ app.get("/", (): HealthResponse => {
   return { status: "ok" };
 });
 
+// TODO: Add Socket.IO connection handlers/events.
+setupSocket(app.server);
+
 await app.listen({
   port: Number(process.env.PORT ?? 3000),
   host: "0.0.0.0",
 });
-
-setupSocket(app.server);
