@@ -15,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1072.0",
     "@bazoora/shared": "workspace:*",
     "@fastify/cors": "^11.2.0",
     "dotenv": "^17.4.2",
