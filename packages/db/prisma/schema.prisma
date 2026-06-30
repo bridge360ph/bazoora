@@ -1,4 +1,3 @@
-// EXAMPLE FILE
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,17 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  GOVERNMENT_ADMIN
-  ECO_AIDE
-  CITIZEN
-}
-
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      UserRole
-  createdAt DateTime @default(now())
+model ServiceRequest {
+  request_id      String   @id @default(cuid())
+  user_id         String
+  org_id          String?
+  request_address String
+  sender_type     String?
+  image_url       String?
+  pickup_date     DateTime?
+  status          String   @default("PENDING")
+  approved_by     String?
+  approved_at     DateTime?
+  note            String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 }
