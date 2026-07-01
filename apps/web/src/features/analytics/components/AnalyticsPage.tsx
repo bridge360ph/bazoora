@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import type { ValueType } from "recharts/types/component/DefaultTooltipContent";
 import {
   Area,
   AreaChart,
@@ -15,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { StatCard } from "../../../components/StatCard";
+import { StatCard } from "@bazoora/ui";
 import {
   pickupsData,
   revenueData,
@@ -65,7 +66,10 @@ export function AnalyticsPage() {
         <ChartCard title="Completed Pickups (7-Day)">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={pickupsData} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.12)"
+              />
               <XAxis
                 dataKey="day"
                 tick={axisTickStyle}
@@ -74,8 +78,11 @@ export function AnalyticsPage() {
               />
               <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} />
               <Tooltip
-                  formatter={(value) => [Number(value).toLocaleString(), "Pickups"]}
-                    contentStyle={tooltipStyle}
+                formatter={(value: ValueType | undefined) => [
+                  Number(value ?? 0).toLocaleString(),
+                  "Pickups",
+                ]}
+                contentStyle={tooltipStyle}
               />
               <Bar dataKey="pickups" fill="#4ade80" radius={[5, 5, 0, 0]} />
             </BarChart>
@@ -100,14 +107,17 @@ export function AnalyticsPage() {
               </Pie>
 
               <Tooltip
-                formatter={(value) => [`${Number(value).toLocaleString()} kg`, "Volume"]}
+                formatter={(value: ValueType | undefined) => [
+                  `${Number(value ?? 0).toLocaleString()} kg`,
+                  "Volume",
+                ]}
                 contentStyle={tooltipStyle}
               />
 
               <Legend
                 iconType="circle"
                 iconSize={10}
-                formatter={(value) => (
+                formatter={(value: string | number) => (
                   <span style={legendTextStyle}>{value}</span>
                 )}
               />
@@ -115,7 +125,9 @@ export function AnalyticsPage() {
           </ResponsiveContainer>
 
           <p style={pieSummaryStyle}>
-            <strong style={pieSummaryNumberStyle}>{recyclablePercentage}%</strong>{" "}
+            <strong style={pieSummaryNumberStyle}>
+              {recyclablePercentage}%
+            </strong>{" "}
             recyclable
           </p>
         </ChartCard>
@@ -131,7 +143,10 @@ export function AnalyticsPage() {
               </linearGradient>
             </defs>
 
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.12)" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgba(255,255,255,0.12)"
+            />
             <XAxis
               dataKey="day"
               tick={axisTickStyle}
@@ -142,10 +157,15 @@ export function AnalyticsPage() {
               tick={axisTickStyle}
               axisLine={false}
               tickLine={false}
-              tickFormatter={(value) => `₱${(Number(value) / 1000).toFixed(1)}k`}
+              tickFormatter={(value: number) =>
+                `₱${(Number(value) / 1000).toFixed(1)}k`
+              }
             />
             <Tooltip
-              formatter={(value) => [`₱${Number(value).toLocaleString()}`, "Revenue"]}
+              formatter={(value: ValueType | undefined) => [
+                `₱${Number(value ?? 0).toLocaleString()}`,
+                "Revenue",
+              ]}
               contentStyle={tooltipStyle}
             />
             <Area

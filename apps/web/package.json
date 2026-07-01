@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@bazoora/shared": "workspace:*",
+    "@bazoora/ui": "workspace:*",
     "@tailwindcss/vite": "^4.3.1",
     "@tanstack/react-query": "^5.101.0",
     "react": "^19.2.6",

@@ -1,13 +1,16 @@
-import { AnalyticsPage } from "../../analytics/components/AnalyticsPage";
-import { HaulingRequestManagementPage } from "../../hauling-requests/components/HaulingRequestManagementPage";
-import { RouteManagementPage } from "../../route-management/components/RouteManagementPage";
-import { FleetManagementPage } from "../../fleet-management/components/FleetManagementPage";
-import { useState } from "react";
-import type { CSSProperties } from "react";
-import { Button } from "../../../components/Button";
-import { StatCard } from "../../../components/StatCard";
-import { StatusBadge } from "../../../components/StatusBadge";
+import { lazy, Suspense, useMemo, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { Button, StatCard, StatusBadge } from "@bazoora/ui";
 import { EcoAideManagementPage } from "../../eco-aides/components/EcoAideManagementPage";
+import { FleetManagementPage } from "../../fleet-management/components/FleetManagementPage";
+import { RouteManagementPage } from "../../route-management/components/RouteManagementPage";
+import { HaulingRequestManagementPage } from "../../hauling-requests/components/HaulingRequestManagementPage";
+
+const AnalyticsPage = lazy(() =>
+  import("../../analytics/components/AnalyticsPage").then((module) => ({
+    default: module.AnalyticsPage,
+  })),
+);
 
 type EcoAideAvailability = "Available" | "On Route" | "Off Duty";
 type RequestStatus = "Pending" | "Assigned" | "Completed";
@@ -46,7 +49,7 @@ const requestQueue: RequestItem[] = [
     id: "Req-002",
     location: "San Pedro",
     wasteType: "Regular/Non-Recyclable",
-    status: "Pending",
+    status: "Assigned",
     ecoAide: "John Mendoza",
   },
   {
@@ -54,7 +57,7 @@ const requestQueue: RequestItem[] = [
     location: "San Mateo",
     wasteType: "Regular/Non-Recyclable",
     status: "Pending",
-    ecoAide: "Emil Flores",
+    ecoAide: "Emil Perez",
   },
   {
     id: "Req-004",
@@ -77,15 +80,15 @@ const navItems = [
 ];
 
 const summaryStats = [
-  { label: "Total Eco-Aides", value: "200" },
+  { label: "Total Eco-Aides", value: "5" },
   { label: "Completed Pickups", value: "32" },
-  { label: "Pending Requests", value: "12" },
-  { label: "Revenue (Paid Services)", value: "200" },
+  { label: "Pending Requests", value: "3" },
+  { label: "Revenue (Paid Services)", value: "₱200" },
 ];
 
 const quickStats = [
   { label: "Active Pickups", value: "8" },
-  { label: "Unassigned Requests", value: "5" },
+  { label: "Unassigned Requests", value: "3" },
 ];
 
 const routeStats = [
@@ -98,13 +101,18 @@ const routeStats = [
 export function EcoAideDashboard() {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
-  const isEcoAideManagementPage = activeNav === "Eco-Aide Management";
-  const isFleetManagementPage = activeNav === "Fleet Management";
-  const isRouteManagementPage = activeNav === "Route Management";
-  const isHaulingRequestManagementPage =
-  activeNav === "Hauling Request Management";
-  
-  const isAnalyticsPage = activeNav === "Analytics";
+  const pageContentByNav = useMemo<Record<string, ReactNode>>(
+    () => ({
+      "Eco-Aide Management": <EcoAideManagementPage />,
+      "Fleet Management": <FleetManagementPage />,
+      "Route Management": <RouteManagementPage />,
+      "Hauling Request Management": <HaulingRequestManagementPage />,
+      Analytics: <AnalyticsPage />,
+    }),
+    [],
+  );
+
+  const activePageContent = pageContentByNav[activeNav];
 
   return (
     <div
@@ -140,7 +148,9 @@ export function EcoAideDashboard() {
               color: "#ffffff",
             }}
           >
-            <span style={{ fontSize: 20 }}>▣</span>
+            <span style={{ fontSize: 20 }} aria-hidden="true">
+              ▣
+            </span>
             <div>
               <div
                 style={{
@@ -199,7 +209,9 @@ export function EcoAideDashboard() {
                     : "3px solid transparent",
               }}
             >
-              <span style={{ width: 18 }}>{item.icon}</span>
+              <span style={{ width: 18 }} aria-hidden="true">
+                {item.icon}
+              </span>
               <span style={{ lineHeight: 1.3 }}>{item.label}</span>
             </button>
           ))}
@@ -306,13 +318,14 @@ export function EcoAideDashboard() {
             <Button
               variant="ghost"
               size="sm"
+              aria-label="Open notifications"
               style={{
                 position: "relative",
                 padding: 0,
                 fontSize: 16,
               }}
             >
-              ●
+              <span aria-hidden="true">●</span>
               <span
                 style={{
                   position: "absolute",
@@ -339,57 +352,10 @@ export function EcoAideDashboard() {
           </div>
         </header>
 
-        {isEcoAideManagementPage ? (
-  <EcoAideManagementPage />
-    ) : isFleetManagementPage ? (
-  <FleetManagementPage />
-    ) : isRouteManagementPage ? (
-  <RouteManagementPage />
-    ) : isHaulingRequestManagementPage ? (
-  <HaulingRequestManagementPage />
-    ) : isAnalyticsPage ? (
-  <AnalyticsPage />
-    ) : (
-          
-         <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-            <section style={{ marginBottom: 24 }}>
-              <h2
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  marginBottom: 14,
-                  color: "#111111",
-                }}
-              >
-                Summary statistics
-              </h2>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: 14,
-                }}
-              >
-                {summaryStats.map((stat) => (
-                  <StatCard
-                    key={stat.label}
-                    label={stat.label}
-                    value={stat.value}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <section
-              style={{
-                marginBottom: 24,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                gap: 14,
-              }}
-            >
-              <div>
+        <Suspense fallback={<PageSpinner />}>
+          {activePageContent ?? (
+            <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+              <section style={{ marginBottom: 24 }}>
                 <h2
                   style={{
                     fontSize: 16,
@@ -398,17 +364,18 @@ export function EcoAideDashboard() {
                     color: "#111111",
                   }}
                 >
-                  Quick Status
+                  Summary statistics
                 </h2>
 
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(180px, 1fr))",
                     gap: 14,
                   }}
                 >
-                  {quickStats.map((stat) => (
+                  {summaryStats.map((stat) => (
                     <StatCard
                       key={stat.label}
                       label={stat.label}
@@ -416,87 +383,197 @@ export function EcoAideDashboard() {
                     />
                   ))}
                 </div>
-              </div>
+              </section>
 
-              <div>
-                <div style={{ height: 42 }} />
-                <div
-                  style={{
-                    background: "#1a3a2e",
-                    borderRadius: 10,
-                    padding: "18px 20px",
-                    color: "#ffffff",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <div
+              <section
+                style={{
+                  marginBottom: 24,
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit, minmax(280px, 1fr))",
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <h2
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
+                      fontSize: 16,
+                      fontWeight: 700,
                       marginBottom: 14,
-                      gap: 12,
+                      color: "#111111",
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>
-                      Route Status Today
-                    </span>
-                    <Button variant="outline" size="sm">
-                      View All
-                    </Button>
-                  </div>
+                    Quick Status
+                  </h2>
 
-                  {routeStats.map((stat) => (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(140px, 1fr))",
+                      gap: 14,
+                    }}
+                  >
+                    {quickStats.map((stat) => (
+                      <StatCard
+                        key={stat.label}
+                        label={stat.label}
+                        value={stat.value}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ height: 42 }} />
+                  <div
+                    style={{
+                      background: "#1a3a2e",
+                      borderRadius: 10,
+                      padding: "18px 20px",
+                      color: "#ffffff",
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                  >
                     <div
-                      key={stat.label}
                       style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: 10,
-                        padding: "6px 0",
-                        borderBottom: "1px solid rgba(255,255,255,0.08)",
+                        marginBottom: 14,
+                        gap: 12,
                       }}
                     >
-                      <span>▦</span>
-                      <span
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>
+                        Route Status Today
+                      </span>
+                      <Button variant="outline" size="sm">
+                        View All
+                      </Button>
+                    </div>
+
+                    {routeStats.map((stat) => (
+                      <div
+                        key={stat.label}
                         style={{
-                          fontSize: 13,
-                          color: "rgba(255,255,255,0.85)",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "6px 0",
+                          borderBottom: "1px solid rgba(255,255,255,0.08)",
                         }}
                       >
-                        {stat.label}: <strong>{stat.value}</strong>
-                      </span>
-                    </div>
-                  ))}
+                        <span aria-hidden="true">▦</span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "rgba(255,255,255,0.85)",
+                          }}
+                        >
+                          {stat.label}: <strong>{stat.value}</strong>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <section>
-              <h2
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  marginBottom: 14,
-                  color: "#111111",
-                }}
-              >
-                Overview
-              </h2>
+              <section>
+                <h2
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    marginBottom: 14,
+                    color: "#111111",
+                  }}
+                >
+                  Overview
+                </h2>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                  gap: 18,
-                  marginBottom: 18,
-                }}
-              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(320px, 1fr))",
+                    gap: 18,
+                    marginBottom: 18,
+                  }}
+                >
+                  <div style={cardStyle}>
+                    <div style={cardHeaderStyle}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>
+                        Eco-Aide Availability
+                      </span>
+                      <Button size="sm">View All</Button>
+                    </div>
+
+                    <div style={{ overflowX: "auto" }}>
+                      <table
+                        style={{
+                          width: "100%",
+                          minWidth: 420,
+                          borderCollapse: "collapse",
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: "#1a3a2e" }}>
+                            {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
+                              (heading) => (
+                                <th key={heading} style={tableHeaderStyle}>
+                                  {heading}
+                                </th>
+                              ),
+                            )}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {ecoAides.map((ecoAide, index) => (
+                            <tr
+                              key={ecoAide.id}
+                              style={{
+                                background:
+                                  index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                                borderBottom: "1px solid #f3f4f6",
+                              }}
+                            >
+                              <td style={tableCellStyle}>{ecoAide.id}</td>
+                              <td style={tableCellStyle}>{ecoAide.name}</td>
+                              <td style={{ padding: "9px 14px" }}>
+                                <StatusBadge status={ecoAide.availability} />
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      ...cardStyle,
+                      minHeight: 220,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div style={{ textAlign: "center", color: "#9ca3af" }}>
+                      <div style={{ fontSize: 24 }} aria-hidden="true">
+                        ▥
+                      </div>
+                      <p style={{ fontSize: 13, marginTop: 8 }}>
+                        Analytics chart coming soon
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={cardStyle}>
                   <div style={cardHeaderStyle}>
                     <span style={{ fontWeight: 600, fontSize: 14 }}>
-                      Eco-Aide Availability
+                      Request Queue (On-Demand Request)
                     </span>
                     <Button size="sm">View All</Button>
                   </div>
@@ -505,122 +582,72 @@ export function EcoAideDashboard() {
                     <table
                       style={{
                         width: "100%",
-                        minWidth: 420,
+                        minWidth: 720,
                         borderCollapse: "collapse",
                       }}
                     >
                       <thead>
                         <tr style={{ background: "#1a3a2e" }}>
-                          {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
-                            (heading) => (
-                              <th key={heading} style={tableHeaderStyle}>
-                                {heading}
-                              </th>
-                            ),
-                          )}
+                          {[
+                            "Request ID",
+                            "Location",
+                            "Waste Type",
+                            "Status",
+                            "Eco-Aide",
+                          ].map((heading) => (
+                            <th key={heading} style={tableHeaderStyle}>
+                              {heading}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
 
                       <tbody>
-                        {ecoAides.map((ecoAide, index) => (
+                        {requestQueue.map((request, index) => (
                           <tr
-                            key={ecoAide.id}
+                            key={request.id}
                             style={{
                               background:
                                 index % 2 === 0 ? "#ffffff" : "#f9fafb",
                               borderBottom: "1px solid #f3f4f6",
                             }}
                           >
-                            <td style={tableCellStyle}>{ecoAide.id}</td>
-                            <td style={tableCellStyle}>{ecoAide.name}</td>
+                            <td style={tableCellStyle}>{request.id}</td>
+                            <td style={tableCellStyle}>{request.location}</td>
+                            <td style={tableCellStyle}>{request.wasteType}</td>
                             <td style={{ padding: "9px 14px" }}>
-                              <StatusBadge status={ecoAide.availability} />
+                              <StatusBadge status={request.status} />
                             </td>
+                            <td style={tableCellStyle}>{request.ecoAide}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
-
-                <div
-                  style={{
-                    ...cardStyle,
-                    minHeight: 220,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <div style={{ textAlign: "center", color: "#9ca3af" }}>
-                    <div style={{ fontSize: 24 }}>▥</div>
-                    <p style={{ fontSize: 13, marginTop: 8 }}>
-                      Analytics chart coming soon
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div style={cardStyle}>
-                <div style={cardHeaderStyle}>
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>
-                    Request Queue (On-Demand Request)
-                  </span>
-                  <Button size="sm">View All</Button>
-                </div>
-
-                <div style={{ overflowX: "auto" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      minWidth: 720,
-                      borderCollapse: "collapse",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ background: "#1a3a2e" }}>
-                        {[
-                          "Request ID",
-                          "Location",
-                          "Waste Type",
-                          "Status",
-                          "Eco-Aide",
-                        ].map((heading) => (
-                          <th key={heading} style={tableHeaderStyle}>
-                            {heading}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {requestQueue.map((request, index) => (
-                        <tr
-                          key={request.id}
-                          style={{
-                            background:
-                              index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                            borderBottom: "1px solid #f3f4f6",
-                          }}
-                        >
-                          <td style={tableCellStyle}>{request.id}</td>
-                          <td style={tableCellStyle}>{request.location}</td>
-                          <td style={tableCellStyle}>{request.wasteType}</td>
-                          <td style={{ padding: "9px 14px" }}>
-                            <StatusBadge status={request.status} />
-                          </td>
-                          <td style={tableCellStyle}>{request.ecoAide}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
-          </main>
-        )}
+              </section>
+            </main>
+          )}
+        </Suspense>
       </div>
     </div>
+  );
+}
+
+function PageSpinner() {
+  return (
+    <main
+      style={{
+        flex: 1,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#6b7280",
+        fontSize: 14,
+      }}
+    >
+      Loading page...
+    </main>
   );
 }
 
