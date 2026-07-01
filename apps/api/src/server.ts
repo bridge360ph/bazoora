@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
+import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 
 const app = Fastify({ logger: true });
 
@@ -24,3 +25,10 @@ start().catch((err: unknown) => {
   console.error(err);
   process.exit(1);
 });
+
+await app.register(
+  haulingRequestRoutes,
+  {
+    prefix: "/hauling-requests",
+  },
+);
