@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Button } from "../../../components/Button";
-import { StatCard } from "../../../components/StatCard";
-import { StatusBadge } from "../../../components/StatusBadge";
+import { Button, StatCard, StatusBadge } from "@bazoora/ui";
 
 type EcoAideAvailability = "Available" | "On Route" | "Off Duty";
 type RequestStatus = "Pending" | "Assigned" | "Completed";
