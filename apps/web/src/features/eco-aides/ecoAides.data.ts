@@ -15,7 +15,6 @@ export const INITIAL_ECO_AIDES: EcoAide[] = [
     completionRate: "100%",
     missedAssignment: 0,
     email: "john.mendoza@bazoora.test",
-    password: "************",
   },
   {
     id: "EA-002",
@@ -31,7 +30,6 @@ export const INITIAL_ECO_AIDES: EcoAide[] = [
     completionRate: "96%",
     missedAssignment: 1,
     email: "emil.flores@bazoora.test",
-    password: "************",
   },
   {
     id: "EA-003",
@@ -47,7 +45,6 @@ export const INITIAL_ECO_AIDES: EcoAide[] = [
     completionRate: "98%",
     missedAssignment: 0,
     email: "ferdinand.ramos@bazoora.test",
-    password: "************",
   },
   {
     id: "EA-004",
@@ -63,7 +60,6 @@ export const INITIAL_ECO_AIDES: EcoAide[] = [
     completionRate: "94%",
     missedAssignment: 2,
     email: "mark.santiago@bazoora.test",
-    password: "************",
   },
   {
     id: "EA-005",
@@ -79,7 +75,6 @@ export const INITIAL_ECO_AIDES: EcoAide[] = [
     completionRate: "97%",
     missedAssignment: 1,
     email: "romeo.rosario@bazoora.test",
-    password: "************",
   },
 ];
 

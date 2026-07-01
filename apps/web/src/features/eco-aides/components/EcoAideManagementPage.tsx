@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
-import { Button } from "../../../components/Button";
-import { StatCard } from "../../../components/StatCard";
+import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from "react";
+import { Button, StatCard } from "@bazoora/ui";
 import {
   INITIAL_APPROVAL_REQUESTS,
   INITIAL_ECO_AIDES,
@@ -35,7 +34,6 @@ const emptyEcoAideForm: Omit<EcoAide, "id" | "addedDate"> = {
   completionRate: "0%",
   missedAssignment: 0,
   email: "",
-  password: "",
 };
 
 export function EcoAideManagementPage() {
@@ -113,7 +111,6 @@ export function EcoAideManagementPage() {
       completionRate: ecoAide.completionRate,
       missedAssignment: ecoAide.missedAssignment,
       email: ecoAide.email,
-      password: ecoAide.password,
     });
     setModalMode("edit");
   }
@@ -168,7 +165,6 @@ export function EcoAideManagementPage() {
       addedDate: "26/03/2026",
       ...formValue,
       name: formValue.name.trim() || "New Eco-Aide",
-      password: formValue.password || "************",
     };
 
     setEcoAides((currentEcoAides) => [nextEcoAide, ...currentEcoAides]);
@@ -218,7 +214,7 @@ export function EcoAideManagementPage() {
             }}
             style={activeTab === "all" ? activeTabStyle : tabStyle}
           >
-            All Eco-Aides (200)
+            All Eco-Aides ({ecoAides.length})
           </button>
 
           <button
@@ -229,7 +225,7 @@ export function EcoAideManagementPage() {
             }}
             style={activeTab === "approval" ? activeTabStyle : tabStyle}
           >
-            Approval queue (12)
+            Approval queue ({approvalRequests.length})
           </button>
         </div>
 
@@ -237,10 +233,10 @@ export function EcoAideManagementPage() {
       </section>
 
       <section style={statsGridStyle}>
-        <StatCard label="Total Government Agency" value={200} />
-        <StatCard label="Active" value={activeCount || 12} />
-        <StatCard label="Suspended" value={suspendedCount || 32} />
-        <StatCard label="Deactivated" value={deactivatedCount || 5} />
+        <StatCard label="Total Eco-Aides" value={ecoAides.length} />
+        <StatCard label="Active" value={activeCount} />
+        <StatCard label="Suspended" value={suspendedCount} />
+        <StatCard label="Deactivated" value={deactivatedCount} />
       </section>
 
       <section style={filterRowStyle}>
@@ -607,7 +603,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
             <div style={{ fontSize: 13 }}>{ecoAide.id}</div>
           </div>
 
-          <StatusPill status="Active" />
+          <StatusPill status={ecoAide.status} />
         </div>
 
         <div style={dividerStyle} />
@@ -644,9 +640,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
 interface EditEcoAideModalProps {
   title: string;
   formValue: Omit<EcoAide, "id" | "addedDate">;
-  setFormValue: React.Dispatch<
-    React.SetStateAction<Omit<EcoAide, "id" | "addedDate">>
-  >;
+  setFormValue: Dispatch<SetStateAction<Omit<EcoAide, "id" | "addedDate">>>;
   onSave: () => void;
   onClose: () => void;
   saveLabel?: string;
@@ -763,17 +757,6 @@ function EditEcoAideModal({
             </select>
           </FormField>
 
-          <FormField label="Password">
-            <input
-              value={formValue.password}
-              onChange={(event) => {
-                updateField("password", event.target.value);
-              }}
-              style={inputStyle}
-              type="password"
-            />
-          </FormField>
-
           {title.includes("Create") && (
             <FormField label="Email Address">
               <input
@@ -855,7 +838,7 @@ function ConfirmActionModal({
 
 interface FormFieldProps {
   label: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 function FormField({ label, children }: FormFieldProps) {

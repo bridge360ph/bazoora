@@ -24,7 +24,6 @@ export interface EcoAide {
   completionRate: string;
   missedAssignment: number;
   email: string;
-  password: string;
 }
 
 export interface EcoAideApprovalRequest {
