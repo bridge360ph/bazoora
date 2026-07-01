@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import { Button } from "../../../components/Button";
-import { StatCard } from "../../../components/StatCard";
+import { Button, StatCard } from "@bazoora/ui";
 import {
   ECO_AIDE_OPTIONS,
   INITIAL_TRUCKS,
