@@ -1,6 +1,5 @@
 import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import type { ValueType } from "recharts/types/component/DefaultTooltipContent";
 import {
   Area,
   AreaChart,
@@ -22,6 +21,16 @@ import {
   revenueData,
   wasteVolumeData,
 } from "../analytics.data";
+
+type TooltipValue =
+  | string
+  | number
+  | readonly (string | number)[]
+  | undefined;
+
+function formatTooltipNumber(value: TooltipValue) {
+  return Number(value ?? 0).toLocaleString();
+}
 
 export function AnalyticsPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -78,8 +87,8 @@ export function AnalyticsPage() {
               />
               <YAxis tick={axisTickStyle} axisLine={false} tickLine={false} />
               <Tooltip
-                formatter={(value: ValueType | undefined) => [
-                  Number(value ?? 0).toLocaleString(),
+                formatter={(value: TooltipValue) => [
+                  formatTooltipNumber(value),
                   "Pickups",
                 ]}
                 contentStyle={tooltipStyle}
@@ -107,8 +116,8 @@ export function AnalyticsPage() {
               </Pie>
 
               <Tooltip
-                formatter={(value: ValueType | undefined) => [
-                  `${Number(value ?? 0).toLocaleString()} kg`,
+                formatter={(value: TooltipValue) => [
+                  `${formatTooltipNumber(value)} kg`,
                   "Volume",
                 ]}
                 contentStyle={tooltipStyle}
@@ -162,8 +171,8 @@ export function AnalyticsPage() {
               }
             />
             <Tooltip
-              formatter={(value: ValueType | undefined) => [
-                `₱${Number(value ?? 0).toLocaleString()}`,
+              formatter={(value: TooltipValue) => [
+                `₱${formatTooltipNumber(value)}`,
                 "Revenue",
               ]}
               contentStyle={tooltipStyle}

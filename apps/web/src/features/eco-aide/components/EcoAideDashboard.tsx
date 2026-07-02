@@ -12,6 +12,12 @@ const AnalyticsPage = lazy(() =>
   })),
 );
 
+const NotificationsPage = lazy(() =>
+  import("../../notifications/components/NotificationsPage").then((module) => ({
+    default: module.NotificationsPage,
+  })),
+);
+
 type EcoAideAvailability = "Available" | "On Route" | "Off Duty";
 type RequestStatus = "Pending" | "Assigned" | "Completed";
 
@@ -108,6 +114,7 @@ export function EcoAideDashboard() {
       "Route Management": <RouteManagementPage />,
       "Hauling Request Management": <HaulingRequestManagementPage />,
       Analytics: <AnalyticsPage />,
+      Notifications: <NotificationsPage />,
     }),
     [],
   );
@@ -181,9 +188,7 @@ export function EcoAideDashboard() {
             <button
               key={item.label}
               type="button"
-              onClick={() => {
-                setActiveNav(item.label);
-              }}
+              onClick={() => setActiveNav(item.label)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -257,12 +262,7 @@ export function EcoAideDashboard() {
             >
               John Doe
             </div>
-            <div
-              style={{
-                color: "rgba(255,255,255,0.45)",
-                fontSize: 10.5,
-              }}
-            >
+            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10.5 }}>
               Unit #4029
             </div>
           </div>
@@ -270,10 +270,7 @@ export function EcoAideDashboard() {
           <Button
             variant="ghost"
             size="sm"
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              padding: 2,
-            }}
+            style={{ color: "rgba(255,255,255,0.5)", padding: 2 }}
           >
             ⚙
           </Button>
@@ -301,14 +298,7 @@ export function EcoAideDashboard() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              style={{
-                fontSize: 18,
-                padding: 0,
-              }}
-            >
+            <Button variant="ghost" size="sm" style={{ fontSize: 18, padding: 0 }}>
               ≡
             </Button>
             <span style={{ fontWeight: 600, fontSize: 15 }}>{activeNav}</span>
@@ -319,11 +309,7 @@ export function EcoAideDashboard() {
               variant="ghost"
               size="sm"
               aria-label="Open notifications"
-              style={{
-                position: "relative",
-                padding: 0,
-                fontSize: 16,
-              }}
+              style={{ position: "relative", padding: 0, fontSize: 16 }}
             >
               <span aria-hidden="true">●</span>
               <span
@@ -366,21 +352,15 @@ export function EcoAideDashboard() {
                 >
                   Summary statistics
                 </h2>
-
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fit, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                     gap: 14,
                   }}
                 >
                   {summaryStats.map((stat) => (
-                    <StatCard
-                      key={stat.label}
-                      label={stat.label}
-                      value={stat.value}
-                    />
+                    <StatCard key={stat.label} label={stat.label} value={stat.value} />
                   ))}
                 </div>
               </section>
@@ -389,8 +369,7 @@ export function EcoAideDashboard() {
                 style={{
                   marginBottom: 24,
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(280px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
                   gap: 14,
                 }}
               >
@@ -405,21 +384,15 @@ export function EcoAideDashboard() {
                   >
                     Quick Status
                   </h2>
-
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(140px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
                       gap: 14,
                     }}
                   >
                     {quickStats.map((stat) => (
-                      <StatCard
-                        key={stat.label}
-                        label={stat.label}
-                        value={stat.value}
-                      />
+                      <StatCard key={stat.label} label={stat.label} value={stat.value} />
                     ))}
                   </div>
                 </div>
@@ -465,12 +438,7 @@ export function EcoAideDashboard() {
                         }}
                       >
                         <span aria-hidden="true">▦</span>
-                        <span
-                          style={{
-                            fontSize: 13,
-                            color: "rgba(255,255,255,0.85)",
-                          }}
-                        >
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
                           {stat.label}: <strong>{stat.value}</strong>
                         </span>
                       </div>
@@ -494,8 +462,7 @@ export function EcoAideDashboard() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fit, minmax(320px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
                     gap: 18,
                     marginBottom: 18,
                   }}
@@ -507,7 +474,6 @@ export function EcoAideDashboard() {
                       </span>
                       <Button size="sm">View All</Button>
                     </div>
-
                     <div style={{ overflowX: "auto" }}>
                       <table
                         style={{
@@ -518,23 +484,17 @@ export function EcoAideDashboard() {
                       >
                         <thead>
                           <tr style={{ background: "#1a3a2e" }}>
-                            {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
-                              (heading) => (
-                                <th key={heading} style={tableHeaderStyle}>
-                                  {heading}
-                                </th>
-                              ),
-                            )}
+                            {["Eco-Aide ID", "Eco-Aide", "Availability"].map((h) => (
+                              <th key={h} style={tableHeaderStyle}>{h}</th>
+                            ))}
                           </tr>
                         </thead>
-
                         <tbody>
                           {ecoAides.map((ecoAide, index) => (
                             <tr
                               key={ecoAide.id}
                               style={{
-                                background:
-                                  index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                                background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
                                 borderBottom: "1px solid #f3f4f6",
                               }}
                             >
@@ -560,9 +520,7 @@ export function EcoAideDashboard() {
                     }}
                   >
                     <div style={{ textAlign: "center", color: "#9ca3af" }}>
-                      <div style={{ fontSize: 24 }} aria-hidden="true">
-                        ▥
-                      </div>
+                      <div style={{ fontSize: 24 }} aria-hidden="true">▥</div>
                       <p style={{ fontSize: 13, marginTop: 8 }}>
                         Analytics chart coming soon
                       </p>
@@ -577,7 +535,6 @@ export function EcoAideDashboard() {
                     </span>
                     <Button size="sm">View All</Button>
                   </div>
-
                   <div style={{ overflowX: "auto" }}>
                     <table
                       style={{
@@ -588,27 +545,19 @@ export function EcoAideDashboard() {
                     >
                       <thead>
                         <tr style={{ background: "#1a3a2e" }}>
-                          {[
-                            "Request ID",
-                            "Location",
-                            "Waste Type",
-                            "Status",
-                            "Eco-Aide",
-                          ].map((heading) => (
-                            <th key={heading} style={tableHeaderStyle}>
-                              {heading}
-                            </th>
-                          ))}
+                          {["Request ID", "Location", "Waste Type", "Status", "Eco-Aide"].map(
+                            (h) => (
+                              <th key={h} style={tableHeaderStyle}>{h}</th>
+                            ),
+                          )}
                         </tr>
                       </thead>
-
                       <tbody>
                         {requestQueue.map((request, index) => (
                           <tr
                             key={request.id}
                             style={{
-                              background:
-                                index % 2 === 0 ? "#ffffff" : "#f9fafb",
+                              background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
                               borderBottom: "1px solid #f3f4f6",
                             }}
                           >
