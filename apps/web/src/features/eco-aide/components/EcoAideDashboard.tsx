@@ -18,6 +18,12 @@ const NotificationsPage = lazy(() =>
   })),
 );
 
+const SettingsPage = lazy(() =>
+  import("../../settings/components/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
+
 type EcoAideAvailability = "Available" | "On Route" | "Off Duty";
 type RequestStatus = "Pending" | "Assigned" | "Completed";
 
@@ -115,6 +121,7 @@ export function EcoAideDashboard() {
       "Hauling Request Management": <HaulingRequestManagementPage />,
       Analytics: <AnalyticsPage />,
       Notifications: <NotificationsPage />,
+      "Settings and System Configuration": <SettingsPage />,
     }),
     [],
   );
