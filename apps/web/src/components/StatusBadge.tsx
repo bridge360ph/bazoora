@@ -16,44 +16,24 @@ const baseStyle: CSSProperties = {
 };
 
 function getStatusStyle(status: string): CSSProperties {
-  if (
-    status === "Available" ||
-    status === "Completed" ||
-    status === "Approved"
-  ) {
+  if (status === "Available" || status === "Completed") {
     return {
       color: "#166534",
       background: "#dcfce7",
     };
   }
 
-  if (
-    status === "Pending" ||
-    status === "On Route" ||
-    status === "In Progress"
-  ) {
+  if (status === "On Route" || status === "Pending" || status === "In Progress") {
     return {
       color: "#92400e",
       background: "#fef3c7",
     };
   }
 
-  if (
-    status === "Assigned"
-  ) {
+  if (status === "Assigned") {
     return {
       color: "#1d4ed8",
       background: "#dbeafe",
-    };
-  }
-
-  if (
-    status === "Denied" ||
-    status === "Off Duty"
-  ) {
-    return {
-      color: "#991b1b",
-      background: "#fee2e2",
     };
   }
 

@@ -1,17 +1,11 @@
 interface StatCardProps {
   label: string;
   value: string | number;
-  className?: string;
 }
 
-export function StatCard({
-  label,
-  value,
-  className = "",
-}: StatCardProps) {
+export function StatCard({ label, value }: StatCardProps) {
   return (
     <div
-      className={className}
       style={{
         background: "#ffffff",
         borderRadius: 10,

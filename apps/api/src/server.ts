@@ -1,29 +1,21 @@
-import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
-
-import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
-import { config } from "./plugins/config.js";
 
 const app = Fastify({ logger: true });
 
 const start = async () => {
   await app.register(cors, {
-    origin: config.corsOrigin,
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-  });
-
-  await app.register(haulingRequestRoutes, {
-    prefix: "/hauling-requests",
+    origin: true,
   });
 
   app.get("/", (): HealthResponse => {
     return { status: "ok" };
   });
 
+  // With the logger enabled, Fastify logs the listening address itself.
   await app.listen({
-    port: config.port,
+    port: 3000,
     host: "0.0.0.0",
   });
 };
