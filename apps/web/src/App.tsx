@@ -1,5 +1,6 @@
-import { EcoAideDashboard } from "./features/eco-aide/components/EcoAideDashboard";
+import { AdminHaulingRequestManagementPage }
+from "./pages/AdminHaulingRequestManagementPage";
 
 export default function App() {
-  return <EcoAideDashboard />;
+  return <AdminHaulingRequestManagementPage />;
 }
