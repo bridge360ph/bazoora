@@ -1,4 +1,5 @@
-import React, { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 
 /* ---------------- ICON PLUMBING (same as Dashboard) ---------------- */
 type IconShape = {

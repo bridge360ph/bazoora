@@ -1,6 +1,7 @@
-import React, { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 
-/* ---------------- ICON PLUMBING (same as Dashboard) ---------------- */
+/* ---------------- ICON PLUMBING ---------------- */
 type IconShape = {
   paths: string[];
   circles?: { cx: number; cy: number; r: number }[];
@@ -44,7 +45,7 @@ const HamburgerIcon = () => (
   </svg>
 );
 
-/* ---------------- ICON DATA (Dashboard set + Route-page additions) ---------------- */
+/* ---------------- ICON DATA (fixed/verified shapes) ---------------- */
 const icons: Record<string, IconShape> = {
   dashboard: {
     paths: ["M4 13h7v7H4v-7zm0-10h7v7H4V3zm9 0h7v7h-7V3zm0 10h7v7h-7v-7z"],
@@ -90,37 +91,12 @@ const icons: Record<string, IconShape> = {
   home: {
     paths: ["M3 10.5 12 3l9 7.5", "M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"],
   },
-  locate: {
-    paths: ["M12 2v3", "M12 19v3", "M2 12h3", "M19 12h3"],
-    circles: [{ cx: 12, cy: 12, r: 6 }],
-  },
-  layers: {
-    paths: [
-      "m12.83 2.18a2 2 0 0 0-1.66 0L3.6 6.08a1 1 0 0 0 0 1.83l7.57 3.44a2 2 0 0 0 1.66 0l7.57-3.44a1 1 0 0 0 0-1.83z",
-      "m3.6 12.08 7.57 3.44a2 2 0 0 0 1.66 0l7.57-3.44",
-      "m3.6 16.08 7.57 3.44a2 2 0 0 0 1.66 0l7.57-3.44",
-    ],
-  },
-  turnRight: {
-    paths: ["M15 14 20 9l-5-5", "M4 20v-7a4 4 0 0 1 4-4h12"],
-  },
-  bin: {
-    paths: [
-      "M3 6h18",
-      "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
-      "M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6",
-    ],
-  },
-  bookmark: {
-    paths: ["M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"],
-  },
-  pin: {
-    paths: ["M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"],
-    circles: [{ cx: 12, cy: 10, r: 2.5 }],
-  },
 };
 
-/* ---------------- NAV (identical keys/order to Dashboard) ---------------- */
+/* ---------------- NAV ---------------- */
+// key === the page id it should navigate to. Only "dashboard" and "route" have
+// real pages right now; the rest will highlight on click but onNavigate just
+// won't match a page for them until those pages exist.
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: icons.dashboard },
   { key: "route", label: "Route", icon: icons.route },
@@ -162,43 +138,48 @@ function NavList({
 }
 
 /* ---------------- DATA ---------------- */
-type StopStatus = "DONE" | "NOW" | "IN_PROGRESS" | "UPCOMING";
-
-const schedule: { name: string; subtitle: string; status: StopStatus; badge?: string }[] = [
+const routeStops = [
   {
     name: "Sitio Malakas, Brgy. San Rafael",
+    date: "OCT 24, 2023 • 14:22",
     subtitle: "12 households • Residential Area",
-    status: "DONE",
-    badge: "DONE • 08:30 AM",
+    status: "COMPLETED",
   },
   {
     name: "Purok 7, Brgy. San Rafael",
-    subtitle: "Industrial Park Hub • Warehouse A",
-    status: "NOW",
-    badge: "NOW",
+    date: "OCT 24, 2023 • 14:22",
+    subtitle: "Industrial Park • Warehouse A",
+    status: "REPORTED",
   },
   {
-    name: "Purok 12, Brgy. Manggahan",
+    name: "Purok 12, Brgy. Mangahan",
+    date: "OCT 24, 2023 • 14:22",
     subtitle: "8 households • Commercial Strip",
-    status: "IN_PROGRESS",
-    badge: "IN PROGRESS",
+    status: "PENDING",
   },
   {
     name: "Sitio Pag-asa, Brgy. Biela",
+    date: "OCT 24, 2023 • 14:22",
     subtitle: "20 households • Village Block",
-    status: "UPCOMING",
+    status: "PENDING",
   },
 ];
 
 const MOBILE_BREAKPOINT = 680;
 
 /* ---------------- COMPONENT ---------------- */
-export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => void }) {
-  const activeKey = "route";
-  const activeMobileKey = "route";
+// onNavigate: call this with "dashboard" | "route" (or any nav key) to switch pages.
+// Whatever renders <DriverDashboard /> is responsible for holding page state and
+// swapping in <DriverRoute /> (or whichever component) when this fires.
+function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void }) {
+  const completed = 8;
+  const total = 14;
+  const progress = (completed / total) * 100;
+  const activeKey = "dashboard";
+  const activeMobileKey = "dashboard";
 
   const [isMobile, setIsMobile] = useState(false);
-  const [navOpen, setNavOpen] = useState(() => window.innerWidth >= MOBILE_BREAKPOINT);
+  const [navOpen, setNavOpen] = useState(true);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -237,8 +218,10 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
 
   return (
     <div style={layout}>
+      {/* SIDEBAR (desktop) */}
       {!isMobile && navOpen && <aside style={sidebar}>{sidebarInner}</aside>}
 
+      {/* MOBILE DRAWER (opened via hamburger) */}
       {isMobile && navOpen && (
         <>
           <div style={drawerBackdrop} onClick={() => setNavOpen(false)} />
@@ -246,13 +229,14 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
         </>
       )}
 
+      {/* MAIN */}
       <div style={mainWrap}>
         <header style={header}>
           <div style={leftHeader} onClick={() => setNavOpen((v) => !v)}>
             <HamburgerIcon />
           </div>
 
-          <div style={headerTitle}>{isMobile ? "BAZOORA" : "Route"}</div>
+          <div style={headerTitle}>{isMobile ? "BAZOORA" : "Dashboard"}</div>
 
           <div style={rightHeader}>
             <div style={bellWrap}>
@@ -263,130 +247,134 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
         </header>
 
         <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 84 : 18 }}>
-          <div style={isMobile ? routeGridMobile : routeGrid}>
-            <div style={leftCol}>
-              <div style={mapCard}>
-                <div style={mapLabel}>Map View</div>
-
-                <div style={mapPlaceholder}>
-                  <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <line x1="8" y1="8" x2="92" y2="92" stroke="#e2e6e3" strokeWidth={2} />
-                    <line x1="92" y1="8" x2="8" y2="92" stroke="#e2e6e3" strokeWidth={2} />
-                    <rect x="8" y="8" width="84" height="84" fill="none" stroke="#e2e6e3" strokeWidth={2} />
-                  </svg>
-                </div>
-
-                <div style={mapControls}>
-                  <div style={mapControlBtn}>
-                    <Icon icon={icons.locate} size={18} />
-                  </div>
-                  <div style={mapControlBtn}>
-                    <Icon icon={icons.layers} size={18} />
-                  </div>
-                </div>
-
-                <div style={turnBanner}>
-                  <div style={turnIconWrap}>
-                    <Icon icon={icons.turnRight} size={18} />
-                  </div>
-                  <div>
-                    <div style={turnMeta}>IN 450 METERS</div>
-                    <div style={turnTitle}>Turn Right onto Industrial Parkway</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={isMobile ? infoRowMobile : infoRow}>
-                <div style={infoCard}>
-                  <div style={infoEyebrow}>ROUTE OVERVIEW</div>
-                  <div style={infoTitle}>Route 1 - 12.4 km</div>
-                  <div style={infoLine}>
-                    <Icon icon={icons.pin} size={15} />
-                    <span>Purok 7, Brgy. San Rafael, General Trias</span>
-                  </div>
-                  <div style={infoSubtle}>2.8 km from last collection point</div>
-                </div>
-
-                <div style={infoCard}>
-                  <div style={infoEyebrow}>DESTINATION POINT</div>
-                  <div style={destRow}>
-                    <div style={destIconWrap}>
-                      <Icon icon={icons.bin} size={18} />
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={destTitle}>Industrial Park Hub</div>
-                      <div style={infoSubtle}>Purok 12, Brgy. Manggahan, Cavite</div>
-                    </div>
-                  </div>
-                  <div style={destTimeRow}>
-                    <span style={destTimeLabel}>GENERAL ETC</span>
-                    <span style={destTime}>01:05 PM</span>
-                  </div>
-                </div>
-              </div>
+          {/* TOP CARDS */}
+          <div style={isMobile ? topCardsMobile : topCards}>
+            <div style={{ ...smallCard, ...(isMobile ? { gridColumn: "1 / -1" } : {}) }}>
+              <div style={smallLabel}>Today's Route</div>
+              <div style={smallValue}>Route 1</div>
             </div>
 
-            <div style={scheduleCol}>
-              <div style={scheduleHeader}>
-                <div
-                  style={{ ...scheduleTitle, cursor: "pointer" }}
-                  onClick={() => goTo("dashboard")}
-                  title="Back to Dashboard"
-                >
-                  Daily Schedule
+            <div style={smallCardRow}>
+              <div style={{ minWidth: 0 }}>
+                <div style={smallLabel}>Stops Completed</div>
+                <div style={smallValue}>
+                  {completed}/{total}
                 </div>
-                <div style={infoSubtle}>14 Collections • 3.2 tons est.</div>
+              </div>
+              <div style={pillOrangeSmall}>IN PROGRESS</div>
+            </div>
+
+            <div style={smallCardRow}>
+              <div style={{ minWidth: 0 }}>
+                <div style={smallLabel}>Assigned Truck</div>
+                <div style={smallValue}>BT-04</div>
+              </div>
+              <div style={pillGreenSmall}>ACTIVE • GPS ON</div>
+            </div>
+          </div>
+
+          {/* GRID */}
+          <div style={isMobile ? grid2Mobile : grid2}>
+            {/* CURRENT STOP */}
+            <div style={{ ...currentStopCard, height: isMobile ? "auto" : 312 }}>
+              <div style={currentTopRow}>
+                <div style={currentLabel}>CURRENT STOP</div>
+                <div style={pillOrange}>IN PROGRESS</div>
               </div>
 
-              <div style={scheduleList}>
-                {schedule.map((s, i) => {
-                  const isNow = s.status === "NOW";
-                  return (
-                    <div key={i} style={isNow ? scheduleItemActive : scheduleItem}>
-                      <div style={isNow ? stopNumberActive : stopNumber}>
-                        {String(i + 1).padStart(2, "0")}
+              <div style={currentTitle}>Sitio Malaya — Stop 9</div>
+
+              <div style={currentSub}>Purok 3, Barangay Poblacion • Biodegradable</div>
+
+              <button style={btnGreen}>
+                <Icon icon={icons.check} />
+                Mark as Complete
+              </button>
+              <button style={btnRed} onClick={() => goTo("route")}>
+                <Icon icon={icons.flag} />
+                Report Issue at this Stop
+              </button>
+            </div>
+
+            {/* ROUTE PROGRESS */}
+            <div style={{ ...routeCard, height: isMobile ? "auto" : 312 }}>
+              <div style={routeCardHeader}>
+                <div
+                  style={{ ...routeHeader, cursor: "pointer" }}
+                  onClick={() => goTo("route")}
+                  title="Go to Route"
+                >
+                  Route Progress
+                </div>
+
+                <div style={bar}>
+                  <div style={{ width: `${progress}%`, height: "100%", background: "#1e3a8a" }} />
+                </div>
+
+                <div style={row}>
+                  <span>{completed} Completed</span>
+                  <span>{total - completed} Remaining</span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  ...routeScrollArea,
+                  overflowY: isMobile ? "visible" : "auto",
+                  flex: isMobile ? ("unset" as const) : 1,
+                }}
+              >
+                {routeStops.map((s, i) => (
+                  <div key={i} style={routeItem}>
+                    <div
+                      style={{
+                        width: 4,
+                        alignSelf: "stretch",
+                        background:
+                          s.status === "COMPLETED" ? "#22c55e" : s.status === "REPORTED" ? "#ef4444" : "#f59e0b",
+                        borderRadius: 4,
+                      }}
+                    />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={dateStamp}>{s.date}</div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{s.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>{s.subtitle}</div>
+                    </div>
+
+                    <div style={statusColumn}>
+                      <div
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          whiteSpace: "nowrap",
+                          background:
+                            s.status === "COMPLETED" ? "#dcfce7" : s.status === "REPORTED" ? "#fee2e2" : "#ffedd5",
+                          color:
+                            s.status === "COMPLETED" ? "#166534" : s.status === "REPORTED" ? "#991b1b" : "#9a3412",
+                        }}
+                      >
+                        {s.status}
                       </div>
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={stopTopRow}>
-                          <div style={isNow ? stopNameLight : stopName}>{s.name}</div>
-                          {s.badge && (
-                            <div
-                              style={
-                                s.status === "DONE"
-                                  ? badgeDone
-                                  : s.status === "NOW"
-                                  ? badgeNow
-                                  : badgeProgress
-                              }
-                            >
-                              {s.status === "NOW" && <Icon icon={icons.bookmark} size={11} />}
-                              {s.badge}
-                            </div>
-                          )}
-                        </div>
-                        <div style={isNow ? stopSubtitleLight : stopSubtitle}>{s.subtitle}</div>
+                      <div
+                        style={{ fontSize: 12, fontWeight: 700, opacity: 0.7, cursor: "pointer" }}
+                        onClick={() => goTo("route")}
+                      >
+                        Details ›
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div style={scheduleActions}>
-                <button style={btnGreen} onClick={() => goTo("dashboard")}>
-                  <Icon icon={icons.check} />
-                  Mark as Complete
-                </button>
-                <button style={btnRed}>
-                  <Icon icon={icons.flag} />
-                  Report Issue at this Stop
-                </button>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </main>
       </div>
 
+      {/* BOTTOM NAV (mobile) */}
       {isMobile && (
         <nav style={bottomNav}>
           {mobileNavItems.map((item) => (
@@ -405,7 +393,19 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
   );
 }
 
-/* ---------------- LAYOUT (identical tokens to Dashboard) ---------------- */
+/* ---------------- LAYOUT ---------------- */
+const grid2: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 16,
+};
+
+const grid2Mobile: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+};
+
 const layout: CSSProperties = {
   display: "flex",
   height: "100vh",
@@ -414,6 +414,7 @@ const layout: CSSProperties = {
   position: "relative",
 };
 
+/* ---------------- SIDEBAR ---------------- */
 const sidebar: CSSProperties = {
   width: 230,
   background: "#0f2a1f",
@@ -466,6 +467,7 @@ const avatar: CSSProperties = {
   flexShrink: 0,
 };
 
+/* ---------------- MOBILE DRAWER ---------------- */
 const drawerBackdrop: CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -488,6 +490,7 @@ const drawerPanel: CSSProperties = {
   justifyContent: "space-between",
 };
 
+/* ---------------- HEADER ---------------- */
 const mainWrap: CSSProperties = {
   flex: 1,
   display: "flex",
@@ -540,8 +543,118 @@ const bellWrap: CSSProperties = {
 
 const topAvatar: CSSProperties = avatar;
 
+/* ---------------- CONTENT ---------------- */
 const content: CSSProperties = {
   padding: 18,
+};
+
+const topCards: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr 1fr",
+  gap: 12,
+  marginBottom: 16,
+};
+
+const topCardsMobile: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 10,
+  marginBottom: 16,
+};
+
+const smallCard: CSSProperties = {
+  background: "white",
+  borderRadius: 14,
+  padding: 14,
+  border: "1px solid #e5e7eb",
+  minWidth: 0,
+};
+
+const smallCardRow: CSSProperties = {
+  background: "white",
+  borderRadius: 14,
+  padding: 14,
+  border: "1px solid #e5e7eb",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  minWidth: 0,
+};
+
+const smallLabel: CSSProperties = {
+  fontSize: 12,
+  opacity: 0.6,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const smallValue: CSSProperties = {
+  fontSize: 18,
+  fontWeight: 800,
+};
+
+const pillOrangeSmall: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  background: "#ffedd5",
+  color: "#9a3412",
+  padding: "4px 10px",
+  borderRadius: 999,
+  flexShrink: 0,
+};
+
+const pillGreenSmall: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  background: "#dcfce7",
+  color: "#166534",
+  padding: "4px 10px",
+  borderRadius: 999,
+  flexShrink: 0,
+};
+
+/* ---------------- CURRENT STOP ---------------- */
+const currentStopCard: CSSProperties = {
+  background: "#003d1f",
+  color: "white",
+  borderRadius: 14,
+  padding: "18px 22px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const currentTopRow: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const currentLabel: CSSProperties = {
+  fontSize: 13,
+  opacity: 0.8,
+};
+
+const currentTitle: CSSProperties = {
+  fontSize: 22,
+  fontWeight: 800,
+  lineHeight: 1.2,
+};
+
+const currentSub: CSSProperties = {
+  opacity: 0.85,
+  fontSize: 13,
+  lineHeight: 1.5,
+};
+
+const pillOrange: CSSProperties = {
+  background: "#ffedd5",
+  color: "#9a3412",
+  padding: "6px 12px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 const btnGreen: CSSProperties = {
@@ -573,6 +686,76 @@ const btnRed: CSSProperties = {
   gap: 8,
 };
 
+/* ---------------- ROUTE PROGRESS ---------------- */
+const routeCard: CSSProperties = {
+  background: "white",
+  borderRadius: 18,
+  border: "1px solid #e5e7eb",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+};
+
+const routeCardHeader: CSSProperties = {
+  padding: "18px 18px 12px",
+  background: "#fff",
+  borderBottom: "1px solid #f3f4f6",
+  flexShrink: 0,
+};
+
+const routeHeader: CSSProperties = {
+  fontSize: 18,
+  fontWeight: 700,
+  marginBottom: 12,
+};
+
+const bar: CSSProperties = {
+  height: 10,
+  background: "#e5e7eb",
+  borderRadius: 999,
+  overflow: "hidden",
+};
+
+const row: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  fontSize: 13,
+  marginTop: 8,
+};
+
+const routeScrollArea: CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  padding: "0 18px",
+};
+
+const routeItem: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "14px 0",
+  borderBottom: "1px solid #f3f4f6",
+  minHeight: 64,
+};
+
+const dateStamp: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  opacity: 0.45,
+  marginBottom: 2,
+  textTransform: "uppercase",
+};
+
+const statusColumn: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: 6,
+  flexShrink: 0,
+};
+
+/* ---------------- BOTTOM NAV (mobile) ---------------- */
 const bottomNav: CSSProperties = {
   position: "fixed",
   bottom: 0,
@@ -603,331 +786,4 @@ const bottomNavItemActive: CSSProperties = {
   color: "#ffffff",
 };
 
-/* ---------------- ROUTE PAGE SPECIFIC TOKENS ---------------- */
-const routeGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 340px",
-  gap: 16,
-  alignItems: "start",
-};
-
-const routeGridMobile: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 16,
-};
-
-const leftCol: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 16,
-  minWidth: 0,
-};
-
-const mapCard: CSSProperties = {
-  position: "relative",
-  background: "#eef1ef",
-  borderRadius: 16,
-  border: "1px solid #e5e7eb",
-  padding: 14,
-  height: 480,
-  display: "flex",
-  flexDirection: "column",
-};
-
-const mapLabel: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  color: "#334155",
-  marginBottom: 10,
-};
-
-const mapPlaceholder: CSSProperties = {
-  flex: 1,
-  borderRadius: 12,
-  overflow: "hidden",
-  background: "#eef1ef",
-};
-
-const mapControls: CSSProperties = {
-  position: "absolute",
-  top: 54,
-  right: 22,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const mapControlBtn: CSSProperties = {
-  width: 38,
-  height: 38,
-  borderRadius: "50%",
-  background: "#fff",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#0f2a1f",
-  cursor: "pointer",
-};
-
-const turnBanner: CSSProperties = {
-  position: "absolute",
-  left: 22,
-  right: 22,
-  bottom: 22,
-  background: "#0f2a1f",
-  color: "#fff",
-  borderRadius: 14,
-  padding: "14px 16px",
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-};
-
-const turnIconWrap: CSSProperties = {
-  width: 34,
-  height: 34,
-  borderRadius: 10,
-  background: "rgba(255,255,255,0.15)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const turnMeta: CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  letterSpacing: 0.4,
-  opacity: 0.7,
-  marginBottom: 2,
-  textTransform: "uppercase",
-};
-
-const turnTitle: CSSProperties = {
-  fontSize: 15,
-  fontWeight: 700,
-};
-
-const infoRow: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 16,
-};
-
-const infoRowMobile: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-};
-
-const infoCard: CSSProperties = {
-  background: "#fff",
-  borderRadius: 14,
-  border: "1px solid #e5e7eb",
-  padding: 16,
-  minWidth: 0,
-};
-
-const infoEyebrow: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: 0.4,
-  opacity: 0.5,
-  marginBottom: 8,
-};
-
-const infoTitle: CSSProperties = {
-  fontSize: 17,
-  fontWeight: 800,
-  marginBottom: 10,
-};
-
-const infoLine: CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 6,
-  fontSize: 13,
-  color: "#334155",
-  marginBottom: 6,
-};
-
-const infoSubtle: CSSProperties = {
-  fontSize: 12,
-  opacity: 0.55,
-};
-
-const destRow: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const destIconWrap: CSSProperties = {
-  width: 38,
-  height: 38,
-  borderRadius: 10,
-  background: "#dcfce7",
-  color: "#166534",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const destTitle: CSSProperties = {
-  fontSize: 15,
-  fontWeight: 700,
-};
-
-const destTimeRow: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  paddingTop: 12,
-  borderTop: "1px solid #f3f4f6",
-};
-
-const destTimeLabel: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  opacity: 0.5,
-  letterSpacing: 0.4,
-};
-
-const destTime: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 800,
-};
-
-const scheduleCol: CSSProperties = {
-  background: "#fff",
-  borderRadius: 16,
-  border: "1px solid #e5e7eb",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-  height: "100%",
-};
-
-const scheduleHeader: CSSProperties = {
-  padding: "18px 18px 12px",
-  borderBottom: "1px solid #f3f4f6",
-};
-
-const scheduleTitle: CSSProperties = {
-  fontSize: 18,
-  fontWeight: 800,
-  marginBottom: 4,
-};
-
-const scheduleList: CSSProperties = {
-  padding: "10px 14px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const scheduleItem: CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 12,
-  padding: "12px",
-  borderRadius: 14,
-};
-
-const scheduleItemActive: CSSProperties = {
-  ...scheduleItem,
-  background: "#0f2a1f",
-};
-
-const stopNumber: CSSProperties = {
-  width: 26,
-  height: 26,
-  borderRadius: "50%",
-  background: "#e5e7eb",
-  color: "#475569",
-  fontSize: 11,
-  fontWeight: 700,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const stopNumberActive: CSSProperties = {
-  ...stopNumber,
-  background: "#4ade80",
-  color: "#0f2a1f",
-};
-
-const stopTopRow: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 8,
-};
-
-const stopName: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#0f172a",
-};
-
-const stopNameLight: CSSProperties = {
-  ...stopName,
-  color: "#fff",
-};
-
-const stopSubtitle: CSSProperties = {
-  fontSize: 12,
-  opacity: 0.55,
-  marginTop: 2,
-};
-
-const stopSubtitleLight: CSSProperties = {
-  ...stopSubtitle,
-  color: "#fff",
-  opacity: 0.7,
-};
-
-const badgeBase: CSSProperties = {
-  fontSize: 10,
-  fontWeight: 700,
-  padding: "4px 8px",
-  borderRadius: 999,
-  whiteSpace: "nowrap",
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  flexShrink: 0,
-};
-
-const badgeDone: CSSProperties = {
-  ...badgeBase,
-  background: "#dcfce7",
-  color: "#166534",
-};
-
-const badgeNow: CSSProperties = {
-  ...badgeBase,
-  background: "#fff",
-  color: "#0f2a1f",
-};
-
-const badgeProgress: CSSProperties = {
-  ...badgeBase,
-  background: "#ffedd5",
-  color: "#9a3412",
-};
-
-const scheduleActions: CSSProperties = {
-  marginTop: "auto",
-  padding: 14,
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-  borderTop: "1px solid #f3f4f6",
-};
+export default DriverDashboard;
