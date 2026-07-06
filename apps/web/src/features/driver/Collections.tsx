@@ -98,6 +98,13 @@ const icons: Record<string, IconShape> = {
   download: {
     paths: ["M12 3v12", "m7 10 5 5 5-5", "M5 21h14"],
   },
+  profile: {
+    paths: ["M20 21a8 8 0 0 0-16 0"],
+    circles: [{ cx: 12, cy: 7, r: 4 }],
+  },
+  close: {
+    paths: ["M18 6 6 18", "M6 6l12 12"],
+  },
 };
 
 /* ---------------- NAV (identical keys/order to Dashboard/Route) ---------------- */
@@ -110,12 +117,13 @@ const navItems = [
   { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
+// Mobile bottom nav — capped at 4 primary buttons. Messages lives in the FAB
+// alongside Profile instead of taking a 5th tab slot.
 const mobileNavItems = [
   { key: "dashboard", label: "Home", icon: icons.home },
   { key: "route", label: "My Route", icon: icons.route },
   { key: "tasks", label: "Logs", icon: icons.tasks },
   { key: "report", label: "Report", icon: icons.report },
-  { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
 function NavList({
@@ -181,13 +189,15 @@ const MOBILE_BREAKPOINT = 680;
 /* ---------------- COMPONENT ---------------- */
 export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => void }) {
   const activeKey = "collections";
-  // No dedicated mobile bottom-nav slot for Collections yet (same as Assigned
-  // Tasks / Messages) — falls back to no highlighted item, matching the
-  // pattern already used elsewhere in the app for pages without a bottom-nav icon.
+  // No dedicated mobile bottom-nav slot for Collections (same as Assigned
+  // Tasks) — falls back to no highlighted item.
   const activeMobileKey = "collections";
 
   const [isMobile, setIsMobile] = useState(false);
-  const [navOpen, setNavOpen] = useState(() => window.innerWidth >= MOBILE_BREAKPOINT);
+  // Sidebar drawer is desktop-only — mobile relies entirely on the bottom
+  // nav + FAB, no hamburger/drawer at all.
+  const [navOpen, setNavOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -198,7 +208,8 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
 
   const goTo = (key: string) => {
     onNavigate?.(key);
-    if (isMobile) setNavOpen(false);
+    setNavOpen(false);
+    setFabOpen(false);
   };
 
   const sidebarInner = (
@@ -226,9 +237,9 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
 
   return (
     <div style={layout}>
-      {!isMobile && navOpen && <aside style={sidebar}>{sidebarInner}</aside>}
-
-      {isMobile && navOpen && (
+      {/* NAV DRAWER — desktop only. Mobile uses button-based navigation
+          (bottom nav + FAB) instead of a sidebar. */}
+      {!isMobile && navOpen && (
         <>
           <div style={drawerBackdrop} onClick={() => setNavOpen(false)} />
           <aside style={drawerPanel}>{sidebarInner}</aside>
@@ -237,8 +248,13 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
 
       <div style={mainWrap}>
         <header style={header}>
-          <div style={leftHeader} onClick={() => setNavOpen((v) => !v)}>
-            <HamburgerIcon />
+          <div
+            style={leftHeader}
+            onClick={() => {
+              if (!isMobile) setNavOpen((v) => !v);
+            }}
+          >
+            {!isMobile && <HamburgerIcon />}
           </div>
 
           <div style={headerTitle}>{isMobile ? "BAZOORA" : "Collections"}</div>
@@ -247,11 +263,13 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
             <div style={bellWrap}>
               <Icon icon={icons.bell} />
             </div>
-            <div style={topAvatar}>JD</div>
+            {/* Profile lives in the mobile FAB, so the header avatar is
+                desktop-only. */}
+            {!isMobile && <div style={topAvatar}>JD</div>}
           </div>
         </header>
 
-        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 84 : 18 }}>
+        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 96 : 18 }}>
           {/* TOP SUMMARY CARDS */}
           <div style={isMobile ? topCardsMobile : topCards}>
             <div style={smallCardRow}>
@@ -359,6 +377,7 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
         </main>
       </div>
 
+      {/* BOTTOM NAV (mobile) — max 4 primary buttons */}
       {isMobile && (
         <nav style={bottomNav}>
           {mobileNavItems.map((item) => (
@@ -373,6 +392,34 @@ export function CollectionsPage({ onNavigate }: { onNavigate?: (key: string) => 
           ))}
         </nav>
       )}
+
+      {/* FAB (mobile) — Messages + Profile live here instead of crowding the
+          bottom nav or the header. Sits bottom-LEFT so it never covers the
+          right-aligned status pill / "Details ›" content in the log. */}
+      {isMobile && (
+        <div style={fabWrap}>
+          {fabOpen && (
+            <div style={fabActions}>
+              <button style={fabActionBtn} onClick={() => goTo("profile")}>
+                <Icon icon={icons.profile} size={16} />
+                <span>Profile</span>
+              </button>
+              <button style={fabActionBtn} onClick={() => goTo("messages")}>
+                <Icon icon={icons.messages} size={16} />
+                <span>Messages</span>
+              </button>
+            </div>
+          )}
+
+          <button
+            style={fabMain}
+            onClick={() => setFabOpen((v) => !v)}
+            aria-label="Quick actions"
+          >
+            <Icon icon={fabOpen ? icons.close : icons.messages} size={22} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -384,16 +431,6 @@ const layout: CSSProperties = {
   background: "#f3f6f4",
   fontFamily: "Inter, sans-serif",
   position: "relative",
-};
-
-const sidebar: CSSProperties = {
-  width: 230,
-  background: "#0f2a1f",
-  color: "white",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  padding: 14,
 };
 
 const logo: CSSProperties = { marginBottom: 10 };
@@ -622,6 +659,55 @@ const bottomNavItem: CSSProperties = {
 const bottomNavItemActive: CSSProperties = {
   ...bottomNavItem,
   color: "#ffffff",
+};
+
+/* ---------------- FAB (mobile — Messages + Profile) ---------------- */
+const fabWrap: CSSProperties = {
+  position: "fixed",
+  left: 18,
+  bottom: 84,
+  zIndex: 25,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+};
+
+const fabActions: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 10,
+  marginBottom: 12,
+};
+
+const fabActionBtn: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  background: "#fff",
+  color: "#0f2a1f",
+  border: "1px solid #e5e7eb",
+  borderRadius: 999,
+  padding: "10px 16px",
+  fontSize: 13,
+  fontWeight: 700,
+  boxShadow: "0 6px 16px rgba(0,0,0,0.14)",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const fabMain: CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  background: "#0f2a1f",
+  color: "#fff",
+  border: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.28)",
+  cursor: "pointer",
 };
 
 /* ---------------- COLLECTIONS PAGE SPECIFIC TOKENS ---------------- */

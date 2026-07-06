@@ -91,12 +91,26 @@ const icons: Record<string, IconShape> = {
   home: {
     paths: ["M3 10.5 12 3l9 7.5", "M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"],
   },
+  profile: {
+    paths: ["M20 21a8 8 0 0 0-16 0"],
+    circles: [{ cx: 12, cy: 7, r: 4 }],
+  },
+  plus: {
+    paths: ["M12 5v14", "M5 12h14"],
+  },
+  document: {
+    paths: ["M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z", "M13 2v7h7"],
+  },
+  close: {
+    paths: ["M18 6 6 18", "M6 6l12 12"],
+  },
 };
 
 /* ---------------- NAV ---------------- */
 // key === the page id it should navigate to. Only "dashboard" and "route" have
 // real pages right now; the rest will highlight on click but onNavigate just
 // won't match a page for them until those pages exist.
+// Full nav — used by the desktop sidebar only.
 const navItems = [
   { key: "dashboard", label: "Dashboard", icon: icons.dashboard },
   { key: "route", label: "Route", icon: icons.route },
@@ -106,12 +120,14 @@ const navItems = [
   { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
+// Mobile bottom nav — capped at 4 primary buttons. Messages moved to the FAB
+// alongside Profile, since drivers use the mobile app primarily and a 5th
+// tab crowds the bar on smaller screens.
 const mobileNavItems = [
   { key: "dashboard", label: "Home", icon: icons.home },
   { key: "route", label: "My Route", icon: icons.route },
   { key: "tasks", label: "Logs", icon: icons.tasks },
   { key: "report", label: "Report", icon: icons.report },
-  { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
 function NavList({
@@ -179,7 +195,10 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
   const activeMobileKey = "dashboard";
 
   const [isMobile, setIsMobile] = useState(false);
-  const [navOpen, setNavOpen] = useState(true);
+  // Sidebar drawer is a desktop-only affordance now — mobile relies entirely
+  // on the bottom nav + FAB, no hamburger/drawer at all.
+  const [navOpen, setNavOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -190,7 +209,8 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
 
   const goTo = (key: string) => {
     onNavigate?.(key);
-    if (isMobile) setNavOpen(false);
+    setNavOpen(false);
+    setFabOpen(false);
   };
 
   const sidebarInner = (
@@ -218,11 +238,9 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
 
   return (
     <div style={layout}>
-      {/* SIDEBAR (desktop) */}
-      {!isMobile && navOpen && <aside style={sidebar}>{sidebarInner}</aside>}
-
-      {/* MOBILE DRAWER (opened via hamburger) */}
-      {isMobile && navOpen && (
+      {/* NAV DRAWER — desktop only. Mobile uses button-based navigation
+          (bottom nav + FAB) instead of a sidebar. */}
+      {!isMobile && navOpen && (
         <>
           <div style={drawerBackdrop} onClick={() => setNavOpen(false)} />
           <aside style={drawerPanel}>{sidebarInner}</aside>
@@ -232,8 +250,13 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
       {/* MAIN */}
       <div style={mainWrap}>
         <header style={header}>
-          <div style={leftHeader} onClick={() => setNavOpen((v) => !v)}>
-            <HamburgerIcon />
+          <div
+            style={leftHeader}
+            onClick={() => {
+              if (!isMobile) setNavOpen((v) => !v);
+            }}
+          >
+            {!isMobile && <HamburgerIcon />}
           </div>
 
           <div style={headerTitle}>{isMobile ? "BAZOORA" : "Dashboard"}</div>
@@ -242,11 +265,13 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
             <div style={bellWrap}>
               <Icon icon={icons.bell} />
             </div>
-            <div style={topAvatar}>JD</div>
+            {/* Profile now lives in the mobile FAB, so the header avatar is
+                desktop-only. */}
+            {!isMobile && <div style={topAvatar}>JD</div>}
           </div>
         </header>
 
-        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 84 : 18 }}>
+        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 96 : 18 }}>
           {/* TOP CARDS */}
           <div style={isMobile ? topCardsMobile : topCards}>
             <div style={{ ...smallCard, ...(isMobile ? { gridColumn: "1 / -1" } : {}) }}>
@@ -254,7 +279,7 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
               <div style={smallValue}>Route 1</div>
             </div>
 
-            <div style={smallCardRow}>
+            <div style={{ ...smallCardRow, ...(isMobile ? smallCardColOverride : {}) }}>
               <div style={{ minWidth: 0 }}>
                 <div style={smallLabel}>Stops Completed</div>
                 <div style={smallValue}>
@@ -264,7 +289,7 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
               <div style={pillOrangeSmall}>IN PROGRESS</div>
             </div>
 
-            <div style={smallCardRow}>
+            <div style={{ ...smallCardRow, ...(isMobile ? smallCardColOverride : {}) }}>
               <div style={{ minWidth: 0 }}>
                 <div style={smallLabel}>Assigned Truck</div>
                 <div style={smallValue}>BT-04</div>
@@ -273,31 +298,37 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
             </div>
           </div>
 
-          {/* GRID */}
+          {/* GRID — both cards share a fixed, modest height on desktop so
+              neither one stretches too tall; Route Progress scrolls
+              internally if its list is longer than the card. */}
           <div style={isMobile ? grid2Mobile : grid2}>
             {/* CURRENT STOP */}
-            <div style={{ ...currentStopCard, height: isMobile ? "auto" : 312 }}>
-              <div style={currentTopRow}>
-                <div style={currentLabel}>CURRENT STOP</div>
-                <div style={pillOrange}>IN PROGRESS</div>
+            <div style={{ ...currentStopCard, height: isMobile ? "auto" : 260 }}>
+              <div style={currentStopTop}>
+                <div style={currentTopRow}>
+                  <div style={currentLabel}>CURRENT STOP</div>
+                  <div style={pillOrange}>IN PROGRESS</div>
+                </div>
+
+                <div style={currentTitle}>Sitio Malaya — Stop 9</div>
+
+                <div style={currentSub}>Purok 3, Barangay Poblacion • Biodegradable</div>
               </div>
 
-              <div style={currentTitle}>Sitio Malaya — Stop 9</div>
-
-              <div style={currentSub}>Purok 3, Barangay Poblacion • Biodegradable</div>
-
-              <button style={btnGreen}>
-                <Icon icon={icons.check} />
-                Mark as Complete
-              </button>
-              <button style={btnRed} onClick={() => goTo("route")}>
-                <Icon icon={icons.flag} />
-                Report Issue at this Stop
-              </button>
+              <div style={currentStopActions}>
+                <button style={btnGreen}>
+                  <Icon icon={icons.check} />
+                  Mark as Complete
+                </button>
+                <button style={btnRed} onClick={() => goTo("route")}>
+                  <Icon icon={icons.document} />
+                  Report Issue at this Stop
+                </button>
+              </div>
             </div>
 
             {/* ROUTE PROGRESS */}
-            <div style={{ ...routeCard, height: isMobile ? "auto" : 312 }}>
+            <div style={{ ...routeCard, height: isMobile ? "auto" : 260 }}>
               <div style={routeCardHeader}>
                 <div
                   style={{ ...routeHeader, cursor: "pointer" }}
@@ -374,7 +405,7 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
         </main>
       </div>
 
-      {/* BOTTOM NAV (mobile) */}
+      {/* BOTTOM NAV (mobile) — max 4 primary buttons */}
       {isMobile && (
         <nav style={bottomNav}>
           {mobileNavItems.map((item) => (
@@ -389,6 +420,34 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
           ))}
         </nav>
       )}
+
+      {/* FAB (mobile) — Messages + Profile live here instead of crowding the
+          bottom nav or the header. Sits bottom-LEFT so it never sits over the
+          right-aligned status pill / "Details ›" text in the route list. */}
+      {isMobile && (
+        <div style={fabWrap}>
+          {fabOpen && (
+            <div style={fabActions}>
+              <button style={fabActionBtn} onClick={() => goTo("profile")}>
+                <Icon icon={icons.profile} size={16} />
+                <span>Profile</span>
+              </button>
+              <button style={fabActionBtn} onClick={() => goTo("messages")}>
+                <Icon icon={icons.messages} size={16} />
+                <span>Messages</span>
+              </button>
+            </div>
+          )}
+
+          <button
+            style={fabMain}
+            onClick={() => setFabOpen((v) => !v)}
+            aria-label="Quick actions"
+          >
+            <Icon icon={fabOpen ? icons.close : icons.messages} size={22} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -398,6 +457,7 @@ const grid2: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
   gap: 16,
+  // default align-items: stretch — both cards match the taller one's height
 };
 
 const grid2Mobile: CSSProperties = {
@@ -414,17 +474,7 @@ const layout: CSSProperties = {
   position: "relative",
 };
 
-/* ---------------- SIDEBAR ---------------- */
-const sidebar: CSSProperties = {
-  width: 230,
-  background: "#0f2a1f",
-  color: "white",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  padding: 14,
-};
-
+/* ---------------- NAV DRAWER (desktop only) ---------------- */
 const logo: CSSProperties = { marginBottom: 10 };
 
 const navItem: CSSProperties = {
@@ -467,7 +517,6 @@ const avatar: CSSProperties = {
   flexShrink: 0,
 };
 
-/* ---------------- MOBILE DRAWER ---------------- */
 const drawerBackdrop: CSSProperties = {
   position: "fixed",
   inset: 0,
@@ -581,6 +630,14 @@ const smallCardRow: CSSProperties = {
   minWidth: 0,
 };
 
+// On mobile, "Stops Completed" / "Assigned Truck" stack label+value above the
+// pill instead of sitting side by side.
+const smallCardColOverride: CSSProperties = {
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 8,
+};
+
 const smallLabel: CSSProperties = {
   fontSize: 12,
   opacity: 0.6,
@@ -615,11 +672,27 @@ const pillGreenSmall: CSSProperties = {
 };
 
 /* ---------------- CURRENT STOP ---------------- */
+// Split into a top block and an actions block so that when the grid stretches
+// this card to match Route Progress's height, the content anchors to the top
+// and the buttons anchor to the bottom instead of leaving an awkward gap.
 const currentStopCard: CSSProperties = {
   background: "#003d1f",
   color: "white",
   borderRadius: 14,
   padding: "18px 22px",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
+  gap: 16,
+};
+
+const currentStopTop: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const currentStopActions: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 10,
@@ -660,10 +733,10 @@ const pillOrange: CSSProperties = {
 const btnGreen: CSSProperties = {
   background: "#4ade80",
   border: "none",
-  padding: "12px 16px",
-  borderRadius: 10,
+  padding: "14px 16px",
+  borderRadius: 12,
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 14,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -674,11 +747,11 @@ const btnGreen: CSSProperties = {
 const btnRed: CSSProperties = {
   background: "#dc2626",
   border: "none",
-  padding: "12px 16px",
-  borderRadius: 10,
+  padding: "14px 16px",
+  borderRadius: 12,
   color: "white",
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 14,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -784,6 +857,55 @@ const bottomNavItem: CSSProperties = {
 const bottomNavItemActive: CSSProperties = {
   ...bottomNavItem,
   color: "#ffffff",
+};
+
+/* ---------------- FAB (mobile — Messages + Profile) ---------------- */
+const fabWrap: CSSProperties = {
+  position: "fixed",
+  left: 18,
+  bottom: 84,
+  zIndex: 25,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+};
+
+const fabActions: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 10,
+  marginBottom: 12,
+};
+
+const fabActionBtn: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  background: "#fff",
+  color: "#0f2a1f",
+  border: "1px solid #e5e7eb",
+  borderRadius: 999,
+  padding: "10px 16px",
+  fontSize: 13,
+  fontWeight: 700,
+  boxShadow: "0 6px 16px rgba(0,0,0,0.14)",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const fabMain: CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  background: "#0f2a1f",
+  color: "#fff",
+  border: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.28)",
+  cursor: "pointer",
 };
 
 export default DriverDashboard;

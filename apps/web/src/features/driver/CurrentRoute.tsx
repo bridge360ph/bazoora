@@ -119,6 +119,16 @@ const icons: Record<string, IconShape> = {
     paths: ["M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"],
     circles: [{ cx: 12, cy: 10, r: 2.5 }],
   },
+  document: {
+    paths: ["M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z", "M13 2v7h7"],
+  },
+  profile: {
+    paths: ["M20 21a8 8 0 0 0-16 0"],
+    circles: [{ cx: 12, cy: 7, r: 4 }],
+  },
+  close: {
+    paths: ["M18 6 6 18", "M6 6l12 12"],
+  },
 };
 
 /* ---------------- NAV (identical keys/order to Dashboard) ---------------- */
@@ -131,12 +141,13 @@ const navItems = [
   { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
+// Mobile bottom nav — capped at 4 primary buttons. Messages lives in the FAB
+// alongside Profile instead of taking a 5th tab slot.
 const mobileNavItems = [
   { key: "dashboard", label: "Home", icon: icons.home },
   { key: "route", label: "My Route", icon: icons.route },
   { key: "tasks", label: "Logs", icon: icons.tasks },
   { key: "report", label: "Report", icon: icons.report },
-  { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
 function NavList({
@@ -199,7 +210,10 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
   const activeMobileKey = "route";
 
   const [isMobile, setIsMobile] = useState(false);
-  const [navOpen, setNavOpen] = useState(() => window.innerWidth >= MOBILE_BREAKPOINT);
+  // Sidebar drawer is desktop-only — mobile relies entirely on the bottom
+  // nav + FAB, no hamburger/drawer at all.
+  const [navOpen, setNavOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
@@ -210,7 +224,8 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
 
   const goTo = (key: string) => {
     onNavigate?.(key);
-    if (isMobile) setNavOpen(false);
+    setNavOpen(false);
+    setFabOpen(false);
   };
 
   const sidebarInner = (
@@ -238,9 +253,9 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
 
   return (
     <div style={layout}>
-      {!isMobile && navOpen && <aside style={sidebar}>{sidebarInner}</aside>}
-
-      {isMobile && navOpen && (
+      {/* NAV DRAWER — desktop only. Mobile uses button-based navigation
+          (bottom nav + FAB) instead of a sidebar. */}
+      {!isMobile && navOpen && (
         <>
           <div style={drawerBackdrop} onClick={() => setNavOpen(false)} />
           <aside style={drawerPanel}>{sidebarInner}</aside>
@@ -249,8 +264,13 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
 
       <div style={mainWrap}>
         <header style={header}>
-          <div style={leftHeader} onClick={() => setNavOpen((v) => !v)}>
-            <HamburgerIcon />
+          <div
+            style={leftHeader}
+            onClick={() => {
+              if (!isMobile) setNavOpen((v) => !v);
+            }}
+          >
+            {!isMobile && <HamburgerIcon />}
           </div>
 
           <div style={headerTitle}>{isMobile ? "BAZOORA" : "Route"}</div>
@@ -259,11 +279,13 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
             <div style={bellWrap}>
               <Icon icon={icons.bell} />
             </div>
-            <div style={topAvatar}>JD</div>
+            {/* Profile lives in the mobile FAB, so the header avatar is
+                desktop-only. */}
+            {!isMobile && <div style={topAvatar}>JD</div>}
           </div>
         </header>
 
-        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 84 : 18 }}>
+        <main style={{ ...content, padding: isMobile ? 14 : 18, paddingBottom: isMobile ? 96 : 18 }}>
           <div style={isMobile ? routeGridMobile : routeGrid}>
             <div style={leftCol}>
               <div style={mapCard}>
@@ -379,7 +401,7 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
                   Mark as Complete
                 </button>
                 <button style={btnRed}>
-                  <Icon icon={icons.flag} />
+                  <Icon icon={icons.document} />
                   Report Issue at this Stop
                 </button>
               </div>
@@ -388,6 +410,7 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
         </main>
       </div>
 
+      {/* BOTTOM NAV (mobile) — max 4 primary buttons */}
       {isMobile && (
         <nav style={bottomNav}>
           {mobileNavItems.map((item) => (
@@ -401,6 +424,34 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
             </div>
           ))}
         </nav>
+      )}
+
+      {/* FAB (mobile) — Messages + Profile live here instead of crowding the
+          bottom nav or the header. Sits bottom-LEFT so it never covers the
+          right-aligned status pill / "Details ›" content. */}
+      {isMobile && (
+        <div style={fabWrap}>
+          {fabOpen && (
+            <div style={fabActions}>
+              <button style={fabActionBtn} onClick={() => goTo("profile")}>
+                <Icon icon={icons.profile} size={16} />
+                <span>Profile</span>
+              </button>
+              <button style={fabActionBtn} onClick={() => goTo("messages")}>
+                <Icon icon={icons.messages} size={16} />
+                <span>Messages</span>
+              </button>
+            </div>
+          )}
+
+          <button
+            style={fabMain}
+            onClick={() => setFabOpen((v) => !v)}
+            aria-label="Quick actions"
+          >
+            <Icon icon={fabOpen ? icons.close : icons.messages} size={22} />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -548,10 +599,10 @@ const content: CSSProperties = {
 const btnGreen: CSSProperties = {
   background: "#4ade80",
   border: "none",
-  padding: "12px 16px",
-  borderRadius: 10,
+  padding: "14px 16px",
+  borderRadius: 12,
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 14,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -562,11 +613,11 @@ const btnGreen: CSSProperties = {
 const btnRed: CSSProperties = {
   background: "#dc2626",
   border: "none",
-  padding: "12px 16px",
-  borderRadius: 10,
+  padding: "14px 16px",
+  borderRadius: 12,
   color: "white",
   fontWeight: 700,
-  fontSize: 13,
+  fontSize: 14,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
@@ -602,6 +653,55 @@ const bottomNavItem: CSSProperties = {
 const bottomNavItemActive: CSSProperties = {
   ...bottomNavItem,
   color: "#ffffff",
+};
+
+/* ---------------- FAB (mobile — Messages + Profile) ---------------- */
+const fabWrap: CSSProperties = {
+  position: "fixed",
+  left: 18,
+  bottom: 84,
+  zIndex: 25,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+};
+
+const fabActions: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 10,
+  marginBottom: 12,
+};
+
+const fabActionBtn: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  background: "#fff",
+  color: "#0f2a1f",
+  border: "1px solid #e5e7eb",
+  borderRadius: 999,
+  padding: "10px 16px",
+  fontSize: 13,
+  fontWeight: 700,
+  boxShadow: "0 6px 16px rgba(0,0,0,0.14)",
+  cursor: "pointer",
+  whiteSpace: "nowrap",
+};
+
+const fabMain: CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  background: "#0f2a1f",
+  color: "#fff",
+  border: "none",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.28)",
+  cursor: "pointer",
 };
 
 /* ---------------- ROUTE PAGE SPECIFIC TOKENS ---------------- */
