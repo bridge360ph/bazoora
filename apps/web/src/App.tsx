@@ -1,25 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
-import type { HealthResponse } from "@bazoora/shared";
+import { useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
-
-async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_URL}/`);
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
-  return (await res.json()) as HealthResponse;
-}
+import DriverDashboard from "./features/driver/DriverDashboard";
+import { CurrentRoute } from "./features/driver/CurrentRoute";
+import { CollectionsPage } from "./features/driver/Collections";
 
 function App() {
-  const { data, isError } = useQuery({
-    queryKey: ["health"],
-    queryFn: fetchHealth,
-  });
+  const [page, setPage] = useState("dashboard");
 
-  const status = data ? data.status : isError ? "error" : "loading…";
+  if (page === "route") {
+    return <CurrentRoute onNavigate={setPage} />;
+  }
 
-  return <h1>Backend Status: {status}</h1>;
+  if (page === "collections") {
+    return <CollectionsPage onNavigate={setPage} />;
+  }
+
+  return <DriverDashboard onNavigate={setPage} />;
 }
 
 export default App;
