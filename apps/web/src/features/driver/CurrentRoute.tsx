@@ -466,16 +466,6 @@ const layout: CSSProperties = {
   position: "relative",
 };
 
-const sidebar: CSSProperties = {
-  width: 230,
-  background: "#0f2a1f",
-  color: "white",
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-  padding: 14,
-};
-
 const logo: CSSProperties = { marginBottom: 10 };
 
 const navItem: CSSProperties = {
