@@ -17,9 +17,9 @@ const start = async () => {
     prefix: "/hauling-requests",
   });
 
-  app.get("/", (): HealthResponse => {
-    return { status: "ok" };
-  });
+app.get("/", (): HealthResponse => {
+  return { status: "ok" };
+});
 
   await app.listen({
     port: config.port,
@@ -27,7 +27,10 @@ const start = async () => {
   });
 };
 
-start().catch((err: unknown) => {
-  console.error(err);
-  process.exit(1);
+// TODO: Add Socket.IO connection handlers/events.
+setupSocket(app.server);
+
+await app.listen({
+  port: Number(process.env.PORT ?? 3000),
+  host: "0.0.0.0",
 });

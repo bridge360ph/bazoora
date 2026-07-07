@@ -4,8 +4,8 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
-
-    "rootDir": "./src",
+    "types": ["node"],
+    "rootDir": ".",
     "outDir": "./dist",
 
     "sourceMap": true,
@@ -24,5 +24,8 @@
   "ts-node": {
     "esm": true
   },
-  "include": ["src"]
+  "include": [
+  "src",
+  "prisma.config.ts"
+]
 }
