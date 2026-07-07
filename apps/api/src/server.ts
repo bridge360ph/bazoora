@@ -34,6 +34,6 @@ const start = async () => {
 };
 
 start().catch((err) => {
-  console.error(err);
+  app.log.error(err);
   process.exit(1);
 });
