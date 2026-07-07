@@ -1,7 +1,9 @@
 import type { HaulingRequest } from "@bazoora/shared";
-import { Modal } from "../../../components/Modal";
-import { Button } from "../../../components/Button";
-import { StatusBadge } from "../../../components/StatusBadge";
+import {
+  Modal,
+  Button,
+  StatusBadge
+} from "@bazoora/ui";
 import { STATUS_DISPLAY } from "../haulingRequestManagement.constants";
 
 interface HaulingRequestDetailModalProps {

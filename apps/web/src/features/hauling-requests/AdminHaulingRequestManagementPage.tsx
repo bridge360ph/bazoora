@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
-import DataTable from "../../components/DataTable";
-import type { Column } from "../../components/DataTable";
-import { Button } from "../../components/Button";
-import { StatusBadge } from "../../components/StatusBadge";
+import {
+  DataTable,
+  Button,
+  StatusBadge,
+  type Column,
+} from "@bazoora/ui";
 import { useHaulingRequests } from "./hooks/useHaulingRequests";
 import { useApproveHaulingRequest } from "./hooks/useApproveHaulingRequest";
 import { useDenyHaulingRequest } from "./hooks/useDenyHaulingRequest";
@@ -21,11 +23,13 @@ import {
 } from "./haulingRequestManagement.constants.ts";
 
 /**
- * Admin "Hauling Request Management" page content. Mounted inside
- * AdminLayout by a page-level wrapper — see
- * src/pages/AdminHaulingRequestManagementPage.tsx.
+ * Admin hauling request management screen.
+ *
+ * Rendered through the /admin/hauling route and displayed inside
+ * the shared AdminLayout via React Router's Outlet.
  */
-export function HaulingRequestManagementAdmin() {
+
+export function AdminHaulingRequestManagementPage() {
   const {
     data: requests,
     isLoading,

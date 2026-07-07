@@ -1,6 +1,8 @@
 import type { HaulingRequest } from "@bazoora/shared";
-import { Modal } from "../../../components/Modal";
-import { Button } from "../../../components/Button";
+import {
+  Modal,
+  Button
+} from "@bazoora/ui";
 
 interface DenyHaulingRequestModalProps {
   request: HaulingRequest;
