@@ -1,7 +1,10 @@
 import "dotenv/config";
+
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
+
+import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { config } from "./plugins/config.js";
 
@@ -17,9 +20,12 @@ const start = async () => {
     prefix: "/hauling-requests",
   });
 
-app.get("/", (): HealthResponse => {
-  return { status: "ok" };
-});
+  app.get("/", (): HealthResponse => {
+    return { status: "ok" };
+  });
+
+  // TODO: Add Socket.IO connection handlers/events.
+  setupSocket(app.server);
 
   await app.listen({
     port: config.port,
@@ -27,10 +33,7 @@ app.get("/", (): HealthResponse => {
   });
 };
 
-// TODO: Add Socket.IO connection handlers/events.
-setupSocket(app.server);
-
-await app.listen({
-  port: Number(process.env.PORT ?? 3000),
-  host: "0.0.0.0",
+start().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
