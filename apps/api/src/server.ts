@@ -3,8 +3,6 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
-
-import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { config } from "./plugins/config.js";
 
 const app = Fastify({ logger: true });
