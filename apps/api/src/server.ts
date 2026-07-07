@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import type { HealthResponse } from "@bazoora/shared";
+import { ecoAideRoutes } from "./features/eco-aides/ecoAide.routes.js";
 
 const app = Fastify({ logger: true });
 
@@ -13,9 +14,12 @@ const start = async () => {
     return { status: "ok" };
   });
 
-  // With the logger enabled, Fastify logs the listening address itself.
+  await app.register(ecoAideRoutes, {
+    prefix: "/api",
+  });
+
   await app.listen({
-    port: 3000,
+    port: Number(process.env.PORT ?? 3000),
     host: "0.0.0.0",
   });
 };

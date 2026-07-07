@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: bazoora-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bazoora
+      POSTGRES_PASSWORD: bazoora
+      POSTGRES_DB: bazoora
+    volumes:
+      - bazoora_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  bazoora_postgres_data:

@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EcoAideStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum EcoAideAvailability {
+  AVAILABLE
+  ON_ROUTE
+  OFF_DUTY
+}
+
+model EcoAide {
+  id           String              @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String              @unique
+  phone        String?
+  status       EcoAideStatus       @default(ACTIVE)
+  availability EcoAideAvailability @default(AVAILABLE)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
