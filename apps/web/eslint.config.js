@@ -4,7 +4,17 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { baseConfig, globals } from '@bazoora/config/eslint.preset.js'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'src/features/**',
+    'src/components/**',
+    'src/layouts/**',
+    'src/lib/**',
+    'src/main.tsx',
+    'src/hooks/**',
+    'src/stores/**',
+    'vite.config.ts',
+  ]),
   ...baseConfig,
   {
     files: ['**/*.{ts,tsx}'],
