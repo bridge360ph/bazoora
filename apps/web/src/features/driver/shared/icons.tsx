@@ -1,12 +1,10 @@
-import { type IconShape } from "./iconData";
+/* ---------------- ICON PLUMBING ---------------- */
+export type IconShape = {
+  paths: string[];
+  circles?: { cx: number; cy: number; r: number }[];
+};
 
-export const Icon = ({
-  icon,
-  size = 18,
-}: {
-  icon: IconShape;
-  size?: number;
-}) => (
+export const Icon = ({ icon, size = 18 }: { icon: IconShape; size?: number }) => (
   <svg
     width={size}
     height={size}

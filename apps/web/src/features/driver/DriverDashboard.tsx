@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
@@ -6,6 +8,7 @@ import { Header } from "./shared/Header";
 import { BottomNav } from "./shared/BottomNav";
 import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
+
 import {
   layout,
   mainWrap,
@@ -20,6 +23,7 @@ import {
 } from "./shared/layoutStyles";
 
 /* ---------------- DATA ---------------- */
+
 const routeStops = [
   {
     name: "Sitio Malakas, Brgy. San Rafael",
@@ -47,13 +51,12 @@ const routeStops = [
   },
 ];
 
-// Status → Tailwind class lookup so we're not building style objects at
-// render time for the same handful of states.
 const stripColor: Record<string, string> = {
   COMPLETED: "bg-green-500",
   REPORTED: "bg-red-500",
   PENDING: "bg-amber-500",
 };
+
 const pillClass: Record<string, string> = {
   COMPLETED: "bg-green-100 text-green-800",
   REPORTED: "bg-red-100 text-red-800",
@@ -61,13 +64,14 @@ const pillClass: Record<string, string> = {
 };
 
 /* ---------------- COMPONENT ---------------- */
-// onNavigate: call this with "dashboard" | "route" (or any nav key) to switch pages.
-// Whatever renders <DriverDashboard /> is responsible for holding page state and
-// swapping in <DriverRoute /> (or whichever component) when this fires.
-function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void }) {
+
+function DriverDashboard() {
+  const navigate = useNavigate();
+
   const completed = 8;
   const total = 14;
   const progress = (completed / total) * 100;
+
   const activeKey = "dashboard";
   const activeMobileKey = "dashboard";
 
@@ -75,8 +79,24 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
   const [navOpen, setNavOpen] = useState(false);
 
   const goTo = (key: string) => {
-    onNavigate?.(key);
     setNavOpen(false);
+
+    switch (key) {
+      case "route":
+        void navigate("/driver/route");
+        break;
+
+      case "collections":
+        void navigate("/driver/collections");
+        break;
+
+      case "dashboard":
+        void navigate("/driver");
+        break;
+
+      default:
+        break;
+    }
   };
 
   return (
@@ -89,55 +109,74 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
         onClose={() => setNavOpen(false)}
       />
 
-      {/* MAIN */}
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Dashboard" onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header
+          isMobile={isMobile}
+          title="Dashboard"
+          onToggleNav={() => setNavOpen((v) => !v)}
+        />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
-          {/* TOP CARDS */}
           <div className={isMobile ? topCardsMobile : topCards}>
             <div className={`${smallCard} ${isMobile ? "col-span-2" : ""}`}>
               <div className={smallLabel}>Today's Route</div>
               <div className={smallValue}>Route 1</div>
             </div>
 
-            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
+            <div
+              className={`${smallCardRow} ${
+                isMobile ? "flex-col items-start gap-2" : ""
+              }`}
+            >
               <div className="min-w-0">
                 <div className={smallLabel}>Stops Completed</div>
                 <div className={smallValue}>
                   {completed}/{total}
                 </div>
               </div>
+
               <div className={pillOrangeSmall}>IN PROGRESS</div>
             </div>
 
-            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
+            <div
+              className={`${smallCardRow} ${
+                isMobile ? "flex-col items-start gap-2" : ""
+              }`}
+            >
               <div className="min-w-0">
                 <div className={smallLabel}>Assigned Truck</div>
                 <div className={smallValue}>BT-04</div>
               </div>
+
               <div className={pillGreenSmall}>ACTIVE • GPS ON</div>
             </div>
           </div>
 
-          {/* GRID — both cards share a fixed, modest height on desktop so
-              neither one stretches too tall; Route Progress scrolls
-              internally if its list is longer than the card. */}
-          <div className={isMobile ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"}>
+          <div
+            className={
+              isMobile ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"
+            }
+          >
             {/* CURRENT STOP */}
+
             <div
               className="bg-[#003d1f] text-white rounded-2xl px-[22px] py-[18px] flex flex-col justify-between gap-4"
               style={{ height: isMobile ? "auto" : 260 }}
             >
               <div className="flex flex-col gap-2.5">
                 <div className="flex justify-between items-center">
-                  <div className="text-[13px] opacity-80">CURRENT STOP</div>
+                  <div className="text-[13px] opacity-80">
+                    CURRENT STOP
+                  </div>
+
                   <div className="bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-xs font-bold">
                     IN PROGRESS
                   </div>
                 </div>
 
-                <div className="text-[22px] font-extrabold leading-tight">Sitio Malaya — Stop 9</div>
+                <div className="text-[22px] font-extrabold leading-tight">
+                  Sitio Malaya — Stop 9
+                </div>
 
                 <div className="opacity-85 text-[13px] leading-relaxed">
                   Purok 3, Barangay Poblacion • Biodegradable
@@ -145,12 +184,13 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <button className="bg-green-400 border-none px-4 py-3.5 rounded-xl font-bold text-sm cursor-pointer flex items-center justify-center gap-2">
+                <button className="bg-green-400 px-4 py-3.5 rounded-xl font-bold text-sm cursor-pointer flex items-center justify-center gap-2">
                   <Icon icon={icons.check} />
                   Mark as Complete
                 </button>
+
                 <button
-                  className="bg-red-600 border-none px-4 py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
+                  className="bg-red-600 px-4 py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
                   onClick={() => goTo("route")}
                 >
                   <Icon icon={icons.document} />
@@ -159,22 +199,26 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
               </div>
             </div>
 
+
             {/* ROUTE PROGRESS */}
+
             <div
               className="bg-white rounded-[18px] border border-gray-200 flex flex-col overflow-hidden"
               style={{ height: isMobile ? "auto" : 260 }}
             >
-              <div className="px-[18px] pt-[18px] pb-3 bg-white border-b border-gray-100 flex-shrink-0">
+              <div className="px-[18px] pt-[18px] pb-3 bg-white border-b border-gray-100">
                 <div
                   className="text-lg font-bold mb-3 cursor-pointer"
                   onClick={() => goTo("route")}
-                  title="Go to Route"
                 >
                   Route Progress
                 </div>
 
                 <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-900" style={{ width: `${progress}%` }} />
+                  <div
+                    className="h-full bg-blue-900"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
 
                 <div className="flex justify-between text-[13px] mt-2">
@@ -183,27 +227,35 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
                 </div>
               </div>
 
-              <div
-                className={`px-[18px] ${isMobile ? "overflow-visible" : "overflow-y-auto flex-1"}`}
-              >
+
+              <div className="px-[18px] overflow-y-auto flex-1">
                 {routeStops.map((s, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 py-3.5 border-b border-gray-100 min-h-16"
+                    className="flex items-center gap-3 py-3.5 border-b border-gray-100"
                   >
-                    <div className={`w-1 self-stretch rounded ${stripColor[s.status]}`} />
+                    <div
+                      className={`w-1 self-stretch rounded ${stripColor[s.status]}`}
+                    />
 
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold tracking-wide opacity-45 mb-0.5 uppercase">
+                      <div className="text-[10px] font-bold opacity-45">
                         {s.date}
                       </div>
-                      <div className="font-semibold text-sm">{s.name}</div>
-                      <div className="text-xs opacity-60">{s.subtitle}</div>
+
+                      <div className="font-semibold text-sm">
+                        {s.name}
+                      </div>
+
+                      <div className="text-xs opacity-60">
+                        {s.subtitle}
+                      </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+
+                    <div className="flex flex-col items-end gap-1.5">
                       <div
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap ${pillClass[s.status]}`}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass[s.status]}`}
                       >
                         {s.status}
                       </div>
@@ -223,7 +275,14 @@ function DriverDashboard({ onNavigate }: { onNavigate?: (key: string) => void })
         </main>
       </div>
 
-      {isMobile && <BottomNav activeKey={activeMobileKey} onNavigate={goTo} />}
+
+      {isMobile && (
+        <BottomNav
+          activeKey={activeMobileKey}
+          onNavigate={goTo}
+        />
+      )}
+
       {isMobile && <Fab onNavigate={goTo} />}
     </div>
   );

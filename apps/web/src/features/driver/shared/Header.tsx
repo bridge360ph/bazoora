@@ -26,13 +26,11 @@ export function Header({
         <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center bg-white/10">
           <Icon icon={icons.bell} />
         </div>
-        {/* Profile lives in the mobile FAB, so the header avatar is
-            desktop-only. */}
-        {!isMobile && (
-          <div className="w-[34px] h-[34px] rounded-full bg-[#e0983f] text-white flex items-center justify-center font-bold text-[13px] flex-shrink-0">
-            {userInitials}
-          </div>
-        )}
+        {/* Avatar stays visible on mobile too instead of disappearing —
+            tapping it can route to Profile just like the FAB's shortcut. */}
+        <div className="w-[34px] h-[34px] rounded-full bg-[#e0983f] text-white flex items-center justify-center font-bold text-[13px] flex-shrink-0">
+          {userInitials}
+        </div>
       </div>
     </header>
   );

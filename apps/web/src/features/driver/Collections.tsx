@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
@@ -68,7 +70,9 @@ const pillClass: Record<"COMPLETED" | "REPORTED", string> = {
 };
 
 /* ---------------- COMPONENT ---------------- */
-export function Collections({ onNavigate }: { onNavigate?: (key: string) => void }) {
+export function Collections() {
+  const navigate = useNavigate();
+
   const activeKey = "collections";
   // No dedicated mobile bottom-nav slot for Collections (same as Assigned
   // Tasks) — falls back to no highlighted item.
@@ -78,8 +82,24 @@ export function Collections({ onNavigate }: { onNavigate?: (key: string) => void
   const [navOpen, setNavOpen] = useState(false);
 
   const goTo = (key: string) => {
-    onNavigate?.(key);
     setNavOpen(false);
+
+    switch (key) {
+      case "dashboard":
+        void navigate("/driver");
+        break;
+
+      case "route":
+        void navigate("/driver/route");
+        break;
+
+      case "collections":
+        void navigate("/driver/collections");
+        break;
+
+      default:
+        break;
+    }
   };
 
   return (
@@ -93,7 +113,7 @@ export function Collections({ onNavigate }: { onNavigate?: (key: string) => void
       />
 
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Collections" onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header isMobile={isMobile} title="Logs" onToggleNav={() => setNavOpen((v) => !v)} />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           {/* TOP SUMMARY CARDS */}
@@ -193,3 +213,5 @@ export function Collections({ onNavigate }: { onNavigate?: (key: string) => void
     </div>
   );
 }
+
+export default Collections;

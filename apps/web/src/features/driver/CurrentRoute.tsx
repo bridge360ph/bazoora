@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
@@ -45,7 +47,9 @@ const badgeClass: Record<StopStatus, string> = {
 };
 
 /* ---------------- COMPONENT ---------------- */
-export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => void }) {
+export function CurrentRoute() {
+  const navigate = useNavigate();
+
   const activeKey = "route";
   const activeMobileKey = "route";
 
@@ -53,8 +57,24 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
   const [navOpen, setNavOpen] = useState(false);
 
   const goTo = (key: string) => {
-    onNavigate?.(key);
     setNavOpen(false);
+
+    switch (key) {
+      case "dashboard":
+        void navigate("/driver");
+        break;
+
+      case "route":
+        void navigate("/driver/route");
+        break;
+
+      case "collections":
+        void navigate("/driver/collections");
+        break;
+
+      default:
+        break;
+    }
   };
 
   return (
@@ -210,3 +230,5 @@ export function CurrentRoute({ onNavigate }: { onNavigate?: (key: string) => voi
     </div>
   );
 }
+
+export default CurrentRoute;
