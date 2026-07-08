@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
-import { CollectionsPage } from "./features/driver/Collections";
+import { Collections } from "./features/driver/Collections";
 
 function App() {
   const [page, setPage] = useState("dashboard");
@@ -12,8 +12,8 @@ function App() {
   }
 
   if (page === "collections") {
-    return <CollectionsPage onNavigate={setPage} />;
-  }
+  return <Collections onNavigate={setPage} />;
+}
 
   return <DriverDashboard onNavigate={setPage} />;
 }
