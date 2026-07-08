@@ -1,5 +1,3 @@
-// Central nav config for the admin sidebar. Add a screen here + a matching
-// <Route> in App.tsx — nothing else needs to change.
 export interface NavItem {
   to: string;
   label: string;
@@ -20,6 +18,24 @@ export const adminNavItems: NavItem[] = [
 
 export const driverNavItems: NavItem[] = [
   { to: "/driver", label: "Dashboard", end: true },
-  { to: "/driver/route", label: "Current Route" },
-  { to: "/driver/collections", label: "Collections" },
+  { to: "/driver/route", label: "Collection Route" },
+  { to: "/driver/history", label: "Route History" },
+  { to: "/driver/settings", label: "Settings" },
+];
+
+export const ecoAideNavItems: NavItem[] = [
+  { to: "/eco-aide", label: "Dashboard", end: true },
+  { to: "/eco-aide/route", label: "Hauling Route" },
+  { to: "/eco-aide/tasks", label: "Tasks & Queue" },
+  { to: "/eco-aide/settings", label: "Settings" },
+];
+
+export const residentNavItems: NavItem[] = [
+  { to: "/resident", label: "Dashboard", end: true },
+  { to: "/resident/track", label: "Track Truck" },
+  { to: "/resident/hauling", label: "Hauling Requests" },
+  { to: "/resident/schedule", label: "Schedule" },
+  { to: "/resident/reports", label: "Reports" },
+  { to: "/resident/notifications", label: "Notifications" },
+  { to: "/resident/settings", label: "Settings" },
 ];
