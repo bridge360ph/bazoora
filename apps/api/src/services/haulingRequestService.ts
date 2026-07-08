@@ -20,9 +20,15 @@ export function createHaulingRequest(
 ) {
   const request: HaulingRequest = {
     requestId: crypto.randomUUID(),
+
+    userId: data.userId,
+    orgId: data.orgId,
+
     requestAddress: data.requestAddress,
     senderType: data.senderType,
+
     pickupDate: data.pickupDate,
+
     status: "pending",
 
     ...(data.imageUrl !== undefined && {
