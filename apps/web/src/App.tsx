@@ -4,34 +4,10 @@ import { getSocket } from "./lib/socket";
 import { useAuthStore } from "@/stores/auth-store";
 
 // Layout Imports
-import { AdminLayout } from "./layouts/AdminLayout";
-import { DriverLayout } from "./layouts/DriverLayout";
-import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 import ResidentLayout from "./features/residents/components/ResidentLayout";
 
 // Page Imports
-import { AdminHome } from "./pages/AdminHome";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 import LoginPage from "./features/auth/components/LoginPage";
-
-// Admin Feature Pages
-import { EcoAideManagementPage } from "@/features/eco-aides/components/EcoAideManagementPage";
-import { FleetManagementPage } from "@/features/fleet-management/components/FleetManagementPage";
-import { RouteManagementPage } from "@/features/route-management/components/RouteManagementPage";
-import { HaulingRequestManagementPage } from "@/features/hauling-requests/components/HaulingRequestManagementPage";
-import { AnalyticsPage } from "@/features/analytics/components/AnalyticsPage";
-
-// Driver Pages
-import DriverDashboard from "./features/driver/components/DriverDashboard";
-import DriverRoute from "./features/driver/components/DriverRoute";
-import DriverHistory from "./features/driver/components/DriverHistory";
-import DriverSettings from "./features/driver/components/DriverSettings";
-
-// Eco-Aide Pages
-import EcoAideDashboard from "./features/eco-aide/components/EcoAideDashboard";
-import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
-import EcoAideTasks from "./features/eco-aide/components/EcoAideTasks";
-import EcoAideSettings from "./features/eco-aide/components/EcoAideSettings";
 
 // Resident Pages
 import ResidentDashboard from "./features/residents/components/ResidentDashboard";
@@ -93,7 +69,7 @@ function AppContent() {
       <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
         <div className="flex items-center gap-2">
           <span className="text-lg font-black tracking-wider text-[#1a3a2e] dark:text-[#4ade80]">
-            BAZOORA
+             BAZOORA
           </span>
           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
             DEMO ENVIRONMENT
@@ -151,34 +127,6 @@ function AppContent() {
               />
             }
           />
-
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminHome />} />
-            <Route path="eco-aides" element={<EcoAideManagementPage />} />
-            <Route path="fleet" element={<FleetManagementPage />} />
-            <Route path="routes" element={<RouteManagementPage />} />
-            <Route path="hauling" element={<HaulingRequestManagementPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="notifications" element={<RoutePlaceholder title="Admin Notifications" />} />
-            <Route path="settings" element={<RoutePlaceholder title="Admin Settings" />} />
-          </Route>
-
-          {/* Driver Routes */}
-          <Route path="/driver" element={<DriverLayout />}>
-            <Route index element={<DriverDashboard />} />
-            <Route path="route" element={<DriverRoute />} />
-            <Route path="history" element={<DriverHistory />} />
-            <Route path="settings" element={<DriverSettings />} />
-          </Route>
-
-          {/* Eco-Aide Routes */}
-          <Route path="/eco-aide" element={<EcoAideLayout />}>
-            <Route index element={<EcoAideDashboard />} />
-            <Route path="route" element={<EcoAideRoute />} />
-            <Route path="tasks" element={<EcoAideTasks />} />
-            <Route path="settings" element={<EcoAideSettings />} />
-          </Route>
 
           {/* Resident Routes */}
           <Route path="/resident" element={<ResidentLayout />}>
