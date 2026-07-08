@@ -1,0 +1,18 @@
+{
+  "name": "@bazoora/db",
+  "private": true,
+  "type": "module",
+  "main": "src/prismaClient.ts",
+  "types": "src/prismaClient.ts",
+  "scripts": {
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:studio": "prisma studio --schema=prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.0.0"
+  }
+}
