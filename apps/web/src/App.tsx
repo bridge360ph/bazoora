@@ -3,9 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { socket } from "./lib/socket";
 
 import { AdminLayout } from "./layouts/AdminLayout";
+import { AdminDashboard } from "./pages/AdminDashboard";
 import { DriverLayout } from "./layouts/DriverLayout";
 
-import { AdminHome } from "./pages/AdminHome";
 import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
@@ -35,8 +35,7 @@ function App() {
 
         {/* ADMIN */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminHome />} />
-
+          <Route index element={<AdminDashboard />} />
           <Route
             path="eco-aides"
             element={<RoutePlaceholder title="Eco-Aide Management" />}
