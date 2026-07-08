@@ -20,6 +20,7 @@ export const adminNavItems: NavItem[] = [
 
 export const driverNavItems: NavItem[] = [
   { to: "/driver", label: "Dashboard", end: true },
-  { to: "/driver/route", label: "Current Route" },
-  { to: "/driver/collections", label: "Collections" },
+  { to: "/driver/route", label: "Collection Route" },
+  { to: "/driver/history", label: "Route History" },
+  { to: "/driver/settings", label: "Settings" },
 ];
