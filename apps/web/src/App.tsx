@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { HealthResponse } from "@bazoora/shared";
+import { useEffect } from "react";
+import { socket } from "./lib/socket";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -16,6 +18,14 @@ function App() {
     queryKey: ["health"],
     queryFn: fetchHealth,
   });
+
+  useEffect(() => {
+    socket.connect();
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const status = data ? data.status : isError ? "error" : "loading…";
 
