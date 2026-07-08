@@ -1,35 +1,65 @@
-import { useQuery } from "@tanstack/react-query";
-import type { HealthResponse } from "@bazoora/shared";
 import { useEffect } from "react";
-import { socket } from "./lib/socket";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { getSocket } from "./lib/socket";
+import { useAuthStore } from "@/stores/auth-store";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+// Layout Imports
+import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 
-async function fetchHealth(): Promise<HealthResponse> {
-  const res = await fetch(`${API_URL}/`);
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
-  }
-  return (await res.json()) as HealthResponse;
-}
+// Page Imports
+import LoginPage from "./features/auth/components/LoginPage";
 
-function App() {
-  const { data, isError } = useQuery({
-    queryKey: ["health"],
-    queryFn: fetchHealth,
-  });
+// Eco-Aide Pages
+import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
+
+function AppContent() {
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    socket.connect();
+    const s = getSocket(() => useAuthStore.getState().accessToken);
+    if (user) {
+      s.connect();
+    } else {
+      s.disconnect();
+    }
 
     return () => {
-      socket.disconnect();
+      s.disconnect();
     };
-  }, []);
+  }, [user]);
 
-  const status = data ? data.status : isError ? "error" : "loading…";
+  if (!user) {
+    return <LoginPage />;
+  }
 
-  return <h1>Backend Status: {status}</h1>;
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-50 dark:bg-slate-950">
+      <div className="flex-1 overflow-hidden relative">
+        <Routes>
+          {/* Base Redirect */}
+          <Route
+            path="/"
+            element={<Navigate to="/eco-aide/route" replace />}
+          />
+
+          {/* Eco-Aide Routes */}
+          <Route path="/eco-aide" element={<EcoAideLayout />}>
+            <Route index element={<Navigate to="/eco-aide/route" replace />} />
+            <Route path="route" element={<EcoAideRoute />} />
+          </Route>
+
+          {/* Fallback Redirect */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
+  );
 }
 
-export default App;
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
+}
