@@ -1,21 +1,88 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { socket } from "./lib/socket";
+
+import { AdminLayout } from "./layouts/AdminLayout";
+import { DriverLayout } from "./layouts/DriverLayout";
+
+import { AdminHome } from "./pages/AdminHome";
+import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
 
+// App.tsx is routing configuration only — please don't turn it back into a
+// single dashboard. To ship a screen: replace the matching placeholder element
+// below with your page component. Add a nav link in src/routes/navigation.ts.
+
 function App() {
-  const [page, setPage] = useState("dashboard");
+  useEffect(() => {
+    socket.connect();
 
-  if (page === "route") {
-    return <CurrentRoute onNavigate={setPage} />;
-  }
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
-  if (page === "collections") {
-  return <Collections onNavigate={setPage} />;
-}
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/admin" replace />} />
 
-  return <DriverDashboard onNavigate={setPage} />;
+        {/* ADMIN */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminHome />} />
+
+          <Route
+            path="eco-aides"
+            element={<RoutePlaceholder title="Eco-Aide Management" />}
+          />
+
+          <Route
+            path="fleet"
+            element={<RoutePlaceholder title="Fleet Management" />}
+          />
+
+          <Route
+            path="routes"
+            element={<RoutePlaceholder title="Route Management" />}
+          />
+
+          <Route
+            path="hauling"
+            element={<RoutePlaceholder title="Hauling Request Management" />}
+          />
+
+          <Route
+            path="analytics"
+            element={<RoutePlaceholder title="Analytics" />}
+          />
+
+          <Route
+            path="notifications"
+            element={<RoutePlaceholder title="Notifications" />}
+          />
+
+          <Route
+            path="settings"
+            element={<RoutePlaceholder title="Settings" />}
+          />
+        </Route>
+
+        {/* DRIVER */}
+        <Route path="/driver" element={<DriverLayout />}>
+          <Route index element={<DriverDashboard />} />
+
+          <Route path="route" element={<CurrentRoute />} />
+
+          <Route path="collections" element={<Collections />} />
+        </Route>
+
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
