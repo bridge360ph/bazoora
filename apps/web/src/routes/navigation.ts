@@ -23,3 +23,10 @@ export const driverNavItems: NavItem[] = [
   { to: "/driver/route", label: "Current Route" },
   { to: "/driver/collections", label: "Collections" },
 ];
+
+export const ecoAideNavItems: NavItem[] = [
+  { to: "/eco-aide", label: "Dashboard", end: true },
+  { to: "/eco-aide/route", label: "Collection Route" },
+  { to: "/eco-aide/tasks", label: "Tasks & Verification" },
+  { to: "/eco-aide/settings", label: "Settings" },
+];
