@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model ServiceRequest {
+  request_id      String   @id @default(cuid())
+  user_id         String
+  org_id          String?
+  request_address String
+  sender_type     String?
+  image_url       String?
+  pickup_date     DateTime?
+  status          String   @default("PENDING")
+  approved_by     String?
+  approved_at     DateTime?
+  note            String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
