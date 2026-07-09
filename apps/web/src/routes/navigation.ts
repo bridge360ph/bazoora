@@ -1,8 +1,10 @@
 // Central nav config for the admin sidebar. Add a screen here + a matching
 // <Route> in App.tsx — nothing else needs to change.
+
 export interface NavItem {
   to: string;
   label: string;
+
   /** true for the index route so it isn't marked active on every child path */
   end?: boolean;
 }
