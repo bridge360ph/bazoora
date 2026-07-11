@@ -1,3 +1,4 @@
+import { EcoAideManagementPage } from "./features/eco-aides/components/EcoAideManagementPage";
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { socket } from "./lib/socket";
@@ -24,10 +25,7 @@ function App() {
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminHome />} />
-          <Route
-            path="eco-aides"
-            element={<RoutePlaceholder title="Eco-Aide Management" />}
-          />
+          <Route path="eco-aides" element={<EcoAideManagementPage />} />
           <Route
             path="fleet"
             element={<RoutePlaceholder title="Fleet Management" />}

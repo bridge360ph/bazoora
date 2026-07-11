@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import {
   INITIAL_APPROVAL_REQUESTS,
@@ -203,16 +203,16 @@ export function EcoAideManagementPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <section style={topBarStyle}>
-        <div style={tabsStyle}>
+    <main className="flex-1 overflow-y-auto p-6">
+      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-wrap gap-2 border-b border-gray-300">
           <button
             type="button"
             onClick={() => {
               setActiveTab("all");
               setSearchValue("");
             }}
-            style={activeTab === "all" ? activeTabStyle : tabStyle}
+            className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-[13px] text-gray-900 ${activeTab === "all" ? "border-b-2 border-gray-900 font-bold" : "font-medium"}`}
           >
             All Eco-Aides ({ecoAides.length})
           </button>
@@ -223,7 +223,7 @@ export function EcoAideManagementPage() {
               setActiveTab("approval");
               setSearchValue("");
             }}
-            style={activeTab === "approval" ? activeTabStyle : tabStyle}
+            className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-[13px] text-gray-900 ${activeTab === "approval" ? "border-b-2 border-gray-900 font-bold" : "font-medium"}`}
           >
             Approval queue ({approvalRequests.length})
           </button>
@@ -232,21 +232,21 @@ export function EcoAideManagementPage() {
         <Button onClick={openCreateAccount}>+ Add Eco-Aide</Button>
       </section>
 
-      <section style={statsGridStyle}>
+      <section className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3.5">
         <StatCard label="Total Eco-Aides" value={ecoAides.length} />
         <StatCard label="Active" value={activeCount} />
         <StatCard label="Suspended" value={suspendedCount} />
         <StatCard label="Deactivated" value={deactivatedCount} />
       </section>
 
-      <section style={filterRowStyle}>
+      <section className="mb-0 flex flex-wrap items-stretch">
         {activeTab === "all" ? (
           <select
             value={statusFilter}
             onChange={(event) => {
               setStatusFilter(event.target.value as EcoAideStatusFilter);
             }}
-            style={filterButtonStyle}
+            className="min-w-[150px] cursor-pointer border-0 bg-brand px-3 py-2.5 text-[13px] text-white"
           >
             {statusFilters.map((status) => (
               <option key={status} value={status}>
@@ -255,7 +255,7 @@ export function EcoAideManagementPage() {
             ))}
           </select>
         ) : (
-          <button type="button" style={filterButtonStyle}>
+          <button type="button" className="min-w-[150px] cursor-pointer border-0 bg-brand px-3 py-2.5 text-[13px] text-white">
             Filter by Date
           </button>
         )}
@@ -270,7 +270,7 @@ export function EcoAideManagementPage() {
               ? "Search Eco-Aide by name or ID..."
               : "Search approval request by name or date..."
           }
-          style={searchInputStyle}
+          className="min-w-[240px] flex-1 border border-gray-300 px-3 py-2.5 text-[13px] outline-none"
         />
       </section>
 
@@ -372,13 +372,13 @@ function AllEcoAidesTable({
   onDeactivate,
 }: AllEcoAidesTableProps) {
   return (
-    <section style={cardStyle}>
-      <div style={sectionTitleStyle}>Eco-Aides</div>
+    <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+      <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Eco-Aides</div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr style={{ background: "#145c38" }}>
+            <tr className="bg-brand">
               {[
                 "Eco-Aide ID ↓",
                 "Eco-Aide Name",
@@ -386,7 +386,7 @@ function AllEcoAidesTable({
                 "Status",
                 "Actions",
               ].map((heading) => (
-                <th key={heading} style={tableHeaderStyle}>
+                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
                   {heading}
                 </th>
               ))}
@@ -396,24 +396,24 @@ function AllEcoAidesTable({
           <tbody>
             {ecoAides.length === 0 ? (
               <tr>
-                <td colSpan={5} style={emptyCellStyle}>
+                <td colSpan={5} className="p-7 text-center text-[13px] text-gray-400">
                   No Eco-Aides found.
                 </td>
               </tr>
             ) : (
               ecoAides.map((ecoAide) => (
-                <tr key={ecoAide.id} style={tableRowStyle}>
-                  <td style={tableCellStyle}>{ecoAide.id}</td>
-                  <td style={tableCellStyle}>{ecoAide.name}</td>
-                  <td style={tableCellStyle}>{ecoAide.addedDate}</td>
-                  <td style={tableCellStyle}>
+                <tr key={ecoAide.id} className="border-b border-gray-200">
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.id}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.name}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.addedDate}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
                     <StatusPill status={ecoAide.status} />
                   </td>
-                  <td style={tableCellStyle}>
-                    <div style={actionRowStyle}>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
-                        style={profileButtonStyle}
+                        className="cursor-pointer rounded-[10px] border-0 bg-gray-500 px-2.5 py-[3px] text-xs text-white hover:bg-gray-600"
                         onClick={() => {
                           onViewProfile(ecoAide);
                         }}
@@ -457,22 +457,22 @@ function ActionMenu({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div style={{ position: "relative" }}>
+    <div className="relative">
       <button
         type="button"
         onClick={() => {
           setIsOpen((currentValue) => !currentValue);
         }}
-        style={ellipsisButtonStyle}
+        className="cursor-pointer border-0 bg-transparent text-sm font-extrabold text-gray-900"
       >
         •••
       </button>
 
       {isOpen && (
-        <div style={actionMenuStyle}>
+        <div className="absolute right-0 top-full z-20 min-w-[100px] border border-gray-200 bg-white py-1.5 shadow-lg">
           <button
             type="button"
-            style={actionMenuItemStyle}
+            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onEdit(ecoAide);
@@ -483,7 +483,7 @@ function ActionMenu({
 
           <button
             type="button"
-            style={actionMenuItemStyle}
+            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onSuspend(ecoAide);
@@ -494,7 +494,7 @@ function ActionMenu({
 
           <button
             type="button"
-            style={actionMenuItemStyle}
+            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onDeactivate(ecoAide);
@@ -520,15 +520,15 @@ function ApprovalQueueTable({
   onReject,
 }: ApprovalQueueTableProps) {
   return (
-    <section style={approvalCardStyle}>
-      <div style={sectionTitleStyle}>Approval Queue</div>
+    <section className="min-h-[395px] overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+      <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Approval Queue</div>
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={tableStyle}>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr style={{ background: "#145c38" }}>
+            <tr className="bg-brand">
               {["Eco-Aide Name", "Date", "Time", "Actions"].map((heading) => (
-                <th key={heading} style={tableHeaderStyle}>
+                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
                   {heading}
                 </th>
               ))}
@@ -538,24 +538,24 @@ function ApprovalQueueTable({
           <tbody>
             {approvalRequests.length === 0 ? (
               <tr>
-                <td colSpan={4} style={emptyCellStyle}>
+                <td colSpan={4} className="p-7 text-center text-[13px] text-gray-400">
                   No approval requests found.
                 </td>
               </tr>
             ) : (
               approvalRequests.map((request) => (
-                <tr key={request.id} style={tableRowStyle}>
-                  <td style={tableCellStyle}>{request.name}</td>
-                  <td style={tableCellStyle}>{request.date}</td>
-                  <td style={tableCellStyle}>{request.time}</td>
-                  <td style={tableCellStyle}>
-                    <div style={actionRowStyle}>
+                <tr key={request.id} className="border-b border-gray-200">
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.name}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.date}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.time}</td>
+                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                    <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           onApprove(request.id);
                         }}
-                        style={approveButtonStyle}
+                        className="cursor-pointer rounded-xl border-0 bg-black px-3 py-1 text-xs text-white hover:bg-gray-800"
                       >
                         Approve
                       </button>
@@ -565,7 +565,7 @@ function ApprovalQueueTable({
                         onClick={() => {
                           onReject(request.id);
                         }}
-                        style={rejectButtonStyle}
+                        className="cursor-pointer rounded-xl border-0 bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800"
                       >
                         Reject
                       </button>
@@ -591,24 +591,24 @@ interface ViewProfileModalProps {
 
 function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   return (
-    <div style={modalOverlayStyle}>
-      <div style={profileModalCardStyle}>
-        <h2 style={modalTitleStyle}>View profile - {ecoAide.name}</h2>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-[570px] rounded-[10px] bg-white p-7">
+        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">View profile - {ecoAide.name}</h2>
 
-        <div style={profileHeaderStyle}>
-          <div style={avatarStyle}>♙</div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">♙</div>
 
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>{ecoAide.name}</div>
-            <div style={{ fontSize: 13 }}>{ecoAide.id}</div>
+          <div className="flex-1">
+            <div className="text-base font-extrabold">{ecoAide.name}</div>
+            <div className="text-[13px]">{ecoAide.id}</div>
           </div>
 
           <StatusPill status={ecoAide.status} />
         </div>
 
-        <div style={dividerStyle} />
+        <div className="my-4 border-t border-gray-300" />
 
-        <div style={profileGridStyle}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
           <InfoBlock label="Contact number" value={ecoAide.contactNumber} />
           <InfoBlock label="Birthdate" value={ecoAide.birthdate} />
           <InfoBlock label="Assigned Route" value={ecoAide.assignedRoute} />
@@ -616,17 +616,17 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
           <InfoBlock label="Assigned Truck" value={ecoAide.assignedTruck} />
         </div>
 
-        <div style={{ marginTop: 12, fontWeight: 600 }}>
+        <div className="mt-3 font-semibold">
           Assignment history
         </div>
 
-        <div style={historyGridStyle}>
+        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
           <HistoryCard label="Total Routes" value={ecoAide.totalRoutes} />
           <HistoryCard label="Completion Rate" value={ecoAide.completionRate} />
           <HistoryCard label="Missed Assignment" value={ecoAide.missedAssignment} />
         </div>
 
-        <div style={modalActionsStyle}>
+        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onEdit}>Edit Profile</Button>
           <Button variant="secondary" onClick={onClose}>
             × Close
@@ -665,18 +665,18 @@ function EditEcoAideModal({
   }
 
   return (
-    <div style={modalOverlayStyle}>
-      <div style={editModalCardStyle}>
-        <h2 style={modalTitleStyle}>{title}</h2>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-[720px] rounded-[10px] bg-white p-7">
+        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
 
-        <div style={formGridStyle}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
           <FormField label="Eco-Aide Name">
             <input
               value={formValue.name}
               onChange={(event) => {
                 updateField("name", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             />
           </FormField>
 
@@ -686,7 +686,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("contactNumber", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             />
           </FormField>
 
@@ -696,7 +696,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("birthdate", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             />
           </FormField>
 
@@ -706,7 +706,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("address", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             />
           </FormField>
 
@@ -716,7 +716,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("assignedTruck", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             >
               <option value="">Select truck</option>
               <option value="FL-001">FL-001</option>
@@ -731,7 +731,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("assignedRoute", event.target.value);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             >
               <option value="">Select route</option>
               <option value="RT-001">RT-001</option>
@@ -746,7 +746,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField("status", event.target.value as EcoAideStatus);
               }}
-              style={inputStyle}
+              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
             >
               <option value="Active">Active</option>
               <option value="On Duty">On Duty</option>
@@ -764,13 +764,13 @@ function EditEcoAideModal({
                 onChange={(event) => {
                   updateField("email", event.target.value);
                 }}
-                style={inputStyle}
+                className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
               />
             </FormField>
           )}
         </div>
 
-        <div style={modalActionsStyle}>
+        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onSave}>{saveLabel}</Button>
           <Button variant="secondary" onClick={onClose}>
             × Close
@@ -805,15 +805,15 @@ function ConfirmActionModal({
   onClose,
 }: ConfirmActionModalProps) {
   return (
-    <div style={modalOverlayStyle}>
-      <div style={confirmModalCardStyle}>
-        <h2 style={modalTitleStyle}>{title}</h2>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-[390px] rounded-[10px] bg-white p-6">
+        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
 
-        <div style={warningStyle}>ⓘ {warning}</div>
+        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">ⓘ {warning}</div>
 
-        <p style={{ fontSize: 14, marginTop: 18 }}>{message}</p>
+        <p className="mt-[18px] text-sm">{message}</p>
 
-        <label style={fieldLabelStyle}>
+        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
           {reasonLabel}
           <textarea
             value={reason}
@@ -821,11 +821,11 @@ function ConfirmActionModal({
               setReason(event.target.value);
             }}
             placeholder="Enter reason..."
-            style={textareaStyle}
+            className="min-h-[70px] w-full resize-y rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
           />
         </label>
 
-        <div style={modalActionsStyle}>
+        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onConfirm}>▣ {confirmLabel}</Button>
           <Button variant="secondary" onClick={onClose}>
             × Cancel
@@ -843,7 +843,7 @@ interface FormFieldProps {
 
 function FormField({ label, children }: FormFieldProps) {
   return (
-    <label style={fieldLabelStyle}>
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
       {label}
       {children}
     </label>
@@ -858,8 +858,8 @@ interface InfoBlockProps {
 function InfoBlock({ label, value }: InfoBlockProps) {
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 13 }}>{value}</div>
+      <div className="text-[13px] font-bold">{label}</div>
+      <div className="text-[13px]">{value}</div>
     </div>
   );
 }
@@ -871,407 +871,55 @@ interface HistoryCardProps {
 
 function HistoryCard({ label, value }: HistoryCardProps) {
   return (
-    <div style={historyCardStyle}>
-      <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800 }}>{value}</div>
+    <div className="rounded-lg border border-gray-300 p-3">
+      <div className="text-[13px] font-bold">{label}</div>
+      <div className="text-[26px] font-extrabold">{value}</div>
     </div>
   );
 }
 
 function StatusPill({ status }: { status: EcoAideStatus }) {
-  return <span style={{ ...statusPillStyle, ...getStatusStyle(status) }}>{status}</span>;
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getStatusClassName(status)}`}
+    >
+      {status}
+    </span>
+  );
 }
 
 function Pagination() {
   return (
-    <div style={paginationStyle}>
-      <button type="button" style={paginationArrowStyle}>
+    <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
+      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
         ‹
       </button>
-      <button type="button" style={paginationActiveStyle}>
+      <button type="button" className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white">
         1
       </button>
-      <button type="button" style={paginationArrowStyle}>
+      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
         ›
       </button>
     </div>
   );
 }
 
-function getStatusStyle(status: EcoAideStatus): CSSProperties {
+function getStatusClassName(status: EcoAideStatus) {
   if (status === "Active" || status === "On Duty") {
-    return { background: "#dcfce7", color: "#166534" };
+    return "bg-green-100 text-green-800";
   }
 
   if (status === "On Route") {
-    return { background: "#fef3c7", color: "#92400e" };
+    return "bg-amber-100 text-amber-800";
   }
 
   if (status === "Off Duty") {
-    return { background: "#f3f4f6", color: "#4b5563" };
+    return "bg-gray-100 text-gray-600";
   }
 
   if (status === "Suspended") {
-    return { background: "#fee2e2", color: "#b91c1c" };
+    return "bg-red-100 text-red-700";
   }
 
-  return { background: "#e5e7eb", color: "#374151" };
+  return "bg-gray-200 text-gray-700";
 }
-
-const pageStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "24px",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  marginBottom: 20,
-  flexWrap: "wrap",
-};
-
-const tabsStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  borderBottom: "1px solid #d1d5db",
-  flexWrap: "wrap",
-};
-
-const tabStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  padding: "8px 0",
-  cursor: "pointer",
-  color: "#111827",
-  fontSize: 13,
-  fontWeight: 500,
-};
-
-const activeTabStyle: CSSProperties = {
-  ...tabStyle,
-  borderBottom: "2px solid #111827",
-  fontWeight: 700,
-};
-
-const statsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 14,
-  marginBottom: 16,
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  marginBottom: 0,
-  flexWrap: "wrap",
-};
-
-const filterButtonStyle: CSSProperties = {
-  minWidth: 150,
-  border: "none",
-  background: "#062f22",
-  color: "#ffffff",
-  padding: "10px 12px",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const searchInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 240,
-  border: "1px solid #d1d5db",
-  padding: "10px 12px",
-  fontSize: 13,
-  outline: "none",
-};
-
-const cardStyle: CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "0 0 10px 10px",
-  overflow: "hidden",
-};
-
-const approvalCardStyle: CSSProperties = {
-  ...cardStyle,
-  minHeight: 395,
-};
-
-const sectionTitleStyle: CSSProperties = {
-  padding: "18px 14px",
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#111827",
-};
-
-const tableStyle: CSSProperties = {
-  width: "100%",
-  minWidth: 720,
-  borderCollapse: "collapse",
-};
-
-const tableHeaderStyle: CSSProperties = {
-  color: "#ffffff",
-  padding: "10px 14px",
-  textAlign: "left",
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-};
-
-const tableRowStyle: CSSProperties = {
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const tableCellStyle: CSSProperties = {
-  padding: "10px 14px",
-  fontSize: 13,
-  color: "#111827",
-  whiteSpace: "nowrap",
-};
-
-const emptyCellStyle: CSSProperties = {
-  padding: 28,
-  textAlign: "center",
-  color: "#9ca3af",
-  fontSize: 13,
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const profileButtonStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  background: "#6b7280",
-  color: "#ffffff",
-  padding: "3px 10px",
-  fontSize: 12,
-  cursor: "pointer",
-};
-
-const ellipsisButtonStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "#111827",
-  fontSize: 14,
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const actionMenuStyle: CSSProperties = {
-  position: "absolute",
-  top: "100%",
-  right: 0,
-  zIndex: 20,
-  background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-  minWidth: 100,
-  padding: "6px 0",
-};
-
-const actionMenuItemStyle: CSSProperties = {
-  width: "100%",
-  border: "none",
-  background: "transparent",
-  padding: "6px 12px",
-  textAlign: "left",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const approveButtonStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  background: "#000000",
-  color: "#ffffff",
-  padding: "4px 12px",
-  fontSize: 12,
-  cursor: "pointer",
-};
-
-const rejectButtonStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  background: "#b91c1c",
-  color: "#ffffff",
-  padding: "4px 12px",
-  fontSize: 12,
-  cursor: "pointer",
-};
-
-const paginationStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 14,
-  padding: "110px 0 18px",
-};
-
-const paginationArrowStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "#6b7280",
-  fontSize: 22,
-  cursor: "pointer",
-};
-
-const paginationActiveStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  background: "#062f22",
-  color: "#ffffff",
-  width: 34,
-  height: 34,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const modalOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.35)",
-  zIndex: 1000,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 16,
-};
-
-const profileModalCardStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 570,
-  background: "#ffffff",
-  borderRadius: 10,
-  padding: 28,
-};
-
-const editModalCardStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 720,
-  background: "#ffffff",
-  borderRadius: 10,
-  padding: 28,
-};
-
-const confirmModalCardStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 390,
-  background: "#ffffff",
-  borderRadius: 10,
-  padding: 24,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: "0 0 18px",
-  fontSize: 22,
-  fontWeight: 800,
-  color: "#111111",
-};
-
-const profileHeaderStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 12,
-};
-
-const avatarStyle: CSSProperties = {
-  width: 64,
-  height: 64,
-  borderRadius: "50%",
-  border: "5px solid #000000",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 32,
-};
-
-const dividerStyle: CSSProperties = {
-  borderTop: "1px solid #d1d5db",
-  margin: "16px 0",
-};
-
-const profileGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-  gap: 16,
-};
-
-const historyGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
-  gap: 8,
-  marginTop: 4,
-};
-
-const historyCardStyle: CSSProperties = {
-  border: "1px solid #d1d5db",
-  borderRadius: 8,
-  padding: 12,
-};
-
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-  gap: 14,
-};
-
-const fieldLabelStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  fontSize: 13,
-  fontWeight: 500,
-  color: "#374151",
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 6,
-  padding: "8px 10px",
-  fontSize: 13,
-  boxSizing: "border-box",
-};
-
-const textareaStyle: CSSProperties = {
-  ...inputStyle,
-  minHeight: 70,
-  resize: "vertical",
-};
-
-const modalActionsStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  gap: 10,
-  marginTop: 22,
-  flexWrap: "wrap",
-};
-
-const warningStyle: CSSProperties = {
-  border: "1px solid #fecaca",
-  background: "#fff1f2",
-  color: "#dc2626",
-  borderRadius: 6,
-  padding: "8px 10px",
-  fontSize: 12,
-};
-
-const statusPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 999,
-  padding: "3px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};
