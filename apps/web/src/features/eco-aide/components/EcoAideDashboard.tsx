@@ -27,34 +27,10 @@ const ecoAides: EcoAide[] = [
 ];
 
 const requestQueue: RequestItem[] = [
-  {
-    id: "Req-001",
-    location: "San Juan",
-    wasteType: "Recyclable",
-    status: "Pending",
-    ecoAide: "-",
-  },
-  {
-    id: "Req-002",
-    location: "San Pedro",
-    wasteType: "Regular/Non-Recyclable",
-    status: "Pending",
-    ecoAide: "John Mendoza",
-  },
-  {
-    id: "Req-003",
-    location: "San Mateo",
-    wasteType: "Regular/Non-Recyclable",
-    status: "Pending",
-    ecoAide: "Emil Flores",
-  },
-  {
-    id: "Req-004",
-    location: "Poblacion",
-    wasteType: "Recyclable",
-    status: "Pending",
-    ecoAide: "-",
-  },
+  { id: "Req-001", location: "San Juan", wasteType: "Recyclable", status: "Pending", ecoAide: "-" },
+  { id: "Req-002", location: "San Pedro", wasteType: "Regular/Non-Recyclable", status: "Pending", ecoAide: "John Mendoza" },
+  { id: "Req-003", location: "San Mateo", wasteType: "Regular/Non-Recyclable", status: "Pending", ecoAide: "Emil Flores" },
+  { id: "Req-004", location: "Poblacion", wasteType: "Recyclable", status: "Pending", ecoAide: "-" },
 ];
 
 const navItems = [
@@ -87,357 +63,102 @@ const routeStats = [
   { label: "Total Routes", value: 17 },
 ];
 
+const tableHeadClass = "px-3.5 py-2.5 text-left text-xs font-semibold text-white";
+const tableCellClass = "px-3.5 py-2.5 text-[13px] text-gray-700";
+
 export function EcoAideDashboard() {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        fontFamily: "'Inter', 'Segoe UI', sans-serif",
-        background: "#f5f5f5",
-        color: "#1a1a1a",
-        overflow: "hidden",
-      }}
-    >
-      <aside
-        style={{
-          width: 190,
-          background: "#1a3a2e",
-          display: "flex",
-          flexDirection: "column",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            padding: "20px 16px 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              color: "#ffffff",
-            }}
-          >
-            <span style={{ fontSize: 20 }}>▣</span>
+    <div className="flex h-screen overflow-hidden bg-neutral-100 font-sans text-neutral-900">
+      <aside className="flex w-[190px] shrink-0 flex-col bg-brand">
+        <div className="border-b border-white/10 px-4 pb-4 pt-5">
+          <div className="flex items-center gap-2 text-white">
+            <span className="text-xl" aria-hidden="true">▣</span>
             <div>
-              <div
-                style={{
-                  fontWeight: 800,
-                  fontSize: 15,
-                  letterSpacing: 1,
-                  lineHeight: 1.1,
-                }}
-              >
-                BAZOORA
-              </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  color: "rgba(255,255,255,0.55)",
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                }}
-              >
-                Hauling Admin
-              </div>
+              <div className="text-[15px] font-extrabold leading-none tracking-[1px]">BAZOORA</div>
+              <div className="mt-1 text-[9px] uppercase tracking-[1.5px] text-white/55">Hauling Admin</div>
             </div>
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: "10px 0" }}>
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              onClick={() => {
-                setActiveNav(item.label);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                width: "100%",
-                padding: "9px 16px",
-                border: "none",
-                cursor: "pointer",
-                background:
-                  activeNav === item.label
-                    ? "rgba(255,255,255,0.12)"
-                    : "transparent",
-                color:
-                  activeNav === item.label
-                    ? "#ffffff"
-                    : "rgba(255,255,255,0.6)",
-                fontSize: 12.5,
-                fontWeight: activeNav === item.label ? 600 : 400,
-                textAlign: "left",
-                borderLeft:
-                  activeNav === item.label
-                    ? "3px solid #4ade80"
-                    : "3px solid transparent",
-              }}
-            >
-              <span style={{ width: 18 }}>{item.icon}</span>
-              <span style={{ lineHeight: 1.3 }}>{item.label}</span>
-            </button>
-          ))}
+        <nav className="flex-1 py-2.5">
+          {navItems.map((item) => {
+            const isActive = activeNav === item.label;
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setActiveNav(item.label)}
+                className={[
+                  "flex w-full items-center gap-2.5 border-l-[3px] px-4 py-2.5 text-left text-[12.5px] transition-colors",
+                  isActive
+                    ? "border-green-400 bg-white/10 font-semibold text-white"
+                    : "border-transparent font-normal text-white/60 hover:bg-white/5 hover:text-white",
+                ].join(" ")}
+              >
+                <span className="w-[18px] shrink-0" aria-hidden="true">{item.icon}</span>
+                <span className="leading-[1.3]">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
-        <div
-          style={{
-            padding: "12px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              background: "#4ade80",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 700,
-              fontSize: 13,
-              color: "#1a3a2e",
-              flexShrink: 0,
-            }}
-          >
-            JD
+        <div className="flex items-center gap-2.5 border-t border-white/10 px-3.5 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-400 text-[13px] font-bold text-brand">JD</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12.5px] font-semibold text-white">John Doe</div>
+            <div className="text-[10.5px] text-white/45">Unit #4029</div>
           </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                color: "#ffffff",
-                fontSize: 12.5,
-                fontWeight: 600,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              John Doe
-            </div>
-            <div
-              style={{
-                color: "rgba(255,255,255,0.45)",
-                fontSize: 10.5,
-              }}
-            >
-              Unit #4029
-            </div>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              padding: 2,
-            }}
-          >
-            ⚙
-          </Button>
+          <Button variant="ghost" size="sm" className="p-0.5 text-white/50">⚙</Button>
         </div>
       </aside>
 
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <header
-          style={{
-            background: "#ffffff",
-            borderBottom: "1px solid #e5e7eb",
-            padding: "0 24px",
-            height: 52,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              style={{
-                fontSize: 18,
-                padding: 0,
-              }}
-            >
-              ≡
-            </Button>
-            <span style={{ fontWeight: 600, fontSize: 15 }}>Dashboard</span>
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="flex h-[52px] shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" className="p-0 text-lg">≡</Button>
+            <span className="text-[15px] font-semibold">{activeNav}</span>
           </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              style={{
-                position: "relative",
-                padding: 0,
-                fontSize: 16,
-              }}
-            >
+          <div className="flex items-center gap-3.5">
+            <Button variant="ghost" size="sm" className="relative p-0 text-base" aria-label="Notifications">
               ●
-              <span
-                style={{
-                  position: "absolute",
-                  top: -3,
-                  right: -3,
-                  background: "#ef4444",
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  border: "1.5px solid #ffffff",
-                }}
-              />
+              <span className="absolute -right-[3px] -top-[3px] h-2 w-2 rounded-full border-[1.5px] border-white bg-red-500" />
             </Button>
-
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg,#4ade80,#16a34a)",
-                border: "2px solid #e5e7eb",
-              }}
-            />
+            <div className="h-8 w-8 rounded-full border-2 border-gray-200 bg-gradient-to-br from-green-400 to-green-600" aria-hidden="true" />
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-          <section style={{ marginBottom: 24 }}>
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                marginBottom: 14,
-                color: "#111111",
-              }}
-            >
-              Summary statistics
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 14,
-              }}
-            >
+        <main className="flex-1 overflow-y-auto p-6">
+          <section className="mb-6">
+            <h2 className="mb-3.5 text-base font-bold text-neutral-950">Summary statistics</h2>
+            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
               {summaryStats.map((stat) => (
-                <StatCard
-                  key={stat.label}
-                  label={stat.label}
-                  value={stat.value}
-                />
+                <StatCard key={stat.label} label={stat.label} value={stat.value} />
               ))}
             </div>
           </section>
 
-          <section
-            style={{
-              marginBottom: 24,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 14,
-            }}
-          >
+          <section className="mb-6 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
             <div>
-              <h2
-                style={{
-                  fontSize: 16,
-                  fontWeight: 700,
-                  marginBottom: 14,
-                  color: "#111111",
-                }}
-              >
-                Quick Status
-              </h2>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 14,
-                }}
-              >
+              <h2 className="mb-3.5 text-base font-bold text-neutral-950">Quick Status</h2>
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 {quickStats.map((stat) => (
-                  <StatCard
-                    key={stat.label}
-                    label={stat.label}
-                    value={stat.value}
-                  />
+                  <StatCard key={stat.label} label={stat.label} value={stat.value} />
                 ))}
               </div>
             </div>
 
-            <div>
-              <div style={{ height: 42 }} />
-              <div
-                style={{
-                  background: "#1a3a2e",
-                  borderRadius: 10,
-                  padding: "18px 20px",
-                  color: "#ffffff",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 14,
-                  }}
-                >
-                  <span style={{ fontWeight: 700, fontSize: 14 }}>
-                    Route Status Today
-                  </span>
-                  <Button variant="outline" size="sm">
-                    View All
-                  </Button>
+            <div className="xl:pt-[42px]">
+              <div className="flex flex-col rounded-[10px] bg-brand px-5 py-[18px] text-white">
+                <div className="mb-3.5 flex items-center justify-between gap-3">
+                  <span className="text-sm font-bold">Route Status Today</span>
+                  <Button variant="outline" size="sm">View All</Button>
                 </div>
-
                 {routeStats.map((stat) => (
-                  <div
-                    key={stat.label}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "6px 0",
-                      borderBottom: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <span>▦</span>
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: "rgba(255,255,255,0.85)",
-                      }}
-                    >
-                      {stat.label}: <strong>{stat.value}</strong>
-                    </span>
+                  <div key={stat.label} className="flex items-center gap-2.5 border-b border-white/10 py-1.5 last:border-b-0">
+                    <span aria-hidden="true">▦</span>
+                    <span className="text-[13px] text-white/85">{stat.label}: <strong>{stat.value}</strong></span>
                   </div>
                 ))}
               </div>
@@ -445,182 +166,70 @@ export function EcoAideDashboard() {
           </section>
 
           <section>
-            <h2
-              style={{
-                fontSize: 16,
-                fontWeight: 700,
-                marginBottom: 14,
-                color: "#111111",
-              }}
-            >
-              Overview
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 18,
-                marginBottom: 18,
-              }}
-            >
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  overflow: "hidden",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "14px 18px",
-                    borderBottom: "1px solid #e5e7eb",
-                  }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 14 }}>
-                    Eco-Aide Availability
-                  </span>
+            <h2 className="mb-3.5 text-base font-bold text-neutral-950">Overview</h2>
+            <div className="mb-[18px] grid grid-cols-1 gap-[18px] xl:grid-cols-2">
+              <div className="overflow-hidden rounded-[10px] border border-gray-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-gray-200 px-[18px] py-3.5">
+                  <span className="text-sm font-semibold">Eco-Aide Availability</span>
                   <Button size="sm">View All</Button>
                 </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[520px] border-collapse">
+                    <thead>
+                      <tr className="bg-brand">
+                        {["Eco-Aide ID", "Eco-Aide", "Availability"].map((heading) => (
+                          <th key={heading} className={tableHeadClass}>{heading}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ecoAides.map((ecoAide, index) => (
+                        <tr key={ecoAide.id} className={["border-b border-gray-100", index % 2 === 0 ? "bg-white" : "bg-gray-50"].join(" ")}>
+                          <td className={tableCellClass}>{ecoAide.id}</td>
+                          <td className={tableCellClass}>{ecoAide.name}</td>
+                          <td className="px-3.5 py-2.5"><StatusBadge status={ecoAide.availability} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="flex min-h-64 items-center justify-center rounded-[10px] border border-gray-200 bg-white shadow-sm">
+                <div className="text-center text-gray-400">
+                  <div className="text-2xl" aria-hidden="true">▥</div>
+                  <p className="mt-2 text-[13px]">Analytics chart coming soon</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-[10px] border border-gray-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-200 px-[18px] py-3.5">
+                <span className="text-sm font-semibold">Request Queue (On-Demand Request)</span>
+                <Button size="sm">View All</Button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse">
                   <thead>
-                    <tr style={{ background: "#1a3a2e" }}>
-                      {["Eco-Aide ID", "Eco-Aide", "Availability"].map(
-                        (heading) => (
-                          <th
-                            key={heading}
-                            style={{
-                              padding: "9px 14px",
-                              color: "#ffffff",
-                              fontWeight: 600,
-                              fontSize: 12.5,
-                              textAlign: "left",
-                            }}
-                          >
-                            {heading}
-                          </th>
-                        ),
-                      )}
+                    <tr className="bg-brand">
+                      {["Request ID", "Location", "Waste Type", "Status", "Eco-Aide"].map((heading) => (
+                        <th key={heading} className={tableHeadClass}>{heading}</th>
+                      ))}
                     </tr>
                   </thead>
-
                   <tbody>
-                    {ecoAides.map((ecoAide, index) => (
-                      <tr
-                        key={ecoAide.id}
-                        style={{
-                          background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                          borderBottom: "1px solid #f3f4f6",
-                        }}
-                      >
-                        <td style={tableCellStyle}>{ecoAide.id}</td>
-                        <td style={tableCellStyle}>{ecoAide.name}</td>
-                        <td style={{ padding: "9px 14px" }}>
-                          <StatusBadge status={ecoAide.availability} />
-                        </td>
+                    {requestQueue.map((request, index) => (
+                      <tr key={request.id} className={["border-b border-gray-100", index % 2 === 0 ? "bg-white" : "bg-gray-50"].join(" ")}>
+                        <td className={tableCellClass}>{request.id}</td>
+                        <td className={tableCellClass}>{request.location}</td>
+                        <td className={tableCellClass}>{request.wasteType}</td>
+                        <td className="px-3.5 py-2.5"><StatusBadge status={request.status} /></td>
+                        <td className={tableCellClass}>{request.ecoAide}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 10,
-                  border: "1px solid #e5e7eb",
-                  overflow: "hidden",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div style={{ textAlign: "center", color: "#9ca3af" }}>
-                  <div style={{ fontSize: 24 }}>▥</div>
-                  <p style={{ fontSize: 13, marginTop: 8 }}>
-                    Analytics chart coming soon
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 10,
-                border: "1px solid #e5e7eb",
-                overflow: "hidden",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "14px 18px",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  Request Queue (On-Demand Request)
-                </span>
-                <Button size="sm">View All</Button>
-              </div>
-
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#1a3a2e" }}>
-                    {[
-                      "Request ID",
-                      "Location",
-                      "Waste Type",
-                      "Status",
-                      "Eco-Aide",
-                    ].map((heading) => (
-                      <th
-                        key={heading}
-                        style={{
-                          padding: "9px 14px",
-                          color: "#ffffff",
-                          fontWeight: 600,
-                          fontSize: 12.5,
-                          textAlign: "left",
-                        }}
-                      >
-                        {heading}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {requestQueue.map((request, index) => (
-                    <tr
-                      key={request.id}
-                      style={{
-                        background: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                        borderBottom: "1px solid #f3f4f6",
-                      }}
-                    >
-                      <td style={tableCellStyle}>{request.id}</td>
-                      <td style={tableCellStyle}>{request.location}</td>
-                      <td style={tableCellStyle}>{request.wasteType}</td>
-                      <td style={{ padding: "9px 14px" }}>
-                        <StatusBadge status={request.status} />
-                      </td>
-                      <td style={tableCellStyle}>{request.ecoAide}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </section>
         </main>
@@ -628,9 +237,3 @@ export function EcoAideDashboard() {
     </div>
   );
 }
-
-const tableCellStyle = {
-  padding: "9px 14px",
-  fontSize: 13,
-  color: "#374151",
-};
