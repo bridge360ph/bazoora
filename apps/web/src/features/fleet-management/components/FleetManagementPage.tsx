@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import {
   ECO_AIDE_OPTIONS,
@@ -150,11 +149,11 @@ export function FleetManagementPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <section style={topBarStyle}>
+    <main className="flex-1 overflow-y-auto p-6">
+      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 style={pageTitleStyle}>Fleet Management</h1>
-          <p style={pageSubtitleStyle}>
+          <h1 className="m-0 text-2xl font-extrabold text-gray-900">Fleet Management</h1>
+          <p className="mt-1.5 text-[13px] text-gray-500">
             Manage garbage trucks, truck status, and truck assignments.
           </p>
         </div>
@@ -162,19 +161,19 @@ export function FleetManagementPage() {
         <Button onClick={openRegisterModal}>+ Register Truck</Button>
       </section>
 
-      <section style={statsGridStyle}>
+      <section className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
         <StatCard label="Active" value={activeCount} />
         <StatCard label="Idle" value={idleCount} />
         <StatCard label="Under Maintenance" value={maintenanceCount} />
       </section>
 
-      <section style={filterRowStyle}>
+      <section className="flex flex-wrap items-stretch">
         <select
           value={statusFilter}
           onChange={(event) => {
             setStatusFilter(event.target.value as TruckStatusFilter);
           }}
-          style={filterButtonStyle}
+          className="min-w-[170px] cursor-pointer border-0 bg-brand px-3 py-2.5 text-[13px] text-white"
         >
           {statusFilters.map((status) => (
             <option key={status} value={status}>
@@ -189,17 +188,17 @@ export function FleetManagementPage() {
             setSearchValue(event.target.value);
           }}
           placeholder="Search truck by ID, plate no., model, or driver..."
-          style={searchInputStyle}
+          className="min-w-[240px] flex-1 border border-gray-300 px-3 py-2.5 text-[13px] outline-none"
         />
       </section>
 
-      <section style={cardStyle}>
-        <div style={sectionTitleStyle}>Fleet List</div>
+      <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+        <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Fleet List</div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[880px] border-collapse">
             <thead>
-              <tr style={{ background: "#145c38" }}>
+              <tr className="bg-brand">
                 {[
                   "Truck ID",
                   "Plate No.",
@@ -210,7 +209,7 @@ export function FleetManagementPage() {
                   "Registered",
                   "Actions",
                 ].map((heading) => (
-                  <th key={heading} style={tableHeaderStyle}>
+                  <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
                     {heading}
                   </th>
                 ))}
@@ -220,24 +219,24 @@ export function FleetManagementPage() {
             <tbody>
               {filteredTrucks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={emptyCellStyle}>
+                  <td colSpan={8} className="p-7 text-center text-[13px] text-gray-400">
                     No trucks match the current filter.
                   </td>
                 </tr>
               ) : (
                 filteredTrucks.map((truck) => (
-                  <tr key={truck.id} style={tableRowStyle}>
-                    <td style={tableCellStyle}>{truck.id}</td>
-                    <td style={tableCellStyle}>{truck.plateNumber}</td>
-                    <td style={tableCellStyle}>{truck.model}</td>
-                    <td style={tableCellStyle}>{truck.capacity}</td>
-                    <td style={tableCellStyle}>
+                  <tr key={truck.id} className="border-b border-gray-200">
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.id}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.plateNumber}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.model}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.capacity}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
                       <TruckStatusPill status={truck.status} />
                     </td>
-                    <td style={tableCellStyle}>{truck.assignedDriver}</td>
-                    <td style={tableCellStyle}>{truck.registeredDate}</td>
-                    <td style={tableCellStyle}>
-                      <div style={actionRowStyle}>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.assignedDriver}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{truck.registeredDate}</td>
+                    <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           size="sm"
                           onClick={() => {
@@ -333,11 +332,11 @@ function TruckFormModal({
   }
 
   return (
-    <div style={modalOverlayStyle}>
-      <div style={modalCardStyle}>
-        <h2 style={modalTitleStyle}>{title}</h2>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-[560px] rounded-[14px] bg-white p-[26px] shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <h2 className="mb-5 text-lg font-extrabold text-gray-900">{title}</h2>
 
-        <div style={formGridStyle}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
           <FormField label="Assigned Driver">
             <input
               value={formValue.assignedDriver}
@@ -345,7 +344,7 @@ function TruckFormModal({
                 updateField("assignedDriver", event.target.value);
               }}
               placeholder="e.g. Henry Correa"
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </FormField>
 
@@ -356,7 +355,7 @@ function TruckFormModal({
                 updateField("plateNumber", event.target.value);
               }}
               placeholder="e.g. GTM-5895"
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </FormField>
 
@@ -367,7 +366,7 @@ function TruckFormModal({
                 updateField("model", event.target.value);
               }}
               placeholder="e.g. Isuzu Elf"
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </FormField>
 
@@ -378,7 +377,7 @@ function TruckFormModal({
                 updateField("capacity", event.target.value);
               }}
               placeholder="e.g. 7000"
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
               type="number"
             />
           </FormField>
@@ -389,7 +388,7 @@ function TruckFormModal({
               onChange={(event) => {
                 updateField("status", event.target.value as TruckStatus);
               }}
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             >
               <option value="Active">Active</option>
               <option value="Idle">Idle</option>
@@ -398,7 +397,7 @@ function TruckFormModal({
           </FormField>
         </div>
 
-        <div style={modalActionsStyle}>
+        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onSave}>{saveLabel}</Button>
           <Button variant="secondary" onClick={onClose}>
             × Close
@@ -429,14 +428,14 @@ function AssignTruckModal({
   onClose,
 }: AssignTruckModalProps) {
   return (
-    <div style={modalOverlayStyle}>
-      <div style={assignModalCardStyle}>
-        <h2 style={modalTitleStyle}>Assign Truck</h2>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className="w-full max-w-[430px] rounded-[14px] bg-white p-[26px] shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+        <h2 className="mb-5 text-lg font-extrabold text-gray-900">Assign Truck</h2>
 
         <FormField label="Truck ID">
-          <div style={inlineFieldRowStyle}>
-            <input value={truck.id} disabled style={disabledInputStyle} />
-            <input value={truck.model} disabled style={disabledInputStyle} />
+          <div className="grid grid-cols-2 gap-2">
+            <input value={truck.id} disabled className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-2.5 py-2 text-[13px] text-gray-500" />
+            <input value={truck.model} disabled className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-2.5 py-2 text-[13px] text-gray-500" />
           </div>
         </FormField>
 
@@ -446,7 +445,7 @@ function AssignTruckModal({
             onChange={(event) => {
               setAssignedRoute(event.target.value);
             }}
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           >
             {ROUTE_OPTIONS.map((route) => (
               <option key={route} value={route}>
@@ -462,7 +461,7 @@ function AssignTruckModal({
             onChange={(event) => {
               setAssignedEcoAide(event.target.value);
             }}
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           >
             {ECO_AIDE_OPTIONS.map((ecoAide) => (
               <option key={ecoAide} value={ecoAide}>
@@ -472,7 +471,7 @@ function AssignTruckModal({
           </select>
         </FormField>
 
-        <div style={modalActionsStyle}>
+        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onSave}>Save</Button>
           <Button variant="secondary" onClick={onClose}>
             × Close
@@ -490,7 +489,7 @@ interface FormFieldProps {
 
 function FormField({ label, children }: FormFieldProps) {
   return (
-    <label style={fieldLabelStyle}>
+    <label className="mb-3.5 flex flex-col gap-1.5 text-[13px] font-semibold text-gray-700">
       {label}
       {children}
     </label>
@@ -498,8 +497,17 @@ function FormField({ label, children }: FormFieldProps) {
 }
 
 function TruckStatusPill({ status }: { status: TruckStatus }) {
+  const statusClass =
+    status === "Active"
+      ? "bg-green-100 text-green-800"
+      : status === "Idle"
+        ? "bg-amber-100 text-amber-800"
+        : "bg-red-100 text-red-700";
+
   return (
-    <span style={{ ...statusPillStyle, ...getTruckStatusStyle(status) }}>
+    <span
+      className={`inline-flex items-center justify-center rounded-full px-2.5 py-[3px] text-[11px] font-bold ${statusClass}`}
+    >
       {status}
     </span>
   );
@@ -507,259 +515,16 @@ function TruckStatusPill({ status }: { status: TruckStatus }) {
 
 function Pagination() {
   return (
-    <div style={paginationStyle}>
-      <button type="button" style={paginationArrowStyle}>
+    <div className="flex items-center justify-center gap-3.5 px-0 pb-[18px] pt-6">
+      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
         ‹
       </button>
-      <button type="button" style={paginationActiveStyle}>
+      <button type="button" className="flex h-[34px] w-[34px] cursor-pointer items-center justify-center rounded-[10px] border-0 bg-brand font-bold text-white">
         1
       </button>
-      <button type="button" style={paginationArrowStyle}>
+      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
         ›
       </button>
     </div>
   );
 }
-
-function getTruckStatusStyle(status: TruckStatus): CSSProperties {
-  if (status === "Active") {
-    return { background: "#dcfce7", color: "#166534" };
-  }
-
-  if (status === "Idle") {
-    return { background: "#fef3c7", color: "#92400e" };
-  }
-
-  return { background: "#fee2e2", color: "#b91c1c" };
-}
-
-const pageStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "24px",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  marginBottom: 20,
-  flexWrap: "wrap",
-};
-
-const pageTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 24,
-  fontWeight: 800,
-  color: "#111827",
-};
-
-const pageSubtitleStyle: CSSProperties = {
-  margin: "6px 0 0",
-  fontSize: 13,
-  color: "#6b7280",
-};
-
-const statsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 14,
-  marginBottom: 16,
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  marginBottom: 0,
-  flexWrap: "wrap",
-};
-
-const filterButtonStyle: CSSProperties = {
-  minWidth: 170,
-  border: "none",
-  background: "#062f22",
-  color: "#ffffff",
-  padding: "10px 12px",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const searchInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 240,
-  border: "1px solid #d1d5db",
-  padding: "10px 12px",
-  fontSize: 13,
-  outline: "none",
-};
-
-const cardStyle: CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "0 0 10px 10px",
-  overflow: "hidden",
-};
-
-const sectionTitleStyle: CSSProperties = {
-  padding: "18px 14px",
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#111827",
-};
-
-const tableStyle: CSSProperties = {
-  width: "100%",
-  minWidth: 880,
-  borderCollapse: "collapse",
-};
-
-const tableHeaderStyle: CSSProperties = {
-  color: "#ffffff",
-  padding: "10px 14px",
-  textAlign: "left",
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-};
-
-const tableRowStyle: CSSProperties = {
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const tableCellStyle: CSSProperties = {
-  padding: "10px 14px",
-  fontSize: 13,
-  color: "#111827",
-  whiteSpace: "nowrap",
-};
-
-const emptyCellStyle: CSSProperties = {
-  padding: 28,
-  textAlign: "center",
-  color: "#9ca3af",
-  fontSize: 13,
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const paginationStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 14,
-  padding: "24px 0 18px",
-};
-
-const paginationArrowStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "#6b7280",
-  fontSize: 22,
-  cursor: "pointer",
-};
-
-const paginationActiveStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  background: "#062f22",
-  color: "#ffffff",
-  width: 34,
-  height: 34,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const modalOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.35)",
-  zIndex: 1000,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 16,
-};
-
-const modalCardStyle: CSSProperties = {
-  width: "100%",
-  maxWidth: 560,
-  background: "#ffffff",
-  borderRadius: 14,
-  padding: 26,
-  boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-};
-
-const assignModalCardStyle: CSSProperties = {
-  ...modalCardStyle,
-  maxWidth: 430,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: "0 0 20px",
-  fontSize: 18,
-  fontWeight: 800,
-  color: "#111827",
-};
-
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 14,
-};
-
-const fieldLabelStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#374151",
-  marginBottom: 14,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 7,
-  padding: "8px 10px",
-  fontSize: 13,
-  boxSizing: "border-box",
-  background: "#ffffff",
-  color: "#111827",
-};
-
-const disabledInputStyle: CSSProperties = {
-  ...inputStyle,
-  background: "#f9fafb",
-  color: "#6b7280",
-};
-
-const inlineFieldRowStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "1fr 1fr",
-  gap: 8,
-};
-
-const modalActionsStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  gap: 10,
-  marginTop: 22,
-  flexWrap: "wrap",
-};
-
-const statusPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 999,
-  padding: "3px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};

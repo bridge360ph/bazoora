@@ -1,3 +1,4 @@
+import { FleetManagementPage } from "./features/fleet-management/components/FleetManagementPage";
 import { EcoAideManagementPage } from "./features/eco-aides/components/EcoAideManagementPage";
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -26,10 +27,7 @@ function App() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminHome />} />
           <Route path="eco-aides" element={<EcoAideManagementPage />} />
-          <Route
-            path="fleet"
-            element={<RoutePlaceholder title="Fleet Management" />}
-          />
+          <Route path="fleet" element={<FleetManagementPage />} />
           <Route
             path="routes"
             element={<RoutePlaceholder title="Route Management" />}
