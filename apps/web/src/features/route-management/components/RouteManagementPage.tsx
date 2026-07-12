@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import {
   COLLECTION_DAYS,
@@ -188,11 +188,11 @@ export function RouteManagementPage() {
   }
 
   return (
-    <main style={pageStyle}>
-      <section style={topBarStyle}>
+    <main className="flex-1 overflow-y-auto p-6">
+      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 style={pageTitleStyle}>Route Management</h1>
-          <p style={pageSubtitleStyle}>
+          <h1 className="m-0 text-2xl font-extrabold text-gray-900">Route Management</h1>
+          <p className="mt-1.5 text-[13px] text-gray-500">
             Manage hauling routes, assigned Eco-Aides, and fleet assignments.
           </p>
         </div>
@@ -200,21 +200,21 @@ export function RouteManagementPage() {
         <Button onClick={openCreateModal}>+ Create Route</Button>
       </section>
 
-      <section style={statsGridStyle}>
+      <section className="mb-[18px] grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
         <StatCard label="Completed" value={completedCount} />
         <StatCard label="In Progress" value={inProgressCount} />
         <StatCard label="Not Started" value={notStartedCount} />
       </section>
 
-      <section style={contentGridStyle}>
+      <section className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,300px)]">
         <div>
-          <section style={filterRowStyle}>
+          <section className="mb-3 flex flex-wrap items-stretch gap-2.5">
             <select
               value={statusFilter}
               onChange={(event) => {
                 setStatusFilter(event.target.value as RouteStatusFilter);
               }}
-              style={filterButtonStyle}
+              className="min-w-[170px] cursor-pointer rounded-lg border-0 bg-brand px-3 py-2.5 text-[13px] text-white"
             >
               {statusFilters.map((status) => (
                 <option key={status} value={status}>
@@ -229,13 +229,13 @@ export function RouteManagementPage() {
                 setSearchValue(event.target.value);
               }}
               placeholder="Search route by ID, name, barangay, or Eco-Aide..."
-              style={searchInputStyle}
+              className="min-w-[240px] flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-[13px] outline-none"
             />
           </section>
 
           <section>
             {filteredRoutes.length === 0 ? (
-              <div style={emptyStateStyle}>No routes match the current filter.</div>
+              <div className="p-10 text-center text-[13px] text-gray-400">No routes match the current filter.</div>
             ) : (
               filteredRoutes.map((route) => (
                 <RouteCard
@@ -258,7 +258,7 @@ export function RouteManagementPage() {
           <Pagination />
         </div>
 
-        <div style={mapPanelStyle}>
+        <div className="min-h-[420px] overflow-hidden rounded-[10px] bg-[#e8ece8]">
           <MapPlaceholder />
         </div>
       </section>
@@ -311,11 +311,11 @@ interface RouteCardProps {
 
 function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
   return (
-    <article style={routeCardStyle}>
-      <div style={routeCardHeaderStyle}>
+    <article className="mb-2.5 rounded-[10px] bg-brand p-4">
+      <div className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <h2 style={routeCardTitleStyle}>{route.name}</h2>
-          <p style={routeCardSubtitleStyle}>
+          <h2 className="m-0 text-sm font-bold text-white">{route.name}</h2>
+          <p className="mt-0.5 text-xs text-white/60">
             Route {route.routeNumber} ({route.id}) · Eco-Aide: {route.ecoAide}
           </p>
         </div>
@@ -323,23 +323,23 @@ function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <RouteStatusPill status={route.status} />
       </div>
 
-      <div style={tagRowStyle}>
-        <span style={routeTagStyle}>{route.collectionDay}</span>
-        <span style={routeTagStyle}>{route.startTime}</span>
-        <span style={routeTagStyle}>{route.wasteType}</span>
-        <span style={routeTagStyle}>{route.stops} Stops</span>
+      <div className="mb-2.5 flex flex-wrap gap-1.5">
+        <span className="rounded-xl bg-white/15 px-2.5 py-[3px] text-[11.5px] font-medium text-white">{route.collectionDay}</span>
+        <span className="rounded-xl bg-white/15 px-2.5 py-[3px] text-[11.5px] font-medium text-white">{route.startTime}</span>
+        <span className="rounded-xl bg-white/15 px-2.5 py-[3px] text-[11.5px] font-medium text-white">{route.wasteType}</span>
+        <span className="rounded-xl bg-white/15 px-2.5 py-[3px] text-[11.5px] font-medium text-white">{route.stops} Stops</span>
       </div>
 
-      <div style={actionRowStyle}>
-        <button type="button" onClick={onEdit} style={secondaryActionButtonStyle}>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={onEdit} className="cursor-pointer rounded-md border-0 bg-white/10 px-[13px] py-[5px] text-xs font-medium text-white">
           Edit Route
         </button>
 
-        <button type="button" onClick={onAssign} style={secondaryActionButtonStyle}>
+        <button type="button" onClick={onAssign} className="cursor-pointer rounded-md border-0 bg-white/10 px-[13px] py-[5px] text-xs font-medium text-white">
           Assign Eco-Aide
         </button>
 
-        <button type="button" onClick={onView} style={primaryActionButtonStyle}>
+        <button type="button" onClick={onView} className="cursor-pointer rounded-md border-0 bg-green-400 px-[13px] py-[5px] text-xs font-bold text-brand">
           View Details
         </button>
       </div>
@@ -376,7 +376,7 @@ function RouteFormModal({
 
   return (
     <ModalShell title={title} onClose={onClose}>
-      <div style={formStackStyle}>
+      <div className="flex flex-col gap-3.5">
         <FormField label="Route Name">
           <input
             value={formValue.name}
@@ -384,7 +384,7 @@ function RouteFormModal({
               updateField("name", event.target.value);
             }}
             placeholder="e.g. Brgy. Poblacion Loop"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </FormField>
 
@@ -395,7 +395,7 @@ function RouteFormModal({
               updateField("barangay", event.target.value);
             }}
             placeholder="e.g. Brgy. Poblacion"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </FormField>
 
@@ -406,18 +406,18 @@ function RouteFormModal({
               updateField("waypoints", event.target.value);
             }}
             placeholder="e.g. Stop A, Stop B, Stop C"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           />
         </FormField>
 
-        <div style={twoColumnFormStyle}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
           <FormField label="Waste Type">
             <select
               value={formValue.wasteType}
               onChange={(event) => {
                 updateField("wasteType", event.target.value as WasteType);
               }}
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             >
               {WASTE_TYPES.map((wasteType) => (
                 <option key={wasteType} value={wasteType}>
@@ -433,7 +433,7 @@ function RouteFormModal({
               onChange={(event) => {
                 updateField("collectionDay", event.target.value as CollectionDay);
               }}
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             >
               {COLLECTION_DAYS.map((day) => (
                 <option key={day} value={day}>
@@ -444,7 +444,7 @@ function RouteFormModal({
           </FormField>
         </div>
 
-        <div style={twoColumnFormStyle}>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3.5">
           <FormField label="Start Time">
             <input
               value={formValue.startTime}
@@ -452,7 +452,7 @@ function RouteFormModal({
                 updateField("startTime", event.target.value);
               }}
               placeholder="e.g. 10:00 AM"
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
           </FormField>
 
@@ -462,7 +462,7 @@ function RouteFormModal({
               onChange={(event) => {
                 updateField("routeType", event.target.value);
               }}
-              style={inputStyle}
+              className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             >
               <option value="Free">Free</option>
               <option value="Paid">Paid</option>
@@ -476,7 +476,7 @@ function RouteFormModal({
             onChange={(event) => {
               updateField("ecoAide", event.target.value);
             }}
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           >
             {ECO_AIDE_OPTIONS.map((ecoAide) => (
               <option key={ecoAide} value={ecoAide}>
@@ -492,7 +492,7 @@ function RouteFormModal({
             onChange={(event) => {
               updateField("fleetAssignment", event.target.value);
             }}
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
           >
             {FLEET_OPTIONS.map((fleet) => (
               <option key={fleet} value={fleet}>
@@ -526,7 +526,7 @@ function AssignEcoAideModal({
   return (
     <ModalShell title={`Assign Eco-Aide to R${route.routeNumber}`} onClose={onClose}>
       <FormField label="Route">
-        <input value={route.name} disabled style={disabledInputStyle} />
+        <input value={route.name} disabled className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-2.5 py-2 text-[13px] text-gray-500" />
       </FormField>
 
       <FormField label="Select Eco-Aide">
@@ -535,7 +535,7 @@ function AssignEcoAideModal({
           onChange={(event) => {
             setAssignedEcoAide(event.target.value);
           }}
-          style={inputStyle}
+          className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-2.5 py-2 text-[13px] text-gray-900 outline-none focus:border-brand focus:ring-1 focus:ring-brand"
         >
           {ECO_AIDE_OPTIONS.map((ecoAide) => (
             <option key={ecoAide} value={ecoAide}>
@@ -558,8 +558,8 @@ interface RouteDetailsModalProps {
 function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
   return (
     <ModalShell title="Route Details" onClose={onClose} width={820}>
-      <div style={detailsGridStyle}>
-        <div style={detailsListStyle}>
+      <div className="grid gap-[18px_40px] rounded-xl bg-brand px-8 py-7 lg:grid-cols-[minmax(0,1fr)_minmax(220px,320px)]">
+        <div className="flex flex-col gap-2.5">
           <DetailItem label="Route ID" value={route.id} />
           <DetailItem label="Route Name" value={route.name} />
           <DetailItem label="Barangay Coverage" value={route.barangay} />
@@ -577,7 +577,7 @@ function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
           />
         </div>
 
-        <div style={detailsMapStyle}>
+        <div className="min-h-[240px] overflow-hidden rounded-[10px]">
           <MapPlaceholder />
         </div>
       </div>
@@ -595,12 +595,14 @@ interface ModalShellProps {
 }
 
 function ModalShell({ title, children, onClose, width = 560 }: ModalShellProps) {
+  const widthClass = width === 820 ? "max-w-[820px]" : "max-w-[560px]";
+
   return (
-    <div style={modalOverlayStyle}>
-      <div style={{ ...modalCardStyle, maxWidth: width }}>
-        <div style={modalHeaderStyle}>
-          <h2 style={modalTitleStyle}>{title}</h2>
-          <button type="button" onClick={onClose} style={closeButtonStyle}>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
+      <div className={`max-h-[90vh] w-full overflow-y-auto rounded-[14px] bg-white p-6 shadow-[0_20px_60px_rgba(0,0,0,0.2)] ${widthClass}`}>
+        <div className="mb-[18px] flex items-center justify-between gap-3">
+          <h2 className="m-0 text-lg font-extrabold text-gray-900">{title}</h2>
+          <button type="button" onClick={onClose} className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
             ×
           </button>
         </div>
@@ -619,7 +621,7 @@ interface ModalFooterProps {
 
 function ModalFooter({ saveLabel, onSave, onClose }: ModalFooterProps) {
   return (
-    <div style={modalFooterStyle}>
+    <div className="mt-5 flex flex-wrap justify-center gap-2.5">
       <Button onClick={onSave}>{saveLabel}</Button>
       <Button variant="secondary" onClick={onClose}>
         × Close
@@ -635,7 +637,7 @@ interface FormFieldProps {
 
 function FormField({ label, children }: FormFieldProps) {
   return (
-    <label style={fieldLabelStyle}>
+    <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-gray-700">
       {label}
       {children}
     </label>
@@ -649,63 +651,46 @@ interface DetailItemProps {
 
 function DetailItem({ label, value }: DetailItemProps) {
   return (
-    <p style={detailItemStyle}>
+    <p className="m-0 text-sm text-white/90">
       <strong>{label}:</strong> {value}
     </p>
   );
 }
 
 function RouteStatusPill({ status }: { status: RouteStatus }) {
+  const statusClass =
+    status === "In Progress"
+      ? "border-amber-400 bg-amber-100 text-amber-800"
+      : status === "Completed"
+        ? "border-green-400 bg-green-100 text-green-800"
+        : "border-red-400 bg-red-100 text-orange-800";
+
   return (
-    <span style={{ ...statusPillStyle, ...getRouteStatusStyle(status) }}>
+    <span className={`inline-flex items-center justify-center whitespace-nowrap rounded-full border px-3 py-[3px] text-xs font-bold ${statusClass}`}>
       {status}
     </span>
   );
 }
 
-function getRouteStatusStyle(status: RouteStatus): CSSProperties {
-  if (status === "In Progress") {
-    return {
-      background: "#fef3c7",
-      color: "#92400e",
-      border: "1px solid #fbbf24",
-    };
-  }
-
-  if (status === "Completed") {
-    return {
-      background: "#dcfce7",
-      color: "#166534",
-      border: "1px solid #4ade80",
-    };
-  }
-
-  return {
-    background: "#fee2e2",
-    color: "#9a3412",
-    border: "1px solid #f87171",
-  };
-}
-
 function MapPlaceholder() {
   return (
-    <div style={mapPlaceholderStyle}>
-      <div style={mapShapeStyle}>◇</div>
-      <p style={mapTextStyle}>Map preview placeholder</p>
+    <div className="flex h-full min-h-[240px] w-full flex-col items-center justify-center bg-[#e8ece8] text-gray-800">
+      <div className="text-[56px] opacity-50">◇</div>
+      <p className="mt-2 text-[13px] text-gray-500">Map preview placeholder</p>
     </div>
   );
 }
 
 function Pagination() {
   return (
-    <div style={paginationStyle}>
-      <button type="button" style={paginationArrowStyle}>
+    <div className="mt-3.5 flex items-center justify-center gap-1.5">
+      <button type="button" className="cursor-pointer rounded-[7px] border border-gray-200 bg-white px-2.5 py-[3px] text-[22px] text-gray-700">
         ‹
       </button>
-      <button type="button" style={paginationActiveStyle}>
+      <button type="button" className="h-8 w-8 cursor-pointer rounded-[7px] border-0 bg-brand font-bold text-white">
         1
       </button>
-      <button type="button" style={paginationArrowStyle}>
+      <button type="button" className="cursor-pointer rounded-[7px] border border-gray-200 bg-white px-2.5 py-[3px] text-[22px] text-gray-700">
         ›
       </button>
     </div>
@@ -724,340 +709,3 @@ function getStopCount(waypoints: string) {
       .filter(Boolean).length || 1
   );
 }
-
-const pageStyle: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "24px",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  marginBottom: 20,
-  flexWrap: "wrap",
-};
-
-const pageTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 24,
-  fontWeight: 800,
-  color: "#111827",
-};
-
-const pageSubtitleStyle: CSSProperties = {
-  margin: "6px 0 0",
-  fontSize: 13,
-  color: "#6b7280",
-};
-
-const statsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 14,
-  marginBottom: 18,
-};
-
-const contentGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(240px, 300px)",
-  gap: 16,
-  alignItems: "stretch",
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  marginBottom: 12,
-  alignItems: "stretch",
-  flexWrap: "wrap",
-};
-
-const filterButtonStyle: CSSProperties = {
-  minWidth: 170,
-  border: "none",
-  background: "#062f22",
-  color: "#ffffff",
-  padding: "10px 12px",
-  fontSize: 13,
-  cursor: "pointer",
-  borderRadius: 8,
-};
-
-const searchInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 240,
-  border: "1px solid #d1d5db",
-  borderRadius: 8,
-  padding: "10px 12px",
-  fontSize: 13,
-  outline: "none",
-};
-
-const routeCardStyle: CSSProperties = {
-  background: "#1a3a2e",
-  borderRadius: 10,
-  padding: "14px 16px",
-  marginBottom: 10,
-};
-
-const routeCardHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  marginBottom: 8,
-};
-
-const routeCardTitleStyle: CSSProperties = {
-  margin: 0,
-  color: "#ffffff",
-  fontWeight: 700,
-  fontSize: 14,
-};
-
-const routeCardSubtitleStyle: CSSProperties = {
-  color: "rgba(255,255,255,0.6)",
-  fontSize: 12,
-  margin: "2px 0 0",
-};
-
-const tagRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "wrap",
-  marginBottom: 10,
-};
-
-const routeTagStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.15)",
-  color: "#ffffff",
-  padding: "3px 10px",
-  borderRadius: 12,
-  fontSize: 11.5,
-  fontWeight: 500,
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const secondaryActionButtonStyle: CSSProperties = {
-  background: "rgba(255,255,255,0.12)",
-  color: "#ffffff",
-  border: "none",
-  padding: "5px 13px",
-  borderRadius: 6,
-  cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 500,
-};
-
-const primaryActionButtonStyle: CSSProperties = {
-  background: "#4ade80",
-  color: "#1a3a2e",
-  border: "none",
-  padding: "5px 13px",
-  borderRadius: 6,
-  cursor: "pointer",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const mapPanelStyle: CSSProperties = {
-  borderRadius: 10,
-  overflow: "hidden",
-  background: "#e8ece8",
-  minHeight: 420,
-};
-
-const emptyStateStyle: CSSProperties = {
-  textAlign: "center",
-  padding: 40,
-  color: "#9ca3af",
-  fontSize: 13,
-};
-
-const paginationStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 6,
-  marginTop: 14,
-};
-
-const paginationArrowStyle: CSSProperties = {
-  border: "1px solid #e5e7eb",
-  background: "#ffffff",
-  color: "#374151",
-  fontSize: 22,
-  cursor: "pointer",
-  borderRadius: 7,
-  padding: "3px 10px",
-};
-
-const paginationActiveStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 7,
-  background: "#1a3a2e",
-  color: "#ffffff",
-  width: 32,
-  height: 32,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const modalOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.35)",
-  zIndex: 1000,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 16,
-};
-
-const modalCardStyle: CSSProperties = {
-  width: "100%",
-  background: "#ffffff",
-  borderRadius: 14,
-  padding: 24,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-};
-
-const modalHeaderStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 12,
-  marginBottom: 18,
-};
-
-const modalTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 18,
-  fontWeight: 800,
-  color: "#111827",
-};
-
-const closeButtonStyle: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  fontSize: 22,
-  cursor: "pointer",
-  color: "#6b7280",
-};
-
-const formStackStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 14,
-};
-
-const twoColumnFormStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 14,
-};
-
-const fieldLabelStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#374151",
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 7,
-  padding: "8px 10px",
-  fontSize: 13,
-  boxSizing: "border-box",
-  background: "#ffffff",
-  color: "#111827",
-};
-
-const disabledInputStyle: CSSProperties = {
-  ...inputStyle,
-  background: "#f9fafb",
-  color: "#6b7280",
-};
-
-const modalFooterStyle: CSSProperties = {
-  display: "flex",
-  gap: 10,
-  justifyContent: "center",
-  marginTop: 20,
-  flexWrap: "wrap",
-};
-
-const detailsGridStyle: CSSProperties = {
-  background: "#1a3a2e",
-  borderRadius: 12,
-  padding: "28px 32px",
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(220px, 320px)",
-  gap: "18px 40px",
-};
-
-const detailsListStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 10,
-};
-
-const detailItemStyle: CSSProperties = {
-  margin: 0,
-  color: "rgba(255,255,255,0.9)",
-  fontSize: 14,
-};
-
-const detailsMapStyle: CSSProperties = {
-  borderRadius: 10,
-  overflow: "hidden",
-  minHeight: 240,
-};
-
-const statusPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 999,
-  padding: "3px 12px",
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-};
-
-const mapPlaceholderStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  minHeight: 240,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "#e8ece8",
-  color: "#1f2937",
-};
-
-const mapShapeStyle: CSSProperties = {
-  fontSize: 56,
-  opacity: 0.5,
-};
-
-const mapTextStyle: CSSProperties = {
-  margin: "8px 0 0",
-  fontSize: 13,
-  color: "#6b7280",
-};
