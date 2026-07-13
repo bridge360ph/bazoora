@@ -25,11 +25,8 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
-<<<<<<< HEAD
   },
   "dependencies": {
     "@prisma/client": "^7.8.0"
-=======
->>>>>>> 289d6ed (feat(admin): implement route management page)
   }
 }
