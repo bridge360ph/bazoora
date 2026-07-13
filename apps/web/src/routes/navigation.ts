@@ -1,5 +1,6 @@
 // Central nav config for the admin sidebar. Add a screen here + a matching
 // <Route> in App.tsx — nothing else needs to change.
+
 export interface NavItem {
   to: string;
   label: string;
@@ -20,6 +21,9 @@ export const adminNavItems: NavItem[] = [
 
 export const driverNavItems: NavItem[] = [
   { to: "/driver", label: "Dashboard", end: true },
-  { to: "/driver/route", label: "Current Route" },
+  { to: "/driver/route", label: "Collection Route" },
   { to: "/driver/collections", label: "Collections" },
+  { to: "/driver/report", label: "Report Issue" },
+  { to: "/driver/messages", label: "Messages" },
+  { to: "/driver/settings", label: "Settings" },
 ];

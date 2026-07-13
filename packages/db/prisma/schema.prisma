@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GOVERNMENT_ADMIN
+  HAULING_ADMIN
+  DRIVER
+  ECO_AIDE
+  BUSINESS
+  RESIDENT
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  password        String?
+  role            UserRole
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  driverLocation  DriverLocation?
+  assignedTruck   Truck?
+  assignedRoute   Route?
+}
+
+model ServiceRequest {
+  request_id      String    @id @default(cuid())
+  user_id         String
+  org_id          String?
+  request_address String
+  sender_type     String?
+  image_url       String?
+  pickup_date     DateTime?
+  status          String    @default("PENDING")
+  approved_by     String?
+  approved_at     DateTime?
+  note            String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String   @unique
+  driver    User     @relation(fields: [driverId], references: [id])
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt
+}
+
+model Truck {
+  id               String   @id @default(cuid())
+  plateNumber      String   @unique
+  model            String
+  capacity         String
+  status           String   @default("Active") // "Active" | "Idle" | "Under Maintenance"
+  assignedDriverId String?  @unique
+  assignedDriver   User?    @relation(fields: [assignedDriverId], references: [id])
+  assignedRoute    Route?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Route {
+  id                 String   @id @default(cuid())
+  routeNumber        Int      @unique
+  name               String
+  barangay           String
+  waypoints          String   // Comma separated list of stops/waypoints
+  wasteType          String   // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
+  collectionDay      String   // "Sunday" | "Monday" ...
+  startTime          String
+  status             String   @default("Not Started") // "In Progress" | "Completed" | "Not Started"
+  stops              Int      @default(0)
+  routeType          String
+  assignedEcoAideId  String?  @unique
+  assignedEcoAide    User?    @relation(fields: [assignedEcoAideId], references: [id])
+  assignedTruckId    String?  @unique
+  assignedTruck      Truck?   @relation(fields: [assignedTruckId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
