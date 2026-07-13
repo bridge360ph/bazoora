@@ -8,6 +8,9 @@ import { DriverLayout } from "./layouts/DriverLayout";
 import { AdminHome } from "./pages/AdminHome";
 import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
+import { AdminFleetManagementPage }
+  from "./features/fleet-management/AdminFleetManagementPage";
+
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
@@ -44,7 +47,7 @@ function App() {
 
           <Route
             path="fleet"
-            element={<RoutePlaceholder title="Fleet Management" />}
+            element={<AdminFleetManagementPage />}
           />
 
           <Route
