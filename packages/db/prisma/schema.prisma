@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GOVERNMENT_ADMIN
+  HAULING_ADMIN
+  DRIVER
+  ECO_AIDE
+  BUSINESS
+  RESIDENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceRequest {
+  request_id      String    @id @default(cuid())
+  user_id         String
+  org_id          String?
+  request_address String
+  sender_type     String?
+  image_url       String?
+  pickup_date     DateTime?
+  status          String    @default("PENDING")
+  approved_by     String?
+  approved_at     DateTime?
+  note            String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+}
