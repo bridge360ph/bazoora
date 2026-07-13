@@ -27,80 +27,226 @@ function App() {
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    const s = getSocket(() => useAuthStore.getState().accessToken);
+    const socket = getSocket(
+      () => useAuthStore.getState().accessToken
+    );
 
     if (user) {
-      s.connect();
+      socket.connect();
     } else {
-      s.disconnect();
+      socket.disconnect();
     }
 
     return () => {
-      s.disconnect();
+      socket.disconnect();
     };
   }, [user]);
 
-  if (!user) {
-    return <LoginPage />;
-  }
+
+  const getRoleRedirect = () => {
+    if (!user) return "/login";
+
+    switch (user.role.toLowerCase()) {
+      case "admin":
+      case "lgu_admin":
+        return "/admin";
+
+      case "driver":
+        return "/driver";
+
+      case "eco_aide":
+      case "eco-aide":
+      case "ecoaide":
+        return "/eco-aide";
+
+      case "resident":
+        return "/resident";
+
+      default:
+        return "/login";
+    }
+  };
+
 
   return (
     <BrowserRouter>
+
       <Routes>
-        <Route path="/" element={<Navigate to="/admin" replace />} />
+
+        {/* LOGIN */}
+        <Route
+          path="/login"
+          element={
+            user ? (
+              <Navigate to={getRoleRedirect()} replace />
+            ) : (
+              <LoginPage />
+            )
+          }
+        />
+
+
+        {/* ROOT */}
+        <Route
+          path="/"
+          element={
+            <Navigate
+              to={getRoleRedirect()}
+              replace
+            />
+          }
+        />
+
+
 
         {/* ADMIN */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            user ? (
+              <AdminLayout />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+
           <Route index element={<AdminHome />} />
 
           <Route
             path="eco-aides"
-            element={<RoutePlaceholder title="Eco-Aide Management" />}
+            element={
+              <RoutePlaceholder title="Eco-Aide Management" />
+            }
           />
 
           <Route
             path="fleet"
-            element={<RoutePlaceholder title="Fleet Management" />}
+            element={
+              <RoutePlaceholder title="Fleet Management" />
+            }
           />
 
           <Route
             path="routes"
-            element={<RoutePlaceholder title="Route Management" />}
+            element={
+              <RoutePlaceholder title="Route Management" />
+            }
           />
 
           <Route
             path="hauling"
-            element={<RoutePlaceholder title="Hauling Request Management" />}
+            element={
+              <RoutePlaceholder title="Hauling Request Management" />
+            }
           />
 
           <Route
             path="analytics"
-            element={<RoutePlaceholder title="Analytics" />}
+            element={
+              <RoutePlaceholder title="Analytics" />
+            }
           />
 
           <Route
             path="notifications"
-            element={<RoutePlaceholder title="Notifications" />}
+            element={
+              <RoutePlaceholder title="Notifications" />
+            }
           />
 
           <Route
             path="settings"
-            element={<RoutePlaceholder title="Settings" />}
+            element={
+              <RoutePlaceholder title="Settings" />
+            }
           />
+
         </Route>
+
+
+
 
         {/* DRIVER */}
-        <Route path="/driver" element={<DriverLayout />}>
+        <Route
+          path="/driver"
+          element={
+            user ? (
+              <DriverLayout />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        >
+
           <Route index element={<DriverDashboard />} />
-          <Route path="route" element={<CurrentRoute />} />
-          <Route path="collections" element={<Collections />} />
-          <Route path="report" element={<ReportIssue />} />
-          <Route path="messages" element={<Messages />} />
-          <Route path="settings" element={<Settings />} />
+
+          <Route
+            path="route"
+            element={<CurrentRoute />}
+          />
+
+          <Route
+            path="collections"
+            element={<Collections />}
+          />
+
+          <Route
+            path="report"
+            element={<ReportIssue />}
+          />
+
+          <Route
+            path="messages"
+            element={<Messages />}
+          />
+
+          <Route
+            path="settings"
+            element={<Settings />}
+          />
+
         </Route>
 
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+
+
+
+        {/* ECO AIDE */}
+        <Route
+          path="/eco-aide"
+          element={
+            user ? (
+              <RoutePlaceholder title="Eco-Aide Dashboard" />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+
+
+        {/* RESIDENT */}
+        <Route
+          path="/resident"
+          element={
+            user ? (
+              <RoutePlaceholder title="Resident Dashboard" />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+
+
+        {/* UNKNOWN */}
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
+
       </Routes>
+
     </BrowserRouter>
   );
 }

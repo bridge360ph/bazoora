@@ -33,11 +33,11 @@ app.get("/", (): HealthResponse => {
   };
 });
 
+// Initialize Socket.IO BEFORE starting the server
+setupSocket(app.server);
+
 // Start server
 await app.listen({
   port: Number(process.env.PORT ?? 3000),
   host: "0.0.0.0",
 });
-
-// Initialize Socket.IO after HTTP server starts
-setupSocket(app.server);
