@@ -83,15 +83,27 @@ function DriverDashboard() {
 
     switch (key) {
       case "route":
-        void navigate("/driver/route");
+        navigate("/driver/route");
         break;
 
       case "collections":
-        void navigate("/driver/collections");
+        navigate("/driver/collections");
+        break;
+
+      case "report":
+        navigate("/driver/report");
+        break;
+
+      case "messages":
+        navigate("/driver/messages");
+        break;
+
+      case "settings":
+        navigate("/driver/settings");
         break;
 
       case "dashboard":
-        void navigate("/driver");
+        navigate("/driver");
         break;
 
       default:
@@ -114,6 +126,7 @@ function DriverDashboard() {
           isMobile={isMobile}
           title="Dashboard"
           onToggleNav={() => setNavOpen((v) => !v)}
+          onAvatarClick={() => goTo("settings")}
         />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>

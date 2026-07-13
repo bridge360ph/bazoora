@@ -11,6 +11,9 @@ import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
+import { ReportIssue } from "./features/driver/ReportIssue";
+import { Messages } from "./features/driver/Messages";
+import { Settings } from "./features/driver/Settings";
 
 // App.tsx is routing configuration only — please don't turn it back into a
 // single dashboard. To ship a screen: replace the matching placeholder element
@@ -77,6 +80,12 @@ function App() {
           <Route path="route" element={<CurrentRoute />} />
 
           <Route path="collections" element={<Collections />} />
+
+          <Route path="report" element={<ReportIssue />} />
+
+          <Route path="messages" element={<Messages />} />
+
+          <Route path="settings" element={<Settings />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/admin" replace />} />

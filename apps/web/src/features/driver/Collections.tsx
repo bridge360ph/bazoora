@@ -74,8 +74,6 @@ export function Collections() {
   const navigate = useNavigate();
 
   const activeKey = "collections";
-  // No dedicated mobile bottom-nav slot for Collections (same as Assigned
-  // Tasks) — falls back to no highlighted item.
   const activeMobileKey = "collections";
 
   const isMobile = useIsMobile();
@@ -86,15 +84,23 @@ export function Collections() {
 
     switch (key) {
       case "dashboard":
-        void navigate("/driver");
+        navigate("/driver");
         break;
 
       case "route":
-        void navigate("/driver/route");
+        navigate("/driver/route");
         break;
 
       case "collections":
-        void navigate("/driver/collections");
+        navigate("/driver/collections");
+        break;
+
+      case "report":
+        navigate("/driver/report");
+        break;
+
+      case "messages":
+        navigate("/driver/messages");
         break;
 
       default:
@@ -113,7 +119,7 @@ export function Collections() {
       />
 
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Logs" onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header isMobile={isMobile} title="Collections" onToggleNav={() => setNavOpen((v) => !v)} />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           {/* TOP SUMMARY CARDS */}

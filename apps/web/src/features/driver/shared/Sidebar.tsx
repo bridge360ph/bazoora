@@ -74,7 +74,7 @@ export function Sidebar({
             <div className="font-bold text-[13px] text-white">{userName}</div>
             <div className="text-[11px] opacity-60">{userUnit}</div>
           </div>
-          <div className="opacity-70 cursor-pointer">
+          <div className="opacity-70 cursor-pointer" onClick={() => onNavigate?.("settings")} title="Settings">
             <Icon icon={icons.settings} />
           </div>
         </div>

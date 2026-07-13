@@ -10,41 +10,142 @@ import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
 import { layout, mainWrap } from "./shared/layoutStyles";
 
-/* ---------------- DATA ---------------- */
+/* ---------------- DATA ----------------
+   Route + Assigned Tasks merged: each stop carries both the route timing
+   status (DONE/NOW/IN PROGRESS/UPCOMING) and the task detail (barangay,
+   address, waste type, volume, priority) that used to live on a separate
+   Assigned Tasks screen — rendered here as a compact mini task-card. */
 type StopStatus = "DONE" | "NOW" | "IN_PROGRESS" | "UPCOMING";
+type Priority = "Critical" | "High" | "Medium" | "Low";
+type WasteType = "Residual" | "Hazardous" | "Non-Bio" | "Biodegradable";
 
-const schedule: { name: string; subtitle: string; status: StopStatus; badge?: string }[] = [
+type Stop = {
+  stopNumber: string;
+  status: StopStatus;
+  statusLabel?: string;
+  barangay: string;
+  name: string;
+  address: string;
+  wasteType: WasteType;
+  volume: string;
+  priority: Priority;
+};
+
+const schedule: Stop[] = [
   {
-    name: "Sitio Malakas, Brgy. San Rafael",
-    subtitle: "12 households • Residential Area",
+    stopNumber: "01",
     status: "DONE",
-    badge: "DONE • 08:30 AM",
+    statusLabel: "DONE • 08:30 AM",
+    barangay: "Brgy. San Rafael",
+    name: "Sitio Malakas",
+    address: "12 households • Residential Area",
+    wasteType: "Residual",
+    volume: "2.0 cu.m",
+    priority: "Medium",
   },
   {
-    name: "Purok 7, Brgy. San Rafael",
-    subtitle: "Industrial Park Hub • Warehouse A",
+    stopNumber: "02",
     status: "NOW",
-    badge: "NOW",
+    statusLabel: "NOW",
+    barangay: "Brgy. San Rafael",
+    name: "Purok 7",
+    address: "Industrial Park Hub • Warehouse A",
+    wasteType: "Hazardous",
+    volume: "1.2 Tons",
+    priority: "Critical",
   },
   {
-    name: "Purok 12, Brgy. Manggahan",
-    subtitle: "8 households • Commercial Strip",
+    stopNumber: "03",
     status: "IN_PROGRESS",
-    badge: "IN PROGRESS",
+    statusLabel: "IN PROGRESS",
+    barangay: "Brgy. Manggahan",
+    name: "Purok 12",
+    address: "8 households • Commercial Strip",
+    wasteType: "Non-Bio",
+    volume: "3.0 cu.m",
+    priority: "High",
   },
   {
-    name: "Sitio Pag-asa, Brgy. Biela",
-    subtitle: "20 households • Village Block",
+    stopNumber: "04",
     status: "UPCOMING",
+    barangay: "Brgy. Biela",
+    name: "Sitio Pag-asa",
+    address: "20 households • Village Block",
+    wasteType: "Biodegradable",
+    volume: "5.5 cu.m",
+    priority: "Low",
   },
 ];
 
-const badgeClass: Record<StopStatus, string> = {
+const statusBadgeClass: Record<StopStatus, string> = {
   DONE: "bg-green-100 text-green-800",
   NOW: "bg-white text-[#0f2a1f]",
   IN_PROGRESS: "bg-orange-100 text-orange-800",
-  UPCOMING: "",
+  UPCOMING: "bg-gray-100 text-slate-600",
 };
+
+function MiniTaskCard({ stop }: { stop: Stop }) {
+  const isNow = stop.status === "NOW";
+  const isCritical = stop.priority === "Critical";
+  const isHazardous = stop.wasteType === "Hazardous";
+
+  return (
+    <div
+      className={`rounded-xl border p-3 flex flex-col gap-2 ${
+        isNow ? "bg-[#0f2a1f] border-[#0f2a1f] text-white" : "bg-white border-gray-100"
+      }`}
+    >
+      <div className="flex items-start gap-2.5">
+        <div
+          className={`w-[26px] h-[26px] rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 ${
+            isNow ? "bg-green-400 text-[#0f2a1f]" : "bg-gray-200 text-slate-600"
+          }`}
+        >
+          {stop.stopNumber}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start gap-2">
+            <div className={`text-sm font-bold ${isNow ? "text-white" : "text-slate-900"}`}>{stop.name}</div>
+            <div
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1 flex-shrink-0 ${statusBadgeClass[stop.status]}`}
+            >
+              {stop.status === "NOW" && <Icon icon={icons.bookmark} size={10} />}
+              {stop.statusLabel ?? stop.status}
+            </div>
+          </div>
+          <div className={`text-[11px] mt-0.5 ${isNow ? "text-white/70" : "opacity-55"}`}>
+            {stop.barangay} • {stop.address}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 pl-[34px]">
+        <span
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+            isHazardous ? "bg-red-100 text-red-700" : isNow ? "bg-white/10 text-white/80" : "bg-gray-100 text-slate-600"
+          }`}
+        >
+          {stop.wasteType}
+        </span>
+        <span
+          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+            isCritical
+              ? "bg-red-600 text-white"
+              : stop.priority === "High"
+              ? "bg-orange-100 text-orange-800"
+              : isNow
+              ? "bg-white/10 text-white/80"
+              : "bg-gray-100 text-slate-600"
+          }`}
+        >
+          {stop.priority}
+        </span>
+        <span className={`text-[10px] font-bold ml-auto ${isNow ? "text-white/60" : "opacity-45"}`}>{stop.volume}</span>
+      </div>
+    </div>
+  );
+}
 
 /* ---------------- COMPONENT ---------------- */
 export function CurrentRoute() {
@@ -61,15 +162,23 @@ export function CurrentRoute() {
 
     switch (key) {
       case "dashboard":
-        void navigate("/driver");
+        navigate("/driver");
         break;
 
       case "route":
-        void navigate("/driver/route");
+        navigate("/driver/route");
         break;
 
       case "collections":
-        void navigate("/driver/collections");
+        navigate("/driver/collections");
+        break;
+
+      case "report":
+        navigate("/driver/report");
+        break;
+
+      case "messages":
+        navigate("/driver/messages");
         break;
 
       default:
@@ -88,10 +197,13 @@ export function CurrentRoute() {
       />
 
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Route" onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header isMobile={isMobile} title="Route & Assigned Tasks" onToggleNav={() => setNavOpen((v) => !v)} />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
-          <div className={isMobile ? "flex flex-col gap-4" : "grid gap-4 items-start"} style={!isMobile ? { gridTemplateColumns: "1fr 340px" } : undefined}>
+          <div
+            className={isMobile ? "flex flex-col gap-4" : "grid gap-4 items-start"}
+            style={!isMobile ? { gridTemplateColumns: "1fr 340px" } : undefined}
+          >
             <div className="flex flex-col gap-4 min-w-0">
               <div className="relative bg-[#eef1ef] rounded-2xl border border-gray-200 p-3.5 h-[480px] flex flex-col">
                 <div className="text-[13px] font-bold text-slate-700 mb-2.5">Map View</div>
@@ -158,6 +270,9 @@ export function CurrentRoute() {
 
             <div className="bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden h-full">
               <div className="px-[18px] pt-[18px] pb-3 border-b border-gray-100">
+                <div className="text-[10px] font-bold tracking-wide text-green-700 uppercase mb-1">
+                  Assigned Tasks
+                </div>
                 <div
                   className="text-lg font-extrabold mb-1 cursor-pointer"
                   onClick={() => goTo("dashboard")}
@@ -168,43 +283,10 @@ export function CurrentRoute() {
                 <div className="text-xs opacity-55">14 Collections • 3.2 tons est.</div>
               </div>
 
-              <div className="px-3.5 py-2.5 flex flex-col gap-2.5">
-                {schedule.map((s, i) => {
-                  const isNow = s.status === "NOW";
-                  return (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-3 p-3 rounded-2xl ${isNow ? "bg-[#0f2a1f]" : ""}`}
-                    >
-                      <div
-                        className={`w-[26px] h-[26px] rounded-full text-[11px] font-bold flex items-center justify-center flex-shrink-0 ${
-                          isNow ? "bg-green-400 text-[#0f2a1f]" : "bg-gray-200 text-slate-600"
-                        }`}
-                      >
-                        {String(i + 1).padStart(2, "0")}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <div className={`text-sm font-bold ${isNow ? "text-white" : "text-slate-900"}`}>
-                            {s.name}
-                          </div>
-                          {s.badge && (
-                            <div
-                              className={`text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap flex items-center gap-1 flex-shrink-0 ${badgeClass[s.status]}`}
-                            >
-                              {s.status === "NOW" && <Icon icon={icons.bookmark} size={11} />}
-                              {s.badge}
-                            </div>
-                          )}
-                        </div>
-                        <div className={`text-xs mt-0.5 ${isNow ? "text-white/70" : "opacity-55"}`}>
-                          {s.subtitle}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="px-3.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto flex-1">
+                {schedule.map((stop, i) => (
+                  <MiniTaskCard key={i} stop={stop} />
+                ))}
               </div>
 
               <div className="mt-auto p-3.5 flex flex-col gap-2.5 border-t border-gray-100">
