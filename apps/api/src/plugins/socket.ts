@@ -1,8 +1,8 @@
 import { Server as HttpServer } from "node:http";
-import { Server as SocketIOServer } from "socket.io";
+import { Server } from "socket.io";
 
-export function setupSocket(server: HttpServer): SocketIOServer {
-  const io = new SocketIOServer(server, {
+export function setupSocket(server: HttpServer): Server {
+  const io = new Server(server, {
     cors: {
       origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
       credentials: true,
