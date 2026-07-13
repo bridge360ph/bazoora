@@ -162,23 +162,23 @@ export function CurrentRoute() {
 
     switch (key) {
       case "dashboard":
-        navigate("/driver");
+        void navigate("/driver");
         break;
 
       case "route":
-        navigate("/driver/route");
+        void navigate("/driver/route");
         break;
 
       case "collections":
-        navigate("/driver/collections");
+        void navigate("/driver/collections");
         break;
 
       case "report":
-        navigate("/driver/report");
+        void navigate("/driver/report");
         break;
 
       case "messages":
-        navigate("/driver/messages");
+        void navigate("/driver/messages");
         break;
 
       default:

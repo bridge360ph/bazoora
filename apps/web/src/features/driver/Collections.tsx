@@ -84,23 +84,27 @@ export function Collections() {
 
     switch (key) {
       case "dashboard":
-        navigate("/driver");
+        void navigate("/driver");
         break;
 
       case "route":
-        navigate("/driver/route");
+        void navigate("/driver/route");
         break;
 
       case "collections":
-        navigate("/driver/collections");
+        void navigate("/driver/collections");
         break;
 
       case "report":
-        navigate("/driver/report");
+        void navigate("/driver/report");
         break;
 
       case "messages":
-        navigate("/driver/messages");
+        void navigate("/driver/messages");
+        break;
+
+      case "settings":
+        void navigate("/driver/settings");
         break;
 
       default:
@@ -119,7 +123,7 @@ export function Collections() {
       />
 
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Collections" onToggleNav={() => setNavOpen((v) => !v)} />
+        <Header isMobile={isMobile} title="Collections" onToggleNav={() => setNavOpen((v) => !v)} onAvatarClick={() => goTo("settings")} />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           {/* TOP SUMMARY CARDS */}
