@@ -1,75 +1,41 @@
-import type { CSSProperties } from "react";
-
 interface StatusBadgeProps {
   status: string;
 }
 
-const baseStyle: CSSProperties = {
-  padding: "2px 10px",
-  borderRadius: 12,
-  fontSize: 12.5,
-  fontWeight: 500,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  whiteSpace: "nowrap",
+const statusStyles: Record<string, string> = {
+  Available: "text-[#166534] bg-[#dcfce7]",
+  Completed: "text-[#166534] bg-[#dcfce7]",
+  Approved: "text-[#166534] bg-[#dcfce7]",
+
+  Pending: "text-[#92400e] bg-[#fef3c7]",
+  "On Route": "text-[#92400e] bg-[#fef3c7]",
+  "In Progress": "text-[#92400e] bg-[#fef3c7]",
+
+  Assigned: "text-[#1d4ed8] bg-[#dbeafe]",
+
+  Denied: "text-[#991b1b] bg-[#fee2e2]",
+  "Off Duty": "text-[#991b1b] bg-[#fee2e2]",
 };
 
-function getStatusStyle(status: string): CSSProperties {
-  if (
-    status === "Available" ||
-    status === "Completed" ||
-    status === "Approved"
-  ) {
-    return {
-      color: "#166534",
-      background: "#dcfce7",
-    };
-  }
-
-  if (
-    status === "Pending" ||
-    status === "On Route" ||
-    status === "In Progress"
-  ) {
-    return {
-      color: "#92400e",
-      background: "#fef3c7",
-    };
-  }
-
-  if (
-    status === "Assigned"
-  ) {
-    return {
-      color: "#1d4ed8",
-      background: "#dbeafe",
-    };
-  }
-
-  if (
-    status === "Denied" ||
-    status === "Off Duty"
-  ) {
-    return {
-      color: "#991b1b",
-      background: "#fee2e2",
-    };
-  }
-
-  return {
-    color: "#6b7280",
-    background: "#f3f4f6",
-  };
-}
+const baseStyle = `
+  inline-flex
+  items-center
+  justify-center
+  whitespace-nowrap
+  rounded-xl
+  px-[10px]
+  py-[2px]
+  text-[12.5px]
+  font-medium
+`;
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
-      style={{
-        ...baseStyle,
-        ...getStatusStyle(status),
-      }}
+      className={`
+        ${baseStyle}
+        ${statusStyles[status] ?? "text-[#6b7280] bg-[#f3f4f6]"}
+      `}
     >
       {status}
     </span>
