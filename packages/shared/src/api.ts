@@ -2,3 +2,5 @@
 export interface HealthResponse {
   status: string;
 }
+
+export * from "./haulingRequest.js";
