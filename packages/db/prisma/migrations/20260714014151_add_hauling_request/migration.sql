@@ -1,6 +1,3 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('SUPER_ADMIN', 'GOVERNMENT_ADMIN', 'HAULING_ADMIN', 'DRIVER', 'ECO_AIDE', 'BUSINESS', 'RESIDENT');
 
@@ -18,7 +15,7 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "ServiceRequest" (
+CREATE TABLE "HaulingRequest" (
     "request_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "org_id" TEXT,
@@ -33,9 +30,8 @@ CREATE TABLE "ServiceRequest" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "ServiceRequest_pkey" PRIMARY KEY ("request_id")
+    CONSTRAINT "HaulingRequest_pkey" PRIMARY KEY ("request_id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-

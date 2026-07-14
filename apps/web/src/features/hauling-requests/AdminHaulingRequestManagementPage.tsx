@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
+import { useMemo, useState } from "react";
 import {
   DataTable,
   Button,
@@ -84,10 +84,13 @@ export function AdminHaulingRequestManagementPage() {
     { key: "requestId", header: "Request ID" },
     { key: "requestAddress", header: "Location" },
     {
-      // TODO: `wasteType` not yet on HaulingRequest — backend/Prisma pending.
       key: "wasteType",
       header: "Waste Type",
-      render: () => <span className="text-gray-400">N/A</span>,
+      render: (row) => (
+        <span>
+          {row.wasteType.replace("_", " ")}
+        </span>
+      ),
     },
     { key: "senderType", header: "Sent By" },
     {

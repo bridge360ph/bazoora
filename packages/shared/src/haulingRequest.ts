@@ -1,28 +1,29 @@
-export type SenderType = "Business" | "Resident";
+export type SenderType =
+  | "Business"
+  | "Resident";
 
-export type HaulingRequestStatus = "pending" | "approved" | "denied";
+export type WasteType =
+  | "RESIDUAL"
+  | "NON_BIODEGRADABLE"
+  | "HAZARDOUS"
+  | "BIODEGRADABLE";
+
+export type HaulingRequestStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "DENIED";
 
 export interface HaulingRequest {
   requestId: string;
 
-  /**
-   * Placeholder until User module is integrated.
-   * Will eventually reference users.user_id.
-   */
   userId: string;
-
-  /**
-   * Placeholder until Organization module is integrated.
-   * Will eventually reference organizations.org_id.
-   */
-  orgId: string;
+  orgId?: string;
 
   requestAddress: string;
 
-  /**
-   * May eventually be derived from user information.
-   */
   senderType: SenderType;
+
+  wasteType: WasteType;
 
   imageUrl?: string;
 
@@ -30,32 +31,29 @@ export interface HaulingRequest {
 
   status: HaulingRequestStatus;
 
-  /**
-   * Placeholder until authentication/admin roles are implemented.
-   */
   approvedBy?: string;
-
   approvedAt?: string;
 
+  denialReason?: string;
+
   note?: string;
+
+  archived?: boolean;
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CreateHaulingRequestInput {
-  /**
-   * Mock value for now.
-   * Will become a foreign key reference later.
-   */
   userId: string;
 
-  /**
-   * Mock value for now.
-   * Will become a foreign key reference later.
-   */
-  orgId: string;
+  orgId?: string;
 
   requestAddress: string;
 
   senderType: SenderType;
+
+  wasteType: WasteType;
 
   pickupDate: string;
 

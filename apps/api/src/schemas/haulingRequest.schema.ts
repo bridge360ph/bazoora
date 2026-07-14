@@ -4,23 +4,37 @@ export const createHaulingRequestSchema = {
     required: [
       "requestAddress",
       "senderType",
+      "wasteType",
       "pickupDate",
     ],
     properties: {
       requestAddress: {
         type: "string",
+        minLength: 5,
       },
       senderType: {
         type: "string",
+        enum: ["Business", "Resident"],
+      },
+      wasteType: {
+        type: "string",
+        enum: [
+          "RESIDUAL",
+          "NON_BIODEGRADABLE",
+          "HAZARDOUS",
+          "BIODEGRADABLE",
+        ],
       },
       pickupDate: {
         type: "string",
+        format: "date-time",
       },
       imageUrl: {
         type: "string",
       },
       note: {
         type: "string",
+        maxLength: 500,
       },
     },
   },

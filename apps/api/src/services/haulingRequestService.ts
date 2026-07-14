@@ -1,72 +1,104 @@
-import type {
-  CreateHaulingRequestInput,
-  HaulingRequest,
-} from "@bazoora/shared";
-
-const haulingRequests: HaulingRequest[] = [];
+import { prisma } from "@bazoora/db";
+import { HaulingRequestStatus } from "@prisma/client";
+import type { CreateHaulingRequestInput } from "@bazoora/shared";
+import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
 
 /**
- * Get all hauling requests (mock in-memory)
+ * Get all hauling requests
  */
-export function getHaulingRequests() {
-  return haulingRequests;
+export async function getHaulingRequests() {
+  const requests =
+    await prisma.haulingRequest.findMany({
+      where: {
+        archived: false,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+  return requests.map(mapHaulingRequest);
 }
 
 /**
- * Create a new hauling request (mock in-memory)
+ * Create a new hauling request
  */
-export function createHaulingRequest(
+export async function createHaulingRequest(
   data: CreateHaulingRequestInput,
 ) {
-  const request: HaulingRequest = {
-    requestId: crypto.randomUUID(),
-    requestAddress: data.requestAddress,
-    senderType: data.senderType,
-    pickupDate: data.pickupDate,
-    status: "pending",
+  const request =
+    await prisma.haulingRequest.create({
+      data: {
+        // TODO: Replace with authenticated user
+        user_id: "TEMP_USER",
 
-    ...(data.imageUrl !== undefined && {
-      imageUrl: data.imageUrl,
-    }),
+        // TODO: Replace once organizations exist
+        org_id: null,
 
-    ...(data.note !== undefined && {
-      note: data.note,
-    }),
-  };
+        request_address: data.requestAddress,
 
-  haulingRequests.push(request);
+        sender_type: data.senderType,
 
-  return request;
+        waste_type: data.wasteType,
+
+        pickup_date: new Date(data.pickupDate),
+
+        image_url: data.imageUrl ?? null,
+
+        note: data.note ?? null,
+
+        status: HaulingRequestStatus.PENDING,
+
+        // TODO: Add denial reason once UI provides input
+      },
+    });
+
+  return mapHaulingRequest(request);
 }
 
 /**
  * Approve a hauling request
  */
-export function approveHaulingRequest(id: string) {
-  const request = haulingRequests.find(
-    (item) => item.requestId === id,
-  );
+export async function approveHaulingRequest(
+  id: string,
+) {
+  try {
+    const request =
+      await prisma.haulingRequest.update({
+        where: {
+          request_id: id,
+        },
+        data: {
+          status: HaulingRequestStatus.APPROVED,
+          approved_at: new Date(),
+        },
+      });
 
-  if (!request) {
+    return mapHaulingRequest(request);
+  } catch {
     return null;
   }
-
-  request.status = "approved";
-  return request;
 }
 
 /**
  * Deny a hauling request
  */
-export function denyHaulingRequest(id: string) {
-  const request = haulingRequests.find(
-    (item) => item.requestId === id,
-  );
+export async function denyHaulingRequest(
+  id: string,
+) {
+  try {
+    const request =
+      await prisma.haulingRequest.update({
+        where: {
+          request_id: id,
+        },
+        data: {
+          status: HaulingRequestStatus.DENIED,
+        },
+      });
 
-  if (!request) {
+    return mapHaulingRequest(request);
+  } catch {
     return null;
   }
-
-  request.status = "denied";
-  return request;
 }

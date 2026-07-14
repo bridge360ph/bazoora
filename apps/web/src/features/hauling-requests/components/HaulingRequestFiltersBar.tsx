@@ -57,7 +57,7 @@ export function HaulingRequestFiltersBar({
         )}
       </div>
 
-      {/* TODO: no `wasteType` field on HaulingRequest yet; backend/Prisma pending */}
+      {/* TODO: add waste type filtering in a separate feature */}
       <button
         type="button"
         disabled

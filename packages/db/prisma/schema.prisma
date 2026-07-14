@@ -26,18 +26,34 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-model ServiceRequest {
+enum HaulingRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum WasteType {
+  RESIDUAL
+  NON_BIODEGRADABLE
+  HAZARDOUS
+  BIODEGRADABLE
+}
+
+model HaulingRequest {
   request_id      String    @id @default(cuid())
   user_id         String
   org_id          String?
   request_address String
   sender_type     String?
+  waste_type      WasteType
   image_url       String?
   pickup_date     DateTime?
-  status          String    @default("PENDING")
+  status          HaulingRequestStatus @default(PENDING)
   approved_by     String?
   approved_at     DateTime?
+  denial_reason   String?
   note            String?
+  archived        Boolean   @default(false)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 }

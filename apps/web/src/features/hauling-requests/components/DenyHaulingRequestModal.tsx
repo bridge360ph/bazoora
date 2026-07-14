@@ -15,6 +15,7 @@ interface DenyHaulingRequestModalProps {
  * Confirmation modal for denying a hauling request. No mockup was supplied
  * for this state, so it mirrors the Approve modal's layout for consistency.
  */
+
 export function DenyHaulingRequestModal({
   request,
   onClose,

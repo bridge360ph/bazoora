@@ -1,4 +1,5 @@
 import type { FastifyPluginCallback } from "fastify";
+import type { CreateHaulingRequestInput } from "@bazoora/shared";
 
 import {
   approveHaulingRequest,
@@ -17,16 +18,16 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
   _opts,
   done,
 ) => {
-  app.get("/", () => {
-    return getHaulingRequests();
+  app.get("/", async () => {
+    return await getHaulingRequests();
   });
 
   app.post(
     "/",
     { schema: createHaulingRequestSchema },
-    (request) => {
-      return createHaulingRequest(
-        request.body as never,
+    async (request) => {
+      return await createHaulingRequest(
+        request.body as CreateHaulingRequestInput,
       );
     },
   );
@@ -34,10 +35,10 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
   app.patch(
     "/:id/approve",
     { schema: haulingRequestParamsSchema },
-    (request, reply) => {
+    async (request, reply) => {
       const { id } = request.params as { id: string };
 
-      const result = approveHaulingRequest(id);
+      const result = await approveHaulingRequest(id);
 
       if (!result) {
         return reply.status(404).send({
@@ -52,10 +53,10 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
   app.patch(
     "/:id/deny",
     { schema: haulingRequestParamsSchema },
-    (request, reply) => {
+    async (request, reply) => {
       const { id } = request.params as { id: string };
 
-      const result = denyHaulingRequest(id);
+      const result = await denyHaulingRequest(id);
 
       if (!result) {
         return reply.status(404).send({

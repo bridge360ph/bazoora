@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 import {
   Modal,
@@ -19,7 +18,7 @@ interface ApproveHaulingRequestModalProps {
  * `HaulingRequest` has no Eco-Aide/route field yet and there's no
  * `/eco-aides` endpoint to populate it. Rendered as a static, disabled
  * select so the layout matches — TODO: wire up once the backend supports
- * Eco-Aide assignment (Prisma schema not finalized).
+ * Eco-Aide assignment (backend support is not yet implemented).
  */
 
 export function ApproveHaulingRequestModal({
@@ -29,7 +28,7 @@ export function ApproveHaulingRequestModal({
   isSubmitting,
 }: ApproveHaulingRequestModalProps) {
   // Static placeholder — TODO: replace once a GET /eco-aides endpoint exists.
-  const [ecoAideStub] = useState("Ferdinan Ramos (RT-001)");
+  const ecoAideStub = "Juan dela Cruz (RT-001)";
 
   return (
     <Modal title="Approve Request" onClose={onClose} width={480}>

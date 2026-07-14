@@ -2,7 +2,7 @@ import type { HaulingRequest } from "@bazoora/shared";
 import {
   Modal,
   Button,
-  StatusBadge
+  StatusBadge,
 } from "@bazoora/ui";
 import { STATUS_DISPLAY } from "../haulingRequestManagement.constants";
 
@@ -13,12 +13,18 @@ interface HaulingRequestDetailModalProps {
   onDenyClick: () => void;
 }
 
+function formatWasteType(type: HaulingRequest["wasteType"]) {
+  return type
+    .toLowerCase()
+    .replace("_", " ")
+    .replace(/^\w/, (char) => char.toUpperCase());
+}
+
 /**
  * "View Details" modal for a single hauling request.
- *
- * Fields not yet on `HaulingRequest` (Fee Classification, split
- * Date Requested/Date Needed) render as static placeholders — the Prisma
- * schema isn't finalized. TODO: replace once the backend exposes them.
+ * 
+ * Fields not yet supported by the backend (Fee Classification,
+ * Date Requested/Date Needed split) render as placeholders.
  */
 export function HaulingRequestDetailModal({
   request,
@@ -52,10 +58,13 @@ export function HaulingRequestDetailModal({
 
         <DetailRow label="Location" value={request.requestAddress} />
 
-        {/* TODO: wasteType not yet on HaulingRequest — backend/Prisma pending */}
-        <DetailRow label="Waste Type" value="N/A" />
+        <DetailRow
+          label="Waste Type"
+          value={formatWasteType(request.wasteType)}
+        />
 
-        {/* TODO: feeClassification not yet on HaulingRequest — backend/Prisma pending */}
+        {/* Fields not yet supported by the backend (Fee Classification,
+            Date Requested/Date Needed split) render as placeholders.  */}
         <DetailRow label="Fee Classification" value="N/A" />
 
         <DetailRow label="Sent By" value={request.senderType} />
@@ -64,7 +73,14 @@ export function HaulingRequestDetailModal({
           TODO: Figma splits this into "Date Requested"/"Date Needed";
           HaulingRequest only has a single `pickupDate` today.
         */}
-        <DetailRow label="Pickup Date" value={request.pickupDate} />
+        <DetailRow
+          label="Pickup Date"
+          value={
+            request.pickupDate
+              ? new Date(request.pickupDate).toLocaleString()
+              : "N/A"
+          }
+        />
 
         {request.note && <DetailRow label="Note" value={request.note} />}
 
@@ -73,7 +89,7 @@ export function HaulingRequestDetailModal({
           <StatusBadge status={STATUS_DISPLAY[request.status]} />
         </div>
 
-        {request.status === "pending" && (
+        {request.status === "PENDING" && (
           <div className="flex justify-center gap-4 pt-2">
             <Button variant="primary" onClick={onApproveClick}>
               Approve

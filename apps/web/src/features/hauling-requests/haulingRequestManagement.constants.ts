@@ -1,12 +1,11 @@
-import type { HaulingRequest } from "@bazoora/shared";
+import type { HaulingRequestStatus } from "@bazoora/shared";
 import type { SenderFilterValue } from "./haulingRequestManagement.types.ts";
 
-// Maps the lowercase backend status to the label StatusBadge expects
-export const STATUS_DISPLAY: Record<HaulingRequest["status"], string> = {
-  pending: "Pending",
-  approved: "Approved",
-  denied: "Denied",
-};
+export const STATUS_DISPLAY = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  DENIED: "Denied",
+} satisfies Record<HaulingRequestStatus, string>;
 
 export const SENDER_FILTER_OPTIONS: {
   label: string;
