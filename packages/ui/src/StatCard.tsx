@@ -11,32 +11,32 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={className}
-      style={{
-        background: "#ffffff",
-        borderRadius: 10,
-        padding: "18px 20px",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-      }}
+      className={`
+        bg-white
+        rounded-[10px]
+        px-[20px] py-[18px]
+        border border-[#e5e7eb]
+        shadow-[0_1px_3px_rgba(0,0,0,0.04)]
+        ${className}
+      `}
     >
       <div
-        style={{
-          fontSize: 12.5,
-          color: "#6b7280",
-          marginBottom: 6,
-        }}
+        className="
+          mb-[6px]
+          text-[12.5px]
+          text-[#6b7280]
+        "
       >
         {label}
       </div>
 
       <div
-        style={{
-          fontSize: 28,
-          fontWeight: 800,
-          color: "#111111",
-          lineHeight: 1,
-        }}
+        className="
+          text-[28px]
+          font-extrabold
+          leading-none
+          text-[#111111]
+        "
       >
         {value}
       </div>

@@ -1,11 +1,11 @@
-import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type ButtonVariant =
-  | "primary"        // dark green background, white text (main actions)
-  | "secondary"      // light gray background, dark text (secondary actions)
-  | "ghost"          // transparent background, muted text
-  | "outline"        // transparent background, white text, bordered
-  | "blackWhiteText"; // black background, white text
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "outline"
+  | "blackWhiteText";
 
 type ButtonSize = "sm" | "md" | "lg";
 
@@ -15,66 +15,28 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
 }
 
-const baseStyle: CSSProperties = {
-  border: "none",
-  borderRadius: 6,
-  cursor: "pointer",
-  fontWeight: 500,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
+const variantStyles: Record<ButtonVariant, string> = {
+  primary: "bg-[#1a3a2e] text-white",
+  secondary: "bg-[#f3f4f6] text-[#374151]",
+  ghost: "bg-transparent text-[#6b7280]",
+  outline: "border border-[rgba(255,255,255,0.3)] bg-transparent text-white",
+  blackWhiteText: "bg-black text-white",
 };
 
-const variantStyles: Record<ButtonVariant, CSSProperties> = {
-  primary: {
-    background: "#1a3a2e",
-    color: "#ffffff",
-  },
-
-  secondary: {
-    background: "#f3f4f6",
-    color: "#374151",
-  },
-
-  ghost: {
-    background: "transparent",
-    color: "#6b7280",
-  },
-
-  outline: {
-    background: "transparent",
-    color: "#ffffff",
-    border: "1px solid rgba(255,255,255,0.3)",
-  },
-
-  blackWhiteText: {
-    background: "#000000",
-    color: "#ffffff",
-  },
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: "px-3 py-1 text-[11.5px]",
+  md: "px-[14px] py-2 text-[13px]",
+  lg: "px-5 py-2.5 text-[14px]",
 };
 
-const sizeStyles: Record<ButtonSize, CSSProperties> = {
-  sm: {
-    padding: "4px 12px",
-    fontSize: 11.5,
-  },
-
-  md: {
-    padding: "8px 14px",
-    fontSize: 13,
-  },
-
-  lg: {
-    padding: "10px 20px",
-    fontSize: 14,
-  },
-};
+const baseStyle =
+  "border-none rounded-md cursor-pointer font-medium inline-flex items-center justify-center gap-2";
 
 export function Button({
   children,
   variant = "primary",
   size = "md",
+  className = "",
   style,
   type = "button",
   ...props
@@ -82,12 +44,13 @@ export function Button({
   return (
     <button
       type={type}
-      style={{
-        ...baseStyle,
-        ...variantStyles[variant],
-        ...sizeStyles[size],
-        ...style,
-      }}
+      style={style}
+      className={`
+        ${baseStyle}
+        ${variantStyles[variant]}
+        ${sizeStyles[size]}
+        ${className}
+      `}
       {...props}
     >
       {children}
