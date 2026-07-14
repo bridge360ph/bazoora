@@ -11,33 +11,10 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`
-        bg-white
-        rounded-[10px]
-        px-[20px] py-[18px]
-        border border-[#e5e7eb]
-        shadow-[0_1px_3px_rgba(0,0,0,0.04)]
-        ${className}
-      `}
+      className={`rounded-[10px] border border-gray-200 bg-white px-5 py-[18px] shadow-sm ${className}`}
     >
-      <div
-        className="
-          mb-[6px]
-          text-[12.5px]
-          text-[#6b7280]
-        "
-      >
-        {label}
-      </div>
-
-      <div
-        className="
-          text-[28px]
-          font-extrabold
-          leading-none
-          text-[#111111]
-        "
-      >
+      <div className="mb-1.5 text-xs text-gray-500">{label}</div>
+      <div className="text-3xl font-extrabold leading-none text-gray-900">
         {value}
       </div>
     </div>

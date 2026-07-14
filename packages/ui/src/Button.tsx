@@ -15,42 +15,35 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
 }
 
-const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-[#1a3a2e] text-white",
-  secondary: "bg-[#f3f4f6] text-[#374151]",
-  ghost: "bg-transparent text-[#6b7280]",
-  outline: "border border-[rgba(255,255,255,0.3)] bg-transparent text-white",
+const baseClasses =
+  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border-0 font-medium";
+
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: "bg-brand text-white",
+  secondary: "bg-gray-100 text-gray-700",
+  ghost: "bg-transparent text-gray-500",
+  outline: "border border-white/30 bg-transparent text-white",
   blackWhiteText: "bg-black text-white",
 };
 
-const sizeStyles: Record<ButtonSize, string> = {
+const sizeClasses: Record<ButtonSize, string> = {
   sm: "px-3 py-1 text-[11.5px]",
-  md: "px-[14px] py-2 text-[13px]",
-  lg: "px-5 py-2.5 text-[14px]",
+  md: "px-3.5 py-2 text-[13px]",
+  lg: "px-5 py-2.5 text-sm",
 };
-
-const baseStyle =
-  "border-none rounded-md cursor-pointer font-medium inline-flex items-center justify-center gap-2";
 
 export function Button({
   children,
   variant = "primary",
   size = "md",
   className = "",
-  style,
   type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
-      style={style}
-      className={`
-        ${baseStyle}
-        ${variantStyles[variant]}
-        ${sizeStyles[size]}
-        ${className}
-      `}
+      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...props}
     >
       {children}

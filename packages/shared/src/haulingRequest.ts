@@ -26,9 +26,7 @@ export interface HaulingRequest {
   wasteType: WasteType;
 
   imageUrl?: string;
-
   pickupDate: string;
-
   status: HaulingRequestStatus;
 
   approvedBy?: string;
