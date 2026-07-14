@@ -2,41 +2,40 @@ interface StatusBadgeProps {
   status: string;
 }
 
-const statusStyles: Record<string, string> = {
-  Available: "text-[#166534] bg-[#dcfce7]",
-  Completed: "text-[#166534] bg-[#dcfce7]",
-  Approved: "text-[#166534] bg-[#dcfce7]",
+const baseClasses =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-xl px-2.5 py-0.5 text-[12.5px] font-medium";
 
-  Pending: "text-[#92400e] bg-[#fef3c7]",
-  "On Route": "text-[#92400e] bg-[#fef3c7]",
-  "In Progress": "text-[#92400e] bg-[#fef3c7]",
+function getStatusClasses(status: string): string {
+  if (
+    status === "Available" ||
+    status === "Completed" ||
+    status === "Approved"
+  ) {
+    return "bg-green-100 text-green-800";
+  }
 
-  Assigned: "text-[#1d4ed8] bg-[#dbeafe]",
+  if (
+    status === "Pending" ||
+    status === "On Route" ||
+    status === "In Progress"
+  ) {
+    return "bg-amber-100 text-amber-800";
+  }
 
-  Denied: "text-[#991b1b] bg-[#fee2e2]",
-  "Off Duty": "text-[#991b1b] bg-[#fee2e2]",
-};
+  if (status === "Assigned") {
+    return "bg-blue-100 text-blue-700";
+  }
 
-const baseStyle = `
-  inline-flex
-  items-center
-  justify-center
-  whitespace-nowrap
-  rounded-xl
-  px-[10px]
-  py-[2px]
-  text-[12.5px]
-  font-medium
-`;
+  if (status === "Denied" || status === "Off Duty") {
+    return "bg-red-100 text-red-800";
+  }
+
+  return "bg-gray-100 text-gray-500";
+}
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   return (
-    <span
-      className={`
-        ${baseStyle}
-        ${statusStyles[status] ?? "text-[#6b7280] bg-[#f3f4f6]"}
-      `}
-    >
+    <span className={`${baseClasses} ${getStatusClasses(status)}`}>
       {status}
     </span>
   );
