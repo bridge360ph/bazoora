@@ -89,6 +89,18 @@ export function HaulingRequestDetailModal({
           <StatusBadge status={STATUS_DISPLAY[request.status]} />
         </div>
 
+        {request.status === "DENIED" && request.denialReason && (
+          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+            <p className="text-sm font-semibold text-red-700">
+              Denial Reason
+            </p>
+
+            <p className="text-sm text-red-600 mt-1">
+              {request.denialReason}
+            </p>
+          </div>
+        )}
+
         {request.status === "PENDING" && (
           <div className="flex justify-center gap-4 pt-2">
             <Button variant="primary" onClick={onApproveClick}>
@@ -120,3 +132,4 @@ function DetailRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+

@@ -76,8 +76,19 @@ export function AdminHaulingRequestManagementPage() {
     approveMutation.mutate(requestId, { onSuccess: closeModal });
   }
 
-  function handleDeny(requestId: string) {
-    denyMutation.mutate(requestId, { onSuccess: closeModal });
+  function handleDeny(
+    requestId: string,
+    denialReason: string,
+  ) {
+    denyMutation.mutate(
+      {
+        requestId,
+        denialReason,
+      },
+      {
+        onSuccess: closeModal,
+      },
+    );
   }
 
   const columns: Column<HaulingRequest>[] = [

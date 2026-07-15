@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 import {
   Modal,
@@ -7,14 +8,12 @@ import {
 interface DenyHaulingRequestModalProps {
   request: HaulingRequest;
   onClose: () => void;
-  onConfirm: (requestId: string) => void;
+  onConfirm: (
+    requestId: string,
+    denialReason: string,
+  ) => void;
   isSubmitting: boolean;
 }
-
-/**
- * Confirmation modal for denying a hauling request. No mockup was supplied
- * for this state, so it mirrors the Approve modal's layout for consistency.
- */
 
 export function DenyHaulingRequestModal({
   request,
@@ -22,6 +21,10 @@ export function DenyHaulingRequestModal({
   onConfirm,
   isSubmitting,
 }: DenyHaulingRequestModalProps) {
+  const [denialReason, setDenialReason] = useState("");
+
+  const isValid = denialReason.trim().length >= 5;
+
   return (
     <Modal title="Deny Request" onClose={onClose} width={420}>
       <div className="flex flex-col gap-4">
@@ -30,19 +33,57 @@ export function DenyHaulingRequestModal({
           <span className="font-semibold text-gray-900">
             {request.requestId}
           </span>
-          ? This action cannot be undone.
+          ?
         </p>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Reason for denial
+          </label>
+
+          <textarea
+            value={denialReason}
+            onChange={(e) => setDenialReason(e.target.value)}
+            placeholder="Enter reason for denying this request..."
+            maxLength={500}
+            rows={4}
+            className="w-full border rounded-md px-3 py-2 text-sm"
+          />
+
+          <div className="flex justify-between mt-1">
+            {!isValid && denialReason.length > 0 ? (
+              <p className="text-sm text-red-600">
+                Reason must be at least 5 characters.
+              </p>
+            ) : (
+              <span />
+            )}
+
+            <p className="text-xs text-gray-500">
+              {denialReason.trim().length}/500
+            </p>
+          </div>
+        </div>
 
         <div className="flex justify-center gap-3 pt-2">
           <Button
             variant="secondary"
             style={{ background: "#7f1d1d", color: "#ffffff" }}
-            disabled={isSubmitting}
-            onClick={() => onConfirm(request.requestId)}
+            disabled={isSubmitting || !isValid}
+            onClick={() =>
+              onConfirm(
+                request.requestId,
+                denialReason.trim(),
+              )
+            }
           >
             {isSubmitting ? "Denying..." : "Deny"}
           </Button>
-          <Button variant="secondary" onClick={onClose}>
+
+          <Button
+            variant="secondary"
+            onClick={onClose}
+          >
             Cancel
           </Button>
         </div>

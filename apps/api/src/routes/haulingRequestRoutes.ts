@@ -11,6 +11,7 @@ import {
 import {
   createHaulingRequestSchema,
   haulingRequestParamsSchema,
+  denyHaulingRequestSchema,
 } from "../schemas/haulingRequest.schema.js";
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
@@ -52,11 +53,20 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
 
   app.patch(
     "/:id/deny",
-    { schema: haulingRequestParamsSchema },
+    {
+      schema: denyHaulingRequestSchema,
+    },
     async (request, reply) => {
       const { id } = request.params as { id: string };
 
-      const result = await denyHaulingRequest(id);
+      const { denialReason } = request.body as {
+        denialReason: string;
+      };
+
+      const result = await denyHaulingRequest(
+        id,
+        denialReason,
+      );
 
       if (!result) {
         return reply.status(404).send({

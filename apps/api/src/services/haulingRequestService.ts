@@ -62,22 +62,35 @@ export async function createHaulingRequest(
 export async function approveHaulingRequest(
   id: string,
 ) {
-  try {
-    const request =
-      await prisma.haulingRequest.update({
-        where: {
-          request_id: id,
-        },
-        data: {
-          status: HaulingRequestStatus.APPROVED,
-          approved_at: new Date(),
-        },
-      });
+  const existing =
+    await prisma.haulingRequest.findUnique({
+      where: {
+        request_id: id,
+      },
+    });
 
-    return mapHaulingRequest(request);
-  } catch {
+  if (!existing) {
     return null;
   }
+
+  if (existing.status !== HaulingRequestStatus.PENDING) {
+    throw new Error(
+      "Only pending requests can be approved",
+    );
+  }
+
+  const request =
+    await prisma.haulingRequest.update({
+      where: {
+        request_id: id,
+      },
+      data: {
+        status: HaulingRequestStatus.APPROVED,
+        approved_at: new Date(),
+      },
+    });
+
+  return mapHaulingRequest(request);
 }
 
 /**
@@ -85,20 +98,53 @@ export async function approveHaulingRequest(
  */
 export async function denyHaulingRequest(
   id: string,
+  denialReason: string,
 ) {
-  try {
-    const request =
-      await prisma.haulingRequest.update({
-        where: {
-          request_id: id,
-        },
-        data: {
-          status: HaulingRequestStatus.DENIED,
-        },
-      });
+  const trimmedReason = denialReason.trim();
 
-    return mapHaulingRequest(request);
-  } catch {
+  if (!trimmedReason) {
+    throw new Error("Denial reason is required");
+  }
+
+  if (trimmedReason.length < 5) {
+    throw new Error(
+      "Denial reason must be at least 5 characters",
+    );
+  }
+
+  if (trimmedReason.length > 500) {
+    throw new Error(
+      "Denial reason must not exceed 500 characters",
+    );
+  }
+
+  const existing =
+    await prisma.haulingRequest.findUnique({
+      where: {
+        request_id: id,
+      },
+    });
+
+  if (!existing) {
     return null;
   }
+
+  if (existing.status !== HaulingRequestStatus.PENDING) {
+    throw new Error(
+      "Only pending requests can be denied",
+    );
+  }
+
+  const request =
+    await prisma.haulingRequest.update({
+      where: {
+        request_id: id,
+      },
+      data: {
+        status: HaulingRequestStatus.DENIED,
+        denial_reason: trimmedReason,
+      },
+    });
+
+  return mapHaulingRequest(request);
 }
