@@ -13,6 +13,9 @@ import { DriverLayout } from "./layouts/DriverLayout";
 import { AdminFleetManagementPage }
   from "./features/fleet-management/AdminFleetManagementPage";
 
+import { AdminHaulingRequestManagementPage }
+  from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
@@ -59,7 +62,7 @@ function App() {
 
           <Route
             path="hauling"
-            element={<RoutePlaceholder title="Hauling Request Management" />}
+            element={<AdminHaulingRequestManagementPage />}
           />
 
           <Route
