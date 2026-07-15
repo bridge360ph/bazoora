@@ -3,6 +3,7 @@ import type {
   HaulingRequest,
 } from "@bazoora/shared";
 
+// TODO: replace with @bazoora/db queries once the HaulingRequest model lands (#44)
 const haulingRequests: HaulingRequest[] = [];
 
 /**

@@ -35,7 +35,7 @@ export function DenyHaulingRequestModal({
         <div className="flex justify-center gap-3 pt-2">
           <Button
             variant="secondary"
-            style={{ background: "#7f1d1d", color: "#ffffff" }}
+            className="bg-red-900 text-white"
             disabled={isSubmitting}
             onClick={() => onConfirm(request.requestId)}
           >
