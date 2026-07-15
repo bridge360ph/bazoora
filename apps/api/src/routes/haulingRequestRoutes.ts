@@ -37,17 +37,29 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
     "/:id/approve",
     { schema: haulingRequestParamsSchema },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
+      try {
+        const { id } =
+          request.params as { id: string };
 
-      const result = await approveHaulingRequest(id);
+        const result =
+          await approveHaulingRequest(id);
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to approve request",
         });
       }
-
-      return result;
     },
   );
 
@@ -57,24 +69,30 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       schema: denyHaulingRequestSchema,
     },
     async (request, reply) => {
-      const { id } = request.params as { id: string };
+      const { id } = request.params as {
+        id: string;
+      };
 
       const { denialReason } = request.body as {
         denialReason: string;
       };
 
-      const result = await denyHaulingRequest(
-        id,
-        denialReason,
-      );
+      try {
+        const result = await denyHaulingRequest(
+          id,
+          denialReason,
+        );
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        return result;
+
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid denial reason",
         });
       }
-
-      return result;
     },
   );
 

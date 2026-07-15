@@ -6,8 +6,16 @@ export function useDenyHaulingRequest() {
 
   return useMutation({
     mutationFn: denyHaulingRequest,
+
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["hauling-requests"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["hauling-requests"],
+      });
+    },
+
+    onError: (error) => {
+      console.error(error.message);
+      alert(error.message); // temporary feedback
     },
   });
 }

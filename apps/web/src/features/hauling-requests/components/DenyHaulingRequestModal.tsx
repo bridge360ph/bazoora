@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 import {
   Modal,
-  Button
+  Button,
 } from "@bazoora/ui";
 
 interface DenyHaulingRequestModalProps {
@@ -23,7 +23,11 @@ export function DenyHaulingRequestModal({
 }: DenyHaulingRequestModalProps) {
   const [denialReason, setDenialReason] = useState("");
 
-  const isValid = denialReason.trim().length >= 5;
+  const trimmedReason = denialReason.trim();
+
+  const isValid =
+    trimmedReason.length >= 5 &&
+    trimmedReason.length <= 500;
 
   return (
     <Modal title="Deny Request" onClose={onClose} width={420}>
@@ -51,16 +55,23 @@ export function DenyHaulingRequestModal({
           />
 
           <div className="flex justify-between mt-1">
-            {!isValid && denialReason.length > 0 ? (
-              <p className="text-sm text-red-600">
-                Reason must be at least 5 characters.
-              </p>
-            ) : (
-              <span />
-            )}
+            <div>
+              {trimmedReason.length > 0 &&
+                trimmedReason.length < 5 && (
+                  <p className="text-sm text-red-600">
+                    Reason must be at least 5 characters.
+                  </p>
+                )}
+
+              {trimmedReason.length === 0 && (
+                <p className="text-sm text-red-600">
+                  Denial reason is required.
+                </p>
+              )}
+            </div>
 
             <p className="text-xs text-gray-500">
-              {denialReason.trim().length}/500
+              {denialReason.length}/500
             </p>
           </div>
         </div>
@@ -73,7 +84,7 @@ export function DenyHaulingRequestModal({
             onClick={() =>
               onConfirm(
                 request.requestId,
-                denialReason.trim(),
+                trimmedReason,
               )
             }
           >

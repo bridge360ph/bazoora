@@ -118,33 +118,21 @@ export async function denyHaulingRequest(
     );
   }
 
-  const existing =
-    await prisma.haulingRequest.findUnique({
-      where: {
-        request_id: id,
-      },
-    });
+  try {
+    const request =
+      await prisma.haulingRequest.update({
+        where: {
+          request_id: id,
+        },
+        data: {
+          status: HaulingRequestStatus.DENIED,
+          denial_reason: trimmedReason,
+        },
+      });
 
-  if (!existing) {
+    return mapHaulingRequest(request);
+
+  } catch {
     return null;
   }
-
-  if (existing.status !== HaulingRequestStatus.PENDING) {
-    throw new Error(
-      "Only pending requests can be denied",
-    );
-  }
-
-  const request =
-    await prisma.haulingRequest.update({
-      where: {
-        request_id: id,
-      },
-      data: {
-        status: HaulingRequestStatus.DENIED,
-        denial_reason: trimmedReason,
-      },
-    });
-
-  return mapHaulingRequest(request);
 }

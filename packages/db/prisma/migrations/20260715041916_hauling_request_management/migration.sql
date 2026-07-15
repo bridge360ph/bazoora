@@ -1,6 +1,12 @@
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('SUPER_ADMIN', 'GOVERNMENT_ADMIN', 'HAULING_ADMIN', 'DRIVER', 'ECO_AIDE', 'BUSINESS', 'RESIDENT');
 
+-- CreateEnum
+CREATE TYPE "HaulingRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'DENIED');
+
+-- CreateEnum
+CREATE TYPE "WasteType" AS ENUM ('RESIDUAL', 'NON_BIODEGRADABLE', 'HAZARDOUS', 'BIODEGRADABLE');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -21,12 +27,15 @@ CREATE TABLE "HaulingRequest" (
     "org_id" TEXT,
     "request_address" TEXT NOT NULL,
     "sender_type" TEXT,
+    "waste_type" "WasteType" NOT NULL,
     "image_url" TEXT,
     "pickup_date" TIMESTAMP(3),
-    "status" TEXT NOT NULL DEFAULT 'PENDING',
+    "status" "HaulingRequestStatus" NOT NULL DEFAULT 'PENDING',
     "approved_by" TEXT,
     "approved_at" TIMESTAMP(3),
+    "denial_reason" TEXT,
     "note" TEXT,
+    "archived" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
