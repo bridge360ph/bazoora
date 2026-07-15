@@ -12,9 +12,14 @@ export const SENDER_FILTER_OPTIONS: {
   value: SenderFilterValue;
 }[] = [
   { label: "All", value: "All" },
-  { label: "Residents", value: "Resident" },
-  { label: "Business", value: "Business" },
+  { label: "Residents", value: "RESIDENT" },
+  { label: "Business", value: "BUSINESS" },
 ];
+
+export const SENDER_DISPLAY = {
+  RESIDENT: "Resident",
+  BUSINESS: "Business",
+} as const;
 
 export const WASTE_TYPE_FILTER_OPTIONS = [
   {

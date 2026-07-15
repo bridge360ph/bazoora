@@ -21,6 +21,7 @@ import type {
 import {
   HAULING_REQUESTS_PAGE_SIZE,
   STATUS_DISPLAY,
+  SENDER_DISPLAY,
 } from "./haulingRequestManagement.constants.ts";
 
 /**
@@ -111,7 +112,7 @@ export function AdminHaulingRequestManagementPage() {
   }
 
   const columns: Column<HaulingRequest>[] = [
-    { key: "requestId", header: "Request ID" },
+    { key: "requestNumber", header: "Request ID" },
     { key: "requestAddress", header: "Location" },
     {
       key: "wasteType",
@@ -122,7 +123,15 @@ export function AdminHaulingRequestManagementPage() {
         </span>
       ),
     },
-    { key: "senderType", header: "Sent By" },
+    {
+      key: "senderType",
+      header: "Sent By",
+      render: (row) => (
+        <span>
+          {SENDER_DISPLAY[row.senderType]}
+        </span>
+      ),
+    },
     {
       key: "status",
       header: "Status",

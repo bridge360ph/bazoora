@@ -35,7 +35,7 @@ export function DenyHaulingRequestModal({
         <p className="text-sm text-gray-600">
           Are you sure you want to deny request{" "}
           <span className="font-semibold text-gray-900">
-            {request.requestId}
+            {request.requestNumber}
           </span>
           ?
         </p>

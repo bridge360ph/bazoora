@@ -39,12 +39,23 @@ enum WasteType {
   BIODEGRADABLE
 }
 
+enum SenderType {
+  RESIDENT
+  BUSINESS
+}
+
+model RequestCounter {
+  id        String @id @default("hauling_request")
+  lastValue Int    @default(0)
+}
+
 model HaulingRequest {
   request_id      String    @id @default(cuid())
+  request_number  String    @unique
   user_id         String
   org_id          String?
   request_address String
-  sender_type     String?
+  sender_type     SenderType?
   waste_type      WasteType
   image_url       String?
   pickup_date     DateTime?

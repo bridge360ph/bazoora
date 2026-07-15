@@ -33,13 +33,13 @@ export function HaulingRequestDetailModal({
   onDenyClick,
 }: HaulingRequestDetailModalProps) {
   return (
-    <Modal title={request.requestId} onClose={onClose} width={640}>
+    <Modal title={request.requestNumber} onClose={onClose} width={640}>
       <div className="flex flex-col gap-4">
         <div className="w-full h-56 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
           {request.imageUrl ? (
             <img
               src={request.imageUrl}
-              alt={`Photo for ${request.requestId}`}
+              alt={`Photo for ${request.requestNumber}`}
               className="w-full h-full object-cover"
             />
           ) : (

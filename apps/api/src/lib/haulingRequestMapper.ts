@@ -1,4 +1,4 @@
-import type { HaulingRequest as PrismaHaulingRequest } from "@prisma/client";
+import type { HaulingRequest as PrismaHaulingRequest } from "@bazoora/db";
 import type { HaulingRequest as SharedHaulingRequest } from "@bazoora/shared";
 
 export function mapHaulingRequest(
@@ -6,7 +6,9 @@ export function mapHaulingRequest(
 ): SharedHaulingRequest {
   return {
     requestId: request.request_id,
-
+    
+    requestNumber: request.request_number,
+  
     userId: request.user_id,
 
     requestAddress: request.request_address,

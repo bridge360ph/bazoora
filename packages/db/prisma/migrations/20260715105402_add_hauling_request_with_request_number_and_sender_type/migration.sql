@@ -10,16 +10,28 @@ CREATE TYPE "HaulingRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'DENIED');
 -- CreateEnum
 CREATE TYPE "WasteType" AS ENUM ('RESIDUAL', 'NON_BIODEGRADABLE', 'HAZARDOUS', 'BIODEGRADABLE');
 
+-- CreateEnum
+CREATE TYPE "SenderType" AS ENUM ('RESIDENT', 'BUSINESS');
+
 -- DropTable
 DROP TABLE "ServiceRequest";
 
 -- CreateTable
+CREATE TABLE "RequestCounter" (
+    "id" TEXT NOT NULL DEFAULT 'hauling_request',
+    "lastValue" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "RequestCounter_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "HaulingRequest" (
     "request_id" TEXT NOT NULL,
+    "request_number" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "org_id" TEXT,
     "request_address" TEXT NOT NULL,
-    "sender_type" TEXT,
+    "sender_type" "SenderType",
     "waste_type" "WasteType" NOT NULL,
     "image_url" TEXT,
     "pickup_date" TIMESTAMP(3),
@@ -34,3 +46,6 @@ CREATE TABLE "HaulingRequest" (
 
     CONSTRAINT "HaulingRequest_pkey" PRIMARY KEY ("request_id")
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "HaulingRequest_request_number_key" ON "HaulingRequest"("request_number");

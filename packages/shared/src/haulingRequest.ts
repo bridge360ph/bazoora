@@ -1,6 +1,6 @@
 export type SenderType =
-  | "Business"
-  | "Resident";
+  | "RESIDENT"
+  | "BUSINESS";
 
 export type WasteType =
   | "RESIDUAL"
@@ -15,7 +15,8 @@ export type HaulingRequestStatus =
 
 export interface HaulingRequest {
   requestId: string;
-
+  requestNumber: string;
+  
   userId: string;
   orgId?: string;
 

@@ -14,7 +14,7 @@ export const createHaulingRequestSchema = {
       },
       senderType: {
         type: "string",
-        enum: ["Business", "Resident"],
+        enum: ["RESIDENT", "BUSINESS"],
       },
       wasteType: {
         type: "string",
