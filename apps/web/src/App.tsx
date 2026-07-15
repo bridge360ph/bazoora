@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { socket } from "./lib/socket";
-
-import { AdminLayout } from "./layouts/AdminLayout";
-import { DriverLayout } from "./layouts/DriverLayout";
-
-import { AdminHome } from "./pages/AdminHome";
 import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+// admin imports
+import { AdminLayout } from "./layouts/AdminLayout";
+import { AdminHome } from "./pages/AdminHome";
+import { AdminAnalyticsPage }
+  from "./features/analytics/AdminAnalyticsPage";
+// driver imports
+import { DriverLayout } from "./layouts/DriverLayout";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
@@ -59,7 +61,7 @@ function App() {
 
           <Route
             path="analytics"
-            element={<RoutePlaceholder title="Analytics" />}
+            element={<AdminAnalyticsPage />}
           />
 
           <Route
