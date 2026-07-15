@@ -7,6 +7,7 @@ import { DriverLayout } from "./layouts/DriverLayout";
 
 import { AdminHome } from "./pages/AdminHome";
 import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
@@ -62,10 +63,7 @@ function App() {
             element={<RoutePlaceholder title="Analytics" />}
           />
 
-          <Route
-            path="notifications"
-            element={<RoutePlaceholder title="Notifications" />}
-          />
+          <Route path="notifications" element={<NotificationsPage />} />
 
           <Route
             path="settings"
