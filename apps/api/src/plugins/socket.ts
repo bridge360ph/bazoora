@@ -1,9 +1,10 @@
-/* eslint-disable */
 import { Server as HttpServer } from "node:http";
-import { Server } from "socket.io";
+import { Server as SocketIOServer } from "socket.io";
 
-export function setupSocket(server: HttpServer): Server {
-  const io = new Server(server, {
+let io: SocketIOServer | null = null;
+
+export function setupSocket(server: HttpServer): SocketIOServer {
+  io = new SocketIOServer(server, {
     cors: {
       origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
       credentials: true,
@@ -11,4 +12,18 @@ export function setupSocket(server: HttpServer): Server {
   });
 
   return io;
+}
+
+export function emitTruckLocation(
+  orgId: string,
+  payload: {
+    truckId: string;
+    lat: number;
+    lng: number;
+    timestamp: string;
+  }
+): void {
+  if (!io) return;
+
+  io.to(`org:${orgId}`).emit("truck:location", payload);
 }

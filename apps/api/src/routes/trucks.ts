@@ -73,8 +73,9 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       create: {
         id: driverId,
         email: `${driverId}@bazoora.com`,
+        password: "",
         role: "DRIVER",
-      },
+    },
     });
 
     let truck = await prisma.truck.findFirst({
@@ -158,7 +159,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         ? {
             lat: location.latitude,
             lng: location.longitude,
-            timestamp: location.updatedAt.toISOString(),
+            timestamp: location.createdAt.toISOString(),
           }
         : null,
       plannedRoute: plannedRoutes.get(truck.id) || [],
@@ -188,8 +189,9 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       create: {
         id: driverId,
         email: `${driverId}@bazoora.com`,
+        password: "",
         role: "DRIVER",
-      },
+    },
     });
 
     // Upsert coordinates in DriverLocation table

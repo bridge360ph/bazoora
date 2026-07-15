@@ -24,20 +24,56 @@ model User {
   role      UserRole
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+    assignedTrucks  Truck[]          @relation("AssignedDriver")
+    driverLocation  DriverLocation? @relation("DriverLocations")
 }
 
 model ServiceRequest {
-  request_id      String    @id @default(cuid())
+  request_id      String   @id @default(cuid())
   user_id         String
   org_id          String?
   request_address String
   sender_type     String?
   image_url       String?
   pickup_date     DateTime?
-  status          String    @default("PENDING")
+  status          String   @default("PENDING")
   approved_by     String?
   approved_at     DateTime?
   note            String?
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+model Truck {
+  id                String   @id @default(cuid())
+  plateNumber       String   @unique
+  model             String?
+  status            String   @default("AVAILABLE")
+
+  assignedDriverId  String?
+  assignedDriver    User?    @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+
+  latitude          Float?
+  longitude         Float?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  driverLocations   DriverLocation[]
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+
+  driverId  String   @unique
+  driver    User     @relation("DriverLocations", fields: [driverId], references: [id])
+
+  truckId   String?
+  truck     Truck?   @relation(fields: [truckId], references: [id])
+
+  latitude  Float
+  longitude Float
+
+  createdAt DateTime @default(now())
 }

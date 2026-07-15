@@ -30,7 +30,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return { success: false, message: "Email already registered" };
     }
 
-    const hashedPassword = password ? hashPassword(password) : null;
+    const hashedPassword = password
+      ? hashPassword(password)
+      : hashPassword("password123");
+      
     const user = await prisma.user.create({
       data: {
         email: email.toLowerCase(),
