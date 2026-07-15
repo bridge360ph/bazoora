@@ -16,5 +16,28 @@ export const SENDER_FILTER_OPTIONS: {
   { label: "Business", value: "Business" },
 ];
 
+export const WASTE_TYPE_FILTER_OPTIONS = [
+  {
+    label: "All",
+    value: "All",
+  },
+  {
+    label: "Residual",
+    value: "RESIDUAL",
+  },
+  {
+    label: "Non-Biodegradable",
+    value: "NON_BIODEGRADABLE",
+  },
+  {
+    label: "Hazardous",
+    value: "HAZARDOUS",
+  },
+  {
+    label: "Biodegradable",
+    value: "BIODEGRADABLE",
+  },
+] as const;
+
 // Client-side pagination only; backend returns the full array
 export const HAULING_REQUESTS_PAGE_SIZE = 7;

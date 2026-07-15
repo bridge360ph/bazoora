@@ -16,7 +16,8 @@ import { DenyHaulingRequestModal } from "./components/DenyHaulingRequestModal";
 import type {
   ModalMode,
   SenderFilterValue,
-} from "./haulingRequestManagement.types.ts";
+  WasteTypeFilterValue,
+} from "./haulingRequestManagement.types";
 import {
   HAULING_REQUESTS_PAGE_SIZE,
   STATUS_DISPLAY,
@@ -41,6 +42,7 @@ export function AdminHaulingRequestManagementPage() {
   const denyMutation = useDenyHaulingRequest();
 
   const [senderFilter, setSenderFilter] = useState<SenderFilterValue>("All");
+  const [wasteTypeFilter, setWasteTypeFilter] = useState<WasteTypeFilterValue>("All");
   const [page, setPage] = useState(1);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedRequest, setSelectedRequest] = useState<HaulingRequest | null>(
@@ -49,9 +51,26 @@ export function AdminHaulingRequestManagementPage() {
 
   const filteredRequests = useMemo(() => {
     if (!requests) return [];
-    if (senderFilter === "All") return requests;
-    return requests.filter((request) => request.senderType === senderFilter);
-  }, [requests, senderFilter]);
+
+    return requests.filter((request) => {
+      const matchesSender =
+        senderFilter === "All" ||
+        request.senderType === senderFilter;
+
+      const matchesWasteType =
+        wasteTypeFilter === "All" ||
+        request.wasteType === wasteTypeFilter;
+
+      return (
+        matchesSender &&
+        matchesWasteType
+      );
+    });
+  }, [
+    requests,
+    senderFilter,
+    wasteTypeFilter,
+  ]);
 
   const totalPages = Math.max(
     1,
@@ -124,8 +143,13 @@ export function AdminHaulingRequestManagementPage() {
     <div className="p-6">
       <HaulingRequestFiltersBar
         senderFilter={senderFilter}
+        wasteTypeFilter={wasteTypeFilter}
         onSenderFilterChange={(value) => {
           setSenderFilter(value);
+          setPage(1);
+        }}
+        onWasteTypeFilterChange={(value) => {
+          setWasteTypeFilter(value);
           setPage(1);
         }}
       />
