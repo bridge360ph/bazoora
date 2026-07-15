@@ -5,7 +5,7 @@ import { socket } from "./lib/socket";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { DriverLayout } from "./layouts/DriverLayout";
 
-import { AdminHome } from "./pages/AdminHome";
+import { EcoAideDashboard } from "./features/eco-aide/components/EcoAideDashboard";
 import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
@@ -35,7 +35,7 @@ function App() {
 
         {/* ADMIN */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminHome />} />
+          <Route index element={<EcoAideDashboard />} />
 
           <Route
             path="eco-aides"
