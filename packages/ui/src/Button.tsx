@@ -19,7 +19,7 @@ const baseClasses =
   "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border-0 font-medium";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-brand text-white",
+  primary: "bg-[#1a3a2e] text-white",
   secondary: "bg-gray-100 text-gray-700",
   ghost: "bg-transparent text-gray-500",
   outline: "border border-white/30 bg-transparent text-white",
