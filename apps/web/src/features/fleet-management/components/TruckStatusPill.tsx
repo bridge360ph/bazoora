@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { TruckStatus } from "../fleet.types";
 
 interface TruckStatusPillProps {
@@ -7,30 +6,24 @@ interface TruckStatusPillProps {
 
 export function TruckStatusPill({ status }: TruckStatusPillProps) {
   return (
-    <span style={{ ...statusPillStyle, ...getTruckStatusStyle(status) }}>
+    <span
+      className={`inline-flex items-center justify-center rounded-[999px] px-[10px] py-[3px] text-[11px] font-bold ${getTruckStatusClass(
+        status,
+      )}`}
+    >
       {status}
     </span>
   );
 }
 
-function getTruckStatusStyle(status: TruckStatus): CSSProperties {
+function getTruckStatusClass(status: TruckStatus): string {
   if (status === "Active") {
-    return { background: "#dcfce7", color: "#166534" };
+    return "bg-green-100 text-green-800";
   }
 
   if (status === "Idle") {
-    return { background: "#fef3c7", color: "#92400e" };
+    return "bg-amber-100 text-amber-800";
   }
 
-  return { background: "#fee2e2", color: "#b91c1c" };
+  return "bg-red-100 text-red-700";
 }
-
-const statusPillStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: 999,
-  padding: "3px 10px",
-  fontSize: 11,
-  fontWeight: 700,
-};

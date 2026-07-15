@@ -1,4 +1,4 @@
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
 import type { TruckFormValue, TruckStatus } from "../fleet.types";
 
@@ -31,7 +31,7 @@ export function TruckFormModal({
 
   return (
     <Modal title={title} onClose={onClose} width={560}>
-      <div style={formGridStyle}>
+      <div className="grid gap-[14px] [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
         <FormField label="Assigned Driver">
           <input
             value={formValue.assignedDriver}
@@ -39,7 +39,7 @@ export function TruckFormModal({
               updateField("assignedDriver", event.target.value);
             }}
             placeholder="e.g. Henry Correa"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-[10px] py-2 text-[13px] text-gray-900"
           />
         </FormField>
 
@@ -50,7 +50,7 @@ export function TruckFormModal({
               updateField("plateNumber", event.target.value);
             }}
             placeholder="e.g. GTM-5895"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-[10px] py-2 text-[13px] text-gray-900"
           />
         </FormField>
 
@@ -61,7 +61,7 @@ export function TruckFormModal({
               updateField("model", event.target.value);
             }}
             placeholder="e.g. Isuzu Elf"
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-[10px] py-2 text-[13px] text-gray-900"
           />
         </FormField>
 
@@ -72,8 +72,8 @@ export function TruckFormModal({
               updateField("capacity", event.target.value);
             }}
             placeholder="e.g. 7000"
-            style={inputStyle}
             type="number"
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-[10px] py-2 text-[13px] text-gray-900"
           />
         </FormField>
 
@@ -83,7 +83,7 @@ export function TruckFormModal({
             onChange={(event) => {
               updateField("status", event.target.value as TruckStatus);
             }}
-            style={inputStyle}
+            className="box-border w-full rounded-[7px] border border-gray-300 bg-white px-[10px] py-2 text-[13px] text-gray-900"
           >
             <option value="Active">Active</option>
             <option value="Idle">Idle</option>
@@ -96,20 +96,3 @@ export function TruckFormModal({
     </Modal>
   );
 }
-
-const formGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: 14,
-};
-
-const inputStyle: CSSProperties = {
-  width: "100%",
-  border: "1px solid #d1d5db",
-  borderRadius: 7,
-  padding: "8px 10px",
-  fontSize: 13,
-  boxSizing: "border-box",
-  background: "#ffffff",
-  color: "#111827",
-};

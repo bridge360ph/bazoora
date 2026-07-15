@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
-import { Button, PaginationControls, StatCard } from "@bazoora/ui";
+import { Button, FilterByDropdown, PaginationControls, StatCard } from "@bazoora/ui";
 import {
   ECO_AIDE_OPTIONS,
   INITIAL_TRUCKS,
@@ -166,11 +165,13 @@ export function AdminFleetManagementPage() {
   }
 
   return (
-    <div style={pageStyle}>
-      <section style={topBarStyle}>
+    <div className="p-6">
+      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 style={pageTitleStyle}>Fleet Management</h1>
-          <p style={pageSubtitleStyle}>
+          <h1 className="m-0 text-2xl font-extrabold text-gray-900">
+            Fleet Management
+          </h1>
+          <p className="mt-[6px] text-[13px] text-gray-500">
             Manage garbage trucks, truck status, and truck assignments.
           </p>
         </div>
@@ -178,27 +179,23 @@ export function AdminFleetManagementPage() {
         <Button onClick={openRegisterModal}>+ Register Truck</Button>
       </section>
 
-      <section style={statsGridStyle}>
+      <section className="mb-4 grid gap-[14px] [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
         <StatCard label="Active" value={activeCount} />
         <StatCard label="Idle" value={idleCount} />
         <StatCard label="Under Maintenance" value={maintenanceCount} />
       </section>
 
-      <section style={filterRowStyle}>
-        <select
+      <section className="flex flex-wrap items-stretch">
+        <FilterByDropdown
+          label="Filter by Status"
           value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as TruckStatusFilter);
-              setPage(1);
-            }}
-          style={filterButtonStyle}
-        >
-          {statusFilters.map((status) => (
-            <option key={status} value={status}>
-              {status === "All" ? "Filter by Status" : status}
-            </option>
-          ))}
-        </select>
+          options={statusFilters}
+          allValue="All"
+          onChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+        />
 
         <input
           value={searchValue}
@@ -207,17 +204,19 @@ export function AdminFleetManagementPage() {
             setPage(1);
           }}
           placeholder="Search truck by ID, plate no., model, or driver..."
-          style={searchInputStyle}
+          className="min-w-[240px] flex-1 border border-gray-300 px-3 py-[10px] text-[13px] outline-none"
         />
       </section>
 
-      <section style={cardStyle}>
-        <div style={sectionTitleStyle}>Fleet List</div>
+      <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+        <div className="px-[14px] py-[18px] text-[14px] font-bold text-gray-900">
+          Fleet List
+        </div>
 
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="overflow-x-auto">
+          <table className="min-w-[880px] w-full border-collapse">
             <thead>
-              <tr style={{ background: "#145c38" }}>
+              <tr className="bg-[#145c38]">
                 {[
                   "Truck ID",
                   "Plate No.",
@@ -228,7 +227,10 @@ export function AdminFleetManagementPage() {
                   "Registered",
                   "Actions",
                 ].map((heading) => (
-                  <th key={heading} style={tableHeaderStyle}>
+                  <th
+                    key={heading}
+                    className="whitespace-nowrap px-[14px] py-[10px] text-left text-[12px] font-bold text-white"
+                  >
                     {heading}
                   </th>
                 ))}
@@ -238,24 +240,39 @@ export function AdminFleetManagementPage() {
             <tbody>
               {paginatedTrucks.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={emptyCellStyle}>
+                  <td
+                    colSpan={8}
+                    className="p-7 text-center text-[13px] text-gray-400"
+                  >
                     No trucks match the current filter.
                   </td>
                 </tr>
               ) : (
                 paginatedTrucks.map((truck) => (
-                  <tr key={truck.id} style={tableRowStyle}>
-                    <td style={tableCellStyle}>{truck.id}</td>
-                    <td style={tableCellStyle}>{truck.plateNumber}</td>
-                    <td style={tableCellStyle}>{truck.model}</td>
-                    <td style={tableCellStyle}>{truck.capacity}</td>
-                    <td style={tableCellStyle}>
+                  <tr key={truck.id} className="border-b border-gray-200">
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.id}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.plateNumber}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.model}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.capacity}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
                       <TruckStatusPill status={truck.status} />
                     </td>
-                    <td style={tableCellStyle}>{truck.assignedDriver}</td>
-                    <td style={tableCellStyle}>{truck.registeredDate}</td>
-                    <td style={tableCellStyle}>
-                      <div style={actionRowStyle}>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.assignedDriver}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      {truck.registeredDate}
+                    </td>
+                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           size="sm"
                           onClick={() => {
@@ -283,7 +300,7 @@ export function AdminFleetManagementPage() {
           </table>
         </div>
 
-        <div style={paginationWrapperStyle}>
+        <div className="px-0 pt-[10px] pb-[18px]">
           <PaginationControls
             page={page}
             totalPages={totalPages}
@@ -333,120 +350,3 @@ export function AdminFleetManagementPage() {
     </div>
   );
 }
-
-const pageStyle: CSSProperties = {
-  padding: "24px",
-};
-
-const topBarStyle: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 16,
-  marginBottom: 20,
-  flexWrap: "wrap",
-};
-
-const pageTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 24,
-  fontWeight: 800,
-  color: "#111827",
-};
-
-const pageSubtitleStyle: CSSProperties = {
-  margin: "6px 0 0",
-  fontSize: 13,
-  color: "#6b7280",
-};
-
-const statsGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 14,
-  marginBottom: 16,
-};
-
-const filterRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "stretch",
-  marginBottom: 0,
-  flexWrap: "wrap",
-};
-
-const filterButtonStyle: CSSProperties = {
-  minWidth: 170,
-  border: "none",
-  background: "#062f22",
-  color: "#ffffff",
-  padding: "10px 12px",
-  fontSize: 13,
-  cursor: "pointer",
-};
-
-const searchInputStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 240,
-  border: "1px solid #d1d5db",
-  padding: "10px 12px",
-  fontSize: 13,
-  outline: "none",
-};
-
-const cardStyle: CSSProperties = {
-  background: "#ffffff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "0 0 10px 10px",
-  overflow: "hidden",
-};
-
-const sectionTitleStyle: CSSProperties = {
-  padding: "18px 14px",
-  fontSize: 14,
-  fontWeight: 700,
-  color: "#111827",
-};
-
-const tableStyle: CSSProperties = {
-  width: "100%",
-  minWidth: 880,
-  borderCollapse: "collapse",
-};
-
-const tableHeaderStyle: CSSProperties = {
-  color: "#ffffff",
-  padding: "10px 14px",
-  textAlign: "left",
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: "nowrap",
-};
-
-const tableRowStyle: CSSProperties = {
-  borderBottom: "1px solid #e5e7eb",
-};
-
-const tableCellStyle: CSSProperties = {
-  padding: "10px 14px",
-  fontSize: 13,
-  color: "#111827",
-  whiteSpace: "nowrap",
-};
-
-const emptyCellStyle: CSSProperties = {
-  padding: 28,
-  textAlign: "center",
-  color: "#9ca3af",
-  fontSize: 13,
-};
-
-const actionRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  flexWrap: "wrap",
-};
-
-const paginationWrapperStyle: CSSProperties = {
-  padding: "10px 0 18px",
-};
