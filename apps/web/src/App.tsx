@@ -16,6 +16,8 @@ import { AdminFleetManagementPage }
 import { AdminHaulingRequestManagementPage }
   from "./features/hauling-requests/AdminHaulingRequestManagementPage";
 
+import { SettingsPage } from "./features/settings/components/SettingsPage";
+
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
@@ -75,10 +77,7 @@ function App() {
             element={<RoutePlaceholder title="Notifications" />}
           />
 
-          <Route
-            path="settings"
-            element={<RoutePlaceholder title="Settings" />}
-          />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* DRIVER */}
