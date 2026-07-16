@@ -1,12 +1,21 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { socket } from "./lib/socket";
-
+import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+// admin imports
 import { AdminLayout } from "./layouts/AdminLayout";
+import { AdminHome } from "./pages/AdminHome";
+import { AdminAnalyticsPage }
+  from "./features/analytics/AdminAnalyticsPage";
+// driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
 
-import { AdminHome } from "./pages/AdminHome";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+import { AdminFleetManagementPage }
+  from "./features/fleet-management/AdminFleetManagementPage";
+
+import { AdminHaulingRequestManagementPage }
+  from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+
 import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
@@ -45,7 +54,7 @@ function App() {
 
           <Route
             path="fleet"
-            element={<RoutePlaceholder title="Fleet Management" />}
+            element={<AdminFleetManagementPage />}
           />
 
           <Route
@@ -55,15 +64,18 @@ function App() {
 
           <Route
             path="hauling"
-            element={<RoutePlaceholder title="Hauling Request Management" />}
+            element={<AdminHaulingRequestManagementPage />}
           />
 
           <Route
             path="analytics"
-            element={<RoutePlaceholder title="Analytics" />}
+            element={<AdminAnalyticsPage />}
           />
 
-          <Route path="notifications" element={<NotificationsPage />} />
+          <Route
+            path="notifications"
+            element={<NotificationsPage />}
+          />
 
           <Route
             path="settings"
