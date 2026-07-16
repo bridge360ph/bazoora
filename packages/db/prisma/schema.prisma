@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -17,13 +18,16 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  password        String
+  role            UserRole
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  driverLocation  DriverLocation?  @relation("DriverLocations")
+  assignedTruck   Truck?           @relation("AssignedDriver")
+  assignedRoute   Route?           @relation("AssignedEcoAide")
 }
 
 model ServiceRequest {
@@ -40,4 +44,50 @@ model ServiceRequest {
   note            String?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String   @unique
+  driver    User     @relation("DriverLocations", fields: [driverId], references: [id])
+  truckId   String?
+  truck     Truck?   @relation("TruckLocations", fields: [truckId], references: [id])
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Truck {
+  id               String           @id @default(cuid())
+  plateNumber      String           @unique
+  model            String?
+  capacity         String?
+  status           String           @default("Active") // "Active" | "Idle" | "Under Maintenance"
+  assignedDriverId String?          @unique
+  assignedDriver   User?            @relation("AssignedDriver", fields: [assignedDriverId], references: [id])
+  assignedRoute    Route?           @relation("RouteTruck")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  driverLocations  DriverLocation[] @relation("TruckLocations")
+}
+
+model Route {
+  id                 String   @id @default(cuid())
+  routeNumber        Int      @unique
+  name               String
+  barangay           String
+  waypoints          String   // Comma separated list of stops/waypoints
+  wasteType          String   // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
+  collectionDay      String   // "Sunday" | "Monday" ...
+  startTime          String
+  status             String   @default("Not Started") // "In Progress" | "Completed" | "Not Started"
+  stops              Int      @default(0)
+  routeType          String
+  assignedEcoAideId  String?  @unique
+  assignedEcoAide    User?    @relation("AssignedEcoAide", fields: [assignedEcoAideId], references: [id])
+  assignedTruckId    String?  @unique
+  assignedTruck      Truck?   @relation("RouteTruck", fields: [assignedTruckId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
