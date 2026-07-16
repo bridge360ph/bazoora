@@ -1,30 +1,17 @@
-import type { CSSProperties } from "react";
-
 interface StatusBadgeProps {
   status: string;
 }
 
-const baseStyle: CSSProperties = {
-  padding: "2px 10px",
-  borderRadius: 12,
-  fontSize: 12.5,
-  fontWeight: 500,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  whiteSpace: "nowrap",
-};
+const baseClasses =
+  "inline-flex items-center justify-center whitespace-nowrap rounded-xl px-2.5 py-0.5 text-[12.5px] font-medium";
 
-function getStatusStyle(status: string): CSSProperties {
+function getStatusClasses(status: string): string {
   if (
     status === "Available" ||
     status === "Completed" ||
     status === "Approved"
   ) {
-    return {
-      color: "#166534",
-      background: "#dcfce7",
-    };
+    return "bg-green-100 text-green-800";
   }
 
   if (
@@ -32,45 +19,23 @@ function getStatusStyle(status: string): CSSProperties {
     status === "On Route" ||
     status === "In Progress"
   ) {
-    return {
-      color: "#92400e",
-      background: "#fef3c7",
-    };
+    return "bg-amber-100 text-amber-800";
   }
 
-  if (
-    status === "Assigned"
-  ) {
-    return {
-      color: "#1d4ed8",
-      background: "#dbeafe",
-    };
+  if (status === "Assigned") {
+    return "bg-blue-100 text-blue-700";
   }
 
-  if (
-    status === "Denied" ||
-    status === "Off Duty"
-  ) {
-    return {
-      color: "#991b1b",
-      background: "#fee2e2",
-    };
+  if (status === "Denied" || status === "Off Duty") {
+    return "bg-red-100 text-red-800";
   }
 
-  return {
-    color: "#6b7280",
-    background: "#f3f4f6",
-  };
+  return "bg-gray-100 text-gray-500";
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   return (
-    <span
-      style={{
-        ...baseStyle,
-        ...getStatusStyle(status),
-      }}
-    >
+    <span className={`${baseClasses} ${getStatusClasses(status)}`}>
       {status}
     </span>
   );

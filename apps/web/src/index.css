@@ -1,1 +1,12 @@
 @import "tailwindcss";
+@source "../src";
+@source "../../../packages/ui/src";
+
+/* Brand color tokens. `@bazoora/ui` and the admin screens reference these as
+   Tailwind utilities (bg-brand, text-brand, etc.), so they must be defined here
+   for those classes to generate. Prefer bg-brand over arbitrary bg-[#1a3a2e] so
+   the brand color stays defined in one place. */
+@theme {
+  --color-brand: #1a3a2e;
+  --color-brand-dark: #12291f;
+}
