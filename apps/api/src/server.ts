@@ -6,6 +6,7 @@ import type { HealthResponse } from "@bazoora/shared";
 
 import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
+import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { config } from "./plugins/config.js";
 
 const app = Fastify({ logger: true });
@@ -18,6 +19,10 @@ const start = async () => {
 
   await app.register(haulingRequestRoutes, {
     prefix: "/hauling-requests",
+  });
+
+  await app.register(routeManagementRoutes, {
+    prefix: "/routes",
   });
 
   app.get("/", (): HealthResponse => {
@@ -37,3 +42,4 @@ start().catch((err) => {
   app.log.error(err);
   process.exit(1);
 });
+

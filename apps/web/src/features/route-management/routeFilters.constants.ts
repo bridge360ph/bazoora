@@ -1,4 +1,4 @@
-import type { RouteStatusFilter } from "../../types/route.types";
+import type { RouteStatusFilter } from "./route.types";
 
 export const ROUTE_STATUS_FILTERS: RouteStatusFilter[] = [
   "All",

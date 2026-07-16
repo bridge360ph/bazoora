@@ -1,4 +1,4 @@
-import type { CollectionDay, Route, WasteType } from "../../types/route.types";
+import type { CollectionDay, Route, WasteType } from "./route.types";
 
 export const INITIAL_ROUTES: Route[] = [
   {

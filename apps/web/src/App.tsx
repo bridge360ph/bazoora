@@ -58,7 +58,7 @@ function App() {
           />
 
           <Route
-            path="routes"
+            path="route-management"
             element={<AdminRouteManagementPage />}
           />
 

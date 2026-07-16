@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Route } from "../../../types/route.types";
+import type { Route } from "../route.types";
 import { assignRouteEcoAideRequest } from "../routeService";
 
 interface UseAssignRouteEcoAideVariables {

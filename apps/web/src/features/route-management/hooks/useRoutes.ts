@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Route } from "../../../types/route.types";
+import type { Route } from "../route.types";
 import { fetchRoutes } from "../routeService";
 
 interface UseRoutesResult {

@@ -1,4 +1,4 @@
-import type { Route } from "../../../types/route.types";
+import type { Route } from "../route.types";
 import { RouteStatusPill } from "./RouteStatusPill";
 
 interface RouteCardProps {

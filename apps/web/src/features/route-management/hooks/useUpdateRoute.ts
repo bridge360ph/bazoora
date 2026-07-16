@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Route, RouteFormValue } from "../../../types/route.types";
+import type { Route, RouteFormValue } from "../route.types";
 import { updateRouteRequest } from "../routeService";
 
 interface UseUpdateRouteVariables {

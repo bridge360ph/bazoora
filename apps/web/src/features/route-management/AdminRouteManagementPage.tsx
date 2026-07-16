@@ -5,7 +5,7 @@ import type {
   Route,
   RouteFormValue,
   RouteStatusFilter,
-} from "../../types/route.types";
+} from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
