@@ -1,12 +1,21 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { socket } from "./lib/socket";
-
+import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+// admin imports
 import { AdminLayout } from "./layouts/AdminLayout";
+import { AdminAnalyticsPage }
+  from "./features/analytics/AdminAnalyticsPage";
+// driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
 
+import { AdminFleetManagementPage }
+  from "./features/fleet-management/AdminFleetManagementPage";
+
+import { AdminHaulingRequestManagementPage }
+  from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+
 import { EcoAideDashboard } from "./features/eco-aide/components/EcoAideDashboard";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
@@ -44,7 +53,7 @@ function App() {
 
           <Route
             path="fleet"
-            element={<RoutePlaceholder title="Fleet Management" />}
+            element={<AdminFleetManagementPage />}
           />
 
           <Route
@@ -54,12 +63,12 @@ function App() {
 
           <Route
             path="hauling"
-            element={<RoutePlaceholder title="Hauling Request Management" />}
+            element={<AdminHaulingRequestManagementPage />}
           />
 
           <Route
             path="analytics"
-            element={<RoutePlaceholder title="Analytics" />}
+            element={<AdminAnalyticsPage />}
           />
 
           <Route
