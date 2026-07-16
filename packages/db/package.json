@@ -1,28 +1,20 @@
 {
   "name": "@bazoora/db",
-  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    }
-  },
+  "main": "src/prismaClient.ts",
+  "types": "src/prismaClient.ts",
   "scripts": {
+    "build": "prisma generate --schema=prisma/schema.prisma",
     "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
-    "db:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "postinstall": "prisma generate --schema=prisma/schema.prisma"
   },
   "dependencies": {
-    "@prisma/client": "^7.8.0"
+    "@prisma/client": "^6.0.0"
   },
   "devDependencies": {
-    "dotenv": "^17.4.2",
-    "prisma": "^7.8.0"
+    "prisma": "^6.0.0"
   }
 }
