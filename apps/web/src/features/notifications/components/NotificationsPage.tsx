@@ -79,7 +79,7 @@ const audienceTypes = [
 ];
 
 const inputClassName =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition focus:border-[#1a3a2e] focus:ring-2 focus:ring-[#1a3a2e]/15";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15";
 
 export function NotificationsPage() {
   const [tab, setTab] = useState<Tab>("compose");
@@ -264,7 +264,7 @@ export function NotificationsPage() {
             <Button
               type="button"
               onClick={handleSend}
-              className="w-full !bg-[#1a3a2e] px-3 py-[13px] text-sm font-bold tracking-[0.5px] text-white hover:!bg-[#163127]"
+              className="w-full !bg-brand px-3 py-[13px] text-sm font-bold tracking-[0.5px] text-white hover:!bg-brand-dark"
             >
               SEND NOTIFICATION
             </Button>
@@ -300,7 +300,7 @@ export function NotificationsPage() {
                       <div className="mb-1.5 flex items-center gap-2">
                         <span
                           aria-hidden="true"
-                          className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-[#1a3a2e] text-xs font-extrabold text-[#1a3a2e]"
+                          className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 border-brand text-xs font-extrabold text-brand"
                         >
                           !
                         </span>
@@ -343,7 +343,7 @@ export function NotificationsPage() {
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-[#1a3a2e] px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+        <div className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
           ✓ {toast}
         </div>
       )}
