@@ -6,9 +6,16 @@ import { verifyAccessToken } from "../lib/jwt.js";
 export let io: SocketIOServer;
 
 export function setupSocket(server: HttpServer): SocketIOServer {
+  // Never combine a wildcard origin with credentials. Restrict to an env-derived
+  // allowlist (comma-separated CORS_ORIGIN), defaulting to the local dev origin.
+  const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   const socketIO = new SocketIOServer(server, {
     cors: {
-      origin: "*",
+      origin: allowedOrigins,
       credentials: true,
     },
   });
