@@ -73,7 +73,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       create: {
         id: driverId,
         email: `${driverId}@bazoora.com`,
-        password: "",
+        password: "", // TODO: seed drivers through the proper auth flow
         role: "DRIVER",
       },
     });
@@ -189,7 +189,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       create: {
         id: driverId,
         email: `${driverId}@bazoora.com`,
-        password: "",
+        password: "", // TODO: seed drivers through the proper auth flow
         role: "DRIVER",
       },
     });
