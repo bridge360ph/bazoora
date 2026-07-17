@@ -9,24 +9,30 @@ const plannedRoutes = new Map<string, any[]>();
 
 export const trucksRoutes: FastifyPluginAsync = async (app) => {
   // Helper to extract driver/user info from auth token
-  const getDriverIdFromAuth = (authorizationHeader?: string): { driverId: string; orgId: string } => {
-    let driverId = "usr-mock-1";
-    let orgId = "org-1";
-
+  // Returns null when the request can't be authenticated. Callers must reject
+  // with 401 on null. The mock fallback is DEV/DEMO ONLY (Role Simulator) and
+  // fails closed in production — no more defaulting to a mock identity. See #52.
+  const getDriverIdFromAuth = (
+    authorizationHeader?: string,
+  ): { driverId: string; orgId: string } | null => {
     if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
       const token = authorizationHeader.substring(7);
       try {
         const payload = verifyAccessToken(token);
-        driverId = payload.sub;
-        if (payload.organizationId) {
-          orgId = payload.organizationId;
-        }
-      } catch (err) {
-        // use default mock fallback
+        return {
+          driverId: payload.sub,
+          orgId: payload.organizationId ?? "org-1",
+        };
+      } catch {
+        // fall through to dev fallback / rejection
       }
     }
 
-    return { driverId, orgId };
+    if (process.env.NODE_ENV !== "production") {
+      return { driverId: "usr-mock-1", orgId: "org-1" };
+    }
+
+    return null;
   };
 
   // GET /trucks
@@ -63,8 +69,12 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // GET /trucks/me
-  app.get("/me", async (req, _reply) => {
-    const { driverId } = getDriverIdFromAuth(req.headers.authorization);
+  app.get("/me", async (req, reply) => {
+    const auth = getDriverIdFromAuth(req.headers.authorization);
+    if (!auth) {
+      return reply.code(401).send({ success: false, error: "unauthorized" });
+    }
+    const { driverId } = auth;
 
     // Ensure the driver user exists in the DB to prevent foreign key errors
     await prisma.user.upsert({
@@ -170,7 +180,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
   });
 
   // POST /trucks/:id/location
-  app.post("/:id/location", async (req, _reply) => {
+  app.post("/:id/location", async (req, reply) => {
     const { id } = req.params as { id: string };
     const body = req.body as {
       lat: number;
@@ -180,7 +190,11 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       timestamp: string;
     };
 
-    const { driverId, orgId } = getDriverIdFromAuth(req.headers.authorization);
+    const auth = getDriverIdFromAuth(req.headers.authorization);
+    if (!auth) {
+      return reply.code(401).send({ success: false, error: "unauthorized" });
+    }
+    const { driverId, orgId } = auth;
 
     // Ensure the driver user exists in the DB to prevent foreign key errors
     await prisma.user.upsert({
