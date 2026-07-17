@@ -1,0 +1,100 @@
+import type { HaulingRequest } from "./haulingRequests.types";
+
+export const INITIAL_HAULING_REQUESTS: HaulingRequest[] = [
+  {
+    id: "Req-001",
+    location: "Burgos St.",
+    fullLocation:
+      "Manalos Apartment, Burgos St, Brgy. Poblacion, San Juan, 4226 Batangas",
+    wasteType: "Recyclable",
+    sentBy: "Business",
+    sentByName: "Mandala Dream Coffee (Business)",
+    feeClassification: "Free",
+    dateRequested: "03/24/2026 10:00am",
+    dateNeeded: "03/24/2026 1:00pm",
+    status: "Pending",
+  },
+  {
+    id: "Req-002",
+    location: "De Villa St.",
+    fullLocation: "123 De Villa St, Brgy. Mabalanoy, San Juan, 4226 Batangas",
+    wasteType: "Regular/Non-Recyclable",
+    sentBy: "Resident",
+    sentByName: "Maria Santos (Resident)",
+    feeClassification: "Paid",
+    dateRequested: "03/24/2026 11:00am",
+    dateNeeded: "03/24/2026 2:00pm",
+    status: "Pending",
+  },
+  {
+    id: "Req-003",
+    location: "Marasigan St.",
+    fullLocation:
+      "456 Marasigan St, Brgy. Sampiro, San Juan, 4226 Batangas",
+    wasteType: "Regular/Non-Recyclable",
+    sentBy: "Resident",
+    sentByName: "Juan Dela Cruz (Resident)",
+    feeClassification: "Paid",
+    dateRequested: "03/24/2026 9:00am",
+    dateNeeded: "03/24/2026 3:00pm",
+    status: "Pending",
+  },
+  {
+    id: "Req-004",
+    location: "Mojica St.",
+    fullLocation:
+      "78 Mojica St, Brgy. Pinagbayanan, San Juan, 4226 Batangas",
+    wasteType: "Recyclable",
+    sentBy: "Resident",
+    sentByName: "Ana Reyes (Resident)",
+    feeClassification: "Free",
+    dateRequested: "03/25/2026 8:00am",
+    dateNeeded: "03/25/2026 11:00am",
+    status: "Pending",
+  },
+  {
+    id: "Req-005",
+    location: "Kalayaan St.",
+    fullLocation:
+      "99 Kalayaan St, Brgy. Poblacion, San Juan, 4226 Batangas",
+    wasteType: "Recyclable",
+    sentBy: "Business",
+    sentByName: "Sunrise Bakery (Business)",
+    feeClassification: "Free",
+    dateRequested: "03/25/2026 10:00am",
+    dateNeeded: "03/25/2026 2:00pm",
+    status: "Pending",
+  },
+  {
+    id: "Req-006",
+    location: "Mabini St.",
+    fullLocation: "12 Mabini St, Brgy. Mabalanoy, San Juan, 4226 Batangas",
+    wasteType: "Recyclable",
+    sentBy: "Business",
+    sentByName: "Green Mart (Business)",
+    feeClassification: "Free",
+    dateRequested: "03/25/2026 1:00pm",
+    dateNeeded: "03/26/2026 9:00am",
+    status: "Pending",
+  },
+  {
+    id: "Req-007",
+    location: "San Nicolas St.",
+    fullLocation:
+      "34 San Nicolas St, Brgy. Sampiro, San Juan, 4226 Batangas",
+    wasteType: "Regular/Non-Recyclable",
+    sentBy: "Resident",
+    sentByName: "Pedro Manalo (Resident)",
+    feeClassification: "Paid",
+    dateRequested: "03/26/2026 7:00am",
+    dateNeeded: "03/26/2026 12:00pm",
+    status: "Pending",
+  },
+];
+
+export const ECO_AIDE_ROUTE_OPTIONS = [
+  "Ferdinan Ramos (RT-001)",
+  "Emil Flores (RT-002)",
+  "John Mendoza (RT-003)",
+  "Romeo Rosario (RT-004)",
+];
