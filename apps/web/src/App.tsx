@@ -16,6 +16,8 @@ import { AdminFleetManagementPage }
 import { AdminHaulingRequestManagementPage }
   from "./features/hauling-requests/AdminHaulingRequestManagementPage";
 
+import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
+
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
@@ -72,7 +74,7 @@ function App() {
 
           <Route
             path="notifications"
-            element={<RoutePlaceholder title="Notifications" />}
+            element={<NotificationsPage />}
           />
 
           <Route
