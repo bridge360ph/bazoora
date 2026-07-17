@@ -12,6 +12,7 @@ import { config } from "./plugins/config.js";
 
 const app = Fastify({
   logger: true,
+  ignoreTrailingSlash: true,
   ajv: {
     customOptions: {
       removeAdditional: false,
@@ -23,6 +24,7 @@ const start = async () => {
   await app.register(cors, {
     origin: config.corsOrigin,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
   });
 
   await app.register(haulingRequestRoutes, {
