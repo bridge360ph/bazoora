@@ -10,7 +10,7 @@ import type {
   CollectionDay,
   RouteFormValue,
   WasteType,
-} from "../route.types";
+} from "../../../types/route.types";
 
 interface RouteEntryFormProps {
   formValue: RouteFormValue;

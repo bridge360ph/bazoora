@@ -1,6 +1,6 @@
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
 import { ECO_AIDE_OPTIONS } from "../route.mockData";
-import type { Route } from "../route.types";
+import type { Route } from "../../../types/route.types";
 
 interface AssignEcoAideModalProps {
   route: Route;

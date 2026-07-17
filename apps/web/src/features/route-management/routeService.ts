@@ -1,4 +1,4 @@
-import type { Route, RouteFormValue } from "./route.types";
+import type { Route, RouteFormValue } from "../../types/route.types";
 import { INITIAL_ROUTES } from "./route.mockData";
 
 /**

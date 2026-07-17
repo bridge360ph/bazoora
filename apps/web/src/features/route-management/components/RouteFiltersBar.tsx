@@ -1,5 +1,5 @@
 import { FilterByDropdown } from "@bazoora/ui";
-import type { RouteStatusFilter } from "../route.types";
+import type { RouteStatusFilter } from "../../../types/route.types";
 import { ROUTE_STATUS_FILTERS } from "../routeFilters.constants";
 
 interface RouteFiltersBarProps {

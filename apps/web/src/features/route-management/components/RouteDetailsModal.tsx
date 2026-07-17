@@ -1,5 +1,5 @@
 import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
-import type { Route } from "../route.types";
+import type { Route } from "../../../types/route.types";
 
 interface RouteDetailsModalProps {
   route: Route;

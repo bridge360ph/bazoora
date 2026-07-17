@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Route, RouteFormValue } from "../route.types";
+import type { Route, RouteFormValue } from "../../../types/route.types";
 import { createRouteRequest } from "../routeService";
 
 interface UseCreateRouteOptions {

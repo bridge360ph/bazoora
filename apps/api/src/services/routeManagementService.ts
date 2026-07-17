@@ -1,28 +1,45 @@
+import { prisma } from "@bazoora/db";
+import type { Route } from "@prisma/client";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 
-// Mock-in memory
-const routes: Route[] = [];
-
-interface Route {
-  id: string;
-  routeNumber: string;
+interface CreateRouteData {
   name: string;
   barangay: string;
   waypoints: string;
   wasteType: string;
   collectionDay: string;
   startTime: string;
-  status: string;
+  routeType: string;
 }
 
-export function getRoutes() {
+type CreateRouteInput = Pick<
+  Route,
+  | "name"
+  | "barangay"
+  | "waypoints"
+  | "wasteType"
+  | "collectionDay"
+  | "startTime"
+  | "routeType"
+>;
+
+export async function getRoutes() {
+  const routes = await prisma.route.findMany({
+    orderBy: {
+      routeNumber: "asc",
+    },
+  });
+
   return routes.map(mapRouteToResponse);
 }
 
-export function getRouteById(id: string) {
-  const route = routes.find(
-    (route) => route.id === id,
-  );
+
+export async function getRouteById(id: string) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id,
+    },
+  });
 
   if (!route) {
     throw new Error("Route not found");
@@ -32,49 +49,61 @@ export function getRouteById(id: string) {
 }
 
 
-export function createRoute(
-  data: Omit<Route, "id" | "routeNumber" | "status">,
+export async function createRoute(
+  data: CreateRouteInput,
 ) {
-  const duplicateRoute = routes.find(
-    (route) =>
-      route.name === data.name &&
-      route.barangay === data.barangay,
-  );
+  const duplicateRoute = await prisma.route.findFirst({
+    where: {
+      name: data.name,
+      barangay: data.barangay,
+    },
+  });
 
   if (duplicateRoute) {
     throw new Error("Route already exists");
   }
 
-  const nextRouteNumber = routes.length + 1;
+  const routeCount = await prisma.route.count();
 
-  const route = {
-    id: crypto.randomUUID(),
-    routeNumber: `RT-${String(
-      nextRouteNumber,
-    ).padStart(3, "0")}`,
-    status: "Not Started",
-    ...data,
-  };
-
-  routes.push(route);
+  const route = await prisma.route.create({
+    data: {
+      routeNumber: routeCount + 1,
+      status: "Not Started",
+      stops: 0,
+      ...data,
+    },
+  });
 
   return mapRouteToResponse(route);
 }
 
 
-export function updateRoute(
+export async function updateRoute(
   id: string,
-  data: Partial<Route>,
+  data: Partial<CreateRouteData>,
 ) {
-  const route = routes.find(
-    (route) => route.id === id,
-  );
+  const existingRoute =
+    await prisma.route.findUnique({
+      where: {
+        id,
+      },
+    });
 
-  if (!route) {
-    throw new Error("Route not found");
+  if (!existingRoute) {
+    throw new Error(
+      "Route not found",
+    );
   }
 
-  Object.assign(route, data);
+  const route =
+    await prisma.route.update({
+      where: {
+        id,
+      },
+      data,
+    });
 
-  return mapRouteToResponse(route);
+  return mapRouteToResponse(
+    route,
+  );
 }

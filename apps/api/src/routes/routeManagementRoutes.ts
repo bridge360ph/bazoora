@@ -6,8 +6,8 @@ import type {
 } from "../schemas/routeManagement.schema.js";
 
 import {
-  createRouteSchema,
   routeManagementParamsSchema,
+  createRouteSchema,
   updateRouteSchema,
 } from "../schemas/routeManagement.schema.js";
 
@@ -22,6 +22,24 @@ import {
 export function routeManagementRoutes(
   app: FastifyInstance,
 ) {
+  app.post(
+    "/",
+    {
+      schema: createRouteSchema,
+    },
+    async (request, reply) => {
+      const body = request.body as CreateRouteBody;
+
+      try {
+        return await createRoute(body);
+      } catch (error) {
+        return reply.status(400).send({
+          message: (error as Error).message,
+        });
+      }
+    },
+  );
+
 
   app.get("/", () => {
       return getRoutes();
@@ -34,32 +52,12 @@ export function routeManagementRoutes(
     {
       schema: routeManagementParamsSchema,
     },
-    (request, reply) => {
+    async (request) => {
       const { id } = request.params as {
         id: string;
       };
 
-      const route = getRouteById(id);
-
-      if (!route) {
-        return reply.status(404).send({
-          message: "Route not found",
-        });
-      }
-
-      return route;
-    },
-  );
-
-
-  app.post(
-    "/",
-    {
-      schema: createRouteSchema,
-    }, (request) => {
-      const body = request.body as CreateRouteBody;
-
-      return createRoute(body);
+      return getRouteById(id);
     },
   );
 
@@ -67,18 +65,25 @@ export function routeManagementRoutes(
   app.patch(
     "/:id",
     {
-      schema: updateRouteSchema,
-    }, (request) => {
+      schema: {
+        ...routeManagementParamsSchema,
+        ...updateRouteSchema,
+      },
+    },
+    async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
 
       const body = request.body as UpdateRouteBody;
 
-      return updateRoute(
-        id,
-        body,
-      );
+      try {
+        return await updateRoute(id, body);
+      } catch (error) {
+        return reply.status(404).send({
+          message: (error as Error).message,
+        });
+      }
     },
   );
 }
