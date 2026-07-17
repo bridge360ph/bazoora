@@ -4,9 +4,15 @@ export interface AccessTokenPayload {
   organizationId: string | null;
 }
 
+// Real JWT verification (Fastify JWT) is not implemented yet — see #52.
+// Until it is, this only accepts the dev/demo Role Simulator's `mock-` tokens,
+// gated to non-production, and fails closed everywhere else. It must NEVER
+// return a default identity (that was an auth bypass) — it throws on failure so
+// callers reject the request.
 export function verifyAccessToken(token: string): AccessTokenPayload {
-  // Mock tokens used in the simulator
-  if (token.startsWith("mock-")) {
+  const mockAuthAllowed = process.env.NODE_ENV !== "production";
+
+  if (mockAuthAllowed && token.startsWith("mock-")) {
     let role = "resident";
     if (token.includes("driver")) {
       role = "driver";
@@ -22,28 +28,5 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     };
   }
 
-  // Fallback mock decoding for compatibility
-  try {
-    const parts = token.split(".");
-    if (parts.length === 3) {
-      const payload = JSON.parse(Buffer.from(parts[1] || "", "base64").toString()) as Record<string, unknown>;
-      const rawSub = payload.sub || payload.id || "usr-mock-1";
-      const rawRole = payload.role || "resident";
-      const rawOrgId = payload.organizationId || payload.orgId || "org-1";
-      return {
-        sub: typeof rawSub === "string" ? rawSub : "usr-mock-1",
-        role: typeof rawRole === "string" ? rawRole : "resident",
-        organizationId: typeof rawOrgId === "string" ? rawOrgId : "org-1",
-      };
-    }
-  } catch (err) {
-    console.error("JWT parse fallback failed:", err);
-  }
-
-  // Fallback default
-  return {
-    sub: "usr-mock-1",
-    role: "resident",
-    organizationId: "org-1",
-  };
+  throw new Error("Invalid or unverifiable access token");
 }
