@@ -13,7 +13,7 @@ import ResidentLayout from "./features/residents/components/ResidentLayout";
 import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 
 // Page Imports
-import { AdminHome } from "./pages/AdminHome";
+import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
 import { AdminRouteManagementPage } from "./features/route-management/AdminRouteManagementPage";
@@ -154,7 +154,7 @@ function AppContent() {
 
           {/* ADMIN */}
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminHome />} />
+            <Route index element={<AdminDashboard />} />
             <Route
               path="eco-aides"
               element={<RoutePlaceholder title="Eco-Aide Management" />}
