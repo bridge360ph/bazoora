@@ -108,7 +108,7 @@ export function HaulingRequestDetailModal({
             </Button>
             <Button
               variant="secondary"
-              style={{ background: "#7f1d1d", color: "#ffffff" }}
+              className="bg-red-900 text-white"
               onClick={onDenyClick}
             >
               Deny
