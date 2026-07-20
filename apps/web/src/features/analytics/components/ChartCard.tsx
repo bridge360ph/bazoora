@@ -7,10 +7,12 @@ interface ChartCardProps {
 
 export function ChartCard({ title, children }: ChartCardProps) {
   return (
-    <article className="min-w-0 rounded-xl bg-[#1a3a2e] px-5 py-[18px]">
-      <h2 className="mb-4 text-sm font-bold text-white">{title}</h2>
+    <article className="min-w-0 overflow-hidden rounded-xl bg-brand p-4 sm:px-5 sm:py-[18px]">
+      <h2 className="mb-3 break-words text-sm font-bold text-white sm:mb-4">
+        {title}
+      </h2>
 
-      <div className="min-w-0 rounded-lg bg-[rgba(255,255,255,0.06)] px-2 py-4">
+      <div className="min-w-0 overflow-hidden rounded-lg bg-white/10 p-2 sm:px-3 sm:py-4">
         {children}
       </div>
     </article>
