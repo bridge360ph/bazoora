@@ -7,6 +7,7 @@ import type { HealthResponse } from "@bazoora/shared";
 import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
+import { ecoAideRoutes } from "./routes/ecoAides.js";
 import { config } from "./plugins/config.js";
 
 const app = Fastify({ logger: true });
@@ -23,6 +24,10 @@ const start = async () => {
 
   await app.register(trucksRoutes, {
     prefix: "/trucks",
+  });
+
+  await app.register(ecoAideRoutes, {
+    prefix: "/eco-aides",
   });
 
   app.get("/", (): HealthResponse => {
