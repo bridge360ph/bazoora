@@ -17,7 +17,7 @@ export type CollectionDay =
   | "Friday"
   | "Saturday";
 
-export interface RouteResponse {
+export interface Route {
   id: string;
   routeNumber: number;
   name: string;
@@ -29,4 +29,6 @@ export interface RouteResponse {
   status: RouteStatus;
   stops: number;
   routeType: string;
+  assignedEcoAideId: string | null;
+  assignedTruckId: string | null;
 }

@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Modal, ModalFooter } from "@bazoora/ui";
-import type { Route, RouteFormValue } from "../../../types/route.types";
+import type { Route } from "@bazoora/shared";
+import type { RouteFormValue } from "../route.types.ts";
 import { RouteEntryForm } from "./RouteEntryForm";
 
 type RouteFormMode = "create" | "edit";

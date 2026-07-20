@@ -1,5 +1,5 @@
 import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
-import type { Route } from "../../../types/route.types";
+import type { Route } from "@bazoora/shared";
 
 interface RouteDetailsModalProps {
   route: Route;
@@ -21,10 +21,10 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
             label="Start Time"
             value={`3/26/2026 ${route.startTime} (${route.collectionDay})`}
           />
-          <DetailItem label="Assigned Eco-Aide" value={route.ecoAide} />
+          <DetailItem label="Assigned Eco-Aide" value={route.assignedEcoAideId ?? "Unassigned"} />
           <DetailItem
             label="Fleet Assignment"
-            value={`${route.fleetAssignment} Isuzu`}
+            value={`${route.assignedTruckId ?? "Unassigned"} Isuzu`}
           />
         </div>
 

@@ -74,6 +74,9 @@ export const updateRouteSchema = {
   body: {
     type: "object",
     properties: {
+      status: {
+        type: "string",
+      },
       name: {
         type: "string",
       },

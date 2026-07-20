@@ -1,16 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { FormField } from "@bazoora/ui";
-import {
-  COLLECTION_DAYS,
-  ECO_AIDE_OPTIONS,
-  FLEET_OPTIONS,
-  WASTE_TYPES,
-} from "../route.mockData";
-import type {
-  CollectionDay,
-  RouteFormValue,
-  WasteType,
-} from "../../../types/route.types";
+import type { WasteType, CollectionDay } from "@bazoora/shared";
+import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
+import type { RouteFormValue } from "../route.types.ts";
 
 interface RouteEntryFormProps {
   formValue: RouteFormValue;
@@ -115,7 +107,7 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
         </FormField>
       </div>
 
-      <FormField label="Eco-Aide">
+      {/* <FormField label="Eco-Aide">
         <select
           value={formValue.ecoAide}
           onChange={(event) => {
@@ -129,9 +121,9 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
             </option>
           ))}
         </select>
-      </FormField>
+      </FormField> */}
 
-      <FormField label="Fleet Assignment">
+      {/* <FormField label="Fleet Assignment">
         <select
           value={formValue.fleetAssignment}
           onChange={(event) => {
@@ -145,7 +137,7 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
             </option>
           ))}
         </select>
-      </FormField>
+      </FormField> */}
     </div>
   );
 }

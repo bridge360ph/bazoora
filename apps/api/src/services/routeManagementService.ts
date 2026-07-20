@@ -2,16 +2,6 @@ import { prisma } from "@bazoora/db";
 import type { Route } from "@prisma/client";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 
-interface CreateRouteData {
-  name: string;
-  barangay: string;
-  waypoints: string;
-  wasteType: string;
-  collectionDay: string;
-  startTime: string;
-  routeType: string;
-}
-
 type CreateRouteInput = Pick<
   Route,
   | "name"
@@ -21,6 +11,20 @@ type CreateRouteInput = Pick<
   | "collectionDay"
   | "startTime"
   | "routeType"
+>;
+
+type UpdateRouteInput = Partial<
+  Pick<
+    Route,
+    | "name"
+    | "barangay"
+    | "waypoints"
+    | "wasteType"
+    | "collectionDay"
+    | "startTime"
+    | "routeType"
+    | "status"
+  >
 >;
 
 export async function getRoutes() {
@@ -80,10 +84,9 @@ export async function createRoute(
 
 export async function updateRoute(
   id: string,
-  data: Partial<CreateRouteData>,
+  data: UpdateRouteInput,
 ) {
-  const existingRoute =
-    await prisma.route.findUnique({
+  const existingRoute = await prisma.route.findUnique({
       where: {
         id,
       },
@@ -103,7 +106,5 @@ export async function updateRoute(
       data,
     });
 
-  return mapRouteToResponse(
-    route,
-  );
+  return mapRouteToResponse(route);
 }

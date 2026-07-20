@@ -164,7 +164,7 @@ function AppContent() {
             />
             <Route
               path="routes"
-              element={<RoutePlaceholder title="Route Management" />}
+              element={<AdminRouteManagementPage />}
             />
             <Route
               path="hauling"
