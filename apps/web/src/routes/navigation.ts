@@ -1,5 +1,4 @@
-// Central nav config for the admin sidebar. Add a screen here + a matching
-// <Route> in App.tsx — nothing else needs to change.
+// Central nav configs. Add a screen here + a matching <Route> in App.tsx.
 export interface NavItem {
   to: string;
   label: string;
@@ -20,6 +19,14 @@ export const adminNavItems: NavItem[] = [
 
 export const driverNavItems: NavItem[] = [
   { to: "/driver", label: "Dashboard", end: true },
-  { to: "/driver/route", label: "Current Route" },
+  { to: "/driver/route", label: "Collection Route" },
   { to: "/driver/collections", label: "Collections" },
+];
+
+export const ecoAideNavItems: NavItem[] = [
+  { to: "/eco-aide/route", label: "Hauling Route" },
+];
+
+export const residentNavItems: NavItem[] = [
+  { to: "/resident/track", label: "Track Truck" },
 ];
