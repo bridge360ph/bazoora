@@ -1,10 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
-import {
-  INITIAL_APPROVAL_REQUESTS,
-  INITIAL_ECO_AIDES,
-} from "../ecoAides.data";
+import { INITIAL_APPROVAL_REQUESTS } from "../ecoAides.data";
+import { fetchEcoAides } from "../ecoAides.api";
 import type {
   EcoAide,
   EcoAideApprovalRequest,
@@ -38,7 +36,7 @@ const emptyEcoAideForm: Omit<EcoAide, "id" | "addedDate"> = {
 
 export function EcoAideManagementPage() {
   const [activeTab, setActiveTab] = useState<EcoAideManagementTab>("all");
-  const [ecoAides, setEcoAides] = useState<EcoAide[]>(INITIAL_ECO_AIDES);
+  const [ecoAides, setEcoAides] = useState<EcoAide[]>([]);
   const [approvalRequests, setApprovalRequests] = useState<
     EcoAideApprovalRequest[]
   >(INITIAL_APPROVAL_REQUESTS);
@@ -49,6 +47,27 @@ export function EcoAideManagementPage() {
   const [formValue, setFormValue] =
     useState<Omit<EcoAide, "id" | "addedDate">>(emptyEcoAideForm);
   const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    let isActive = true;
+
+    void fetchEcoAides()
+      .then((databaseEcoAides) => {
+        if (isActive) {
+          setEcoAides(databaseEcoAides);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setEcoAides([]);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
 
   const filteredEcoAides = useMemo(() => {
     return ecoAides.filter((ecoAide) => {
