@@ -84,9 +84,14 @@ export function HaulingRequestDetailModal({
 
         {request.note && <DetailRow label="Note" value={request.note} />}
 
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-gray-700">Status:</span>
-          <StatusBadge status={STATUS_DISPLAY[request.status]} />
+        <div className="flex rounded-md overflow-hidden">
+          <span className="flex w-40 shrink-0 items-center bg-[#475C53] text-white text-sm font-semibold px-4 py-2.5">
+            Status
+          </span>
+
+          <div className="flex flex-1 items-center bg-[#A3BEB9] px-4 py-2.5">
+            <StatusBadge status={STATUS_DISPLAY[request.status]} />
+          </div>
         </div>
 
         {request.status === "DENIED" && request.denialReason && (
@@ -123,10 +128,10 @@ export function HaulingRequestDetailModal({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center bg-gray-50 rounded-md overflow-hidden">
-      <span className="w-40 shrink-0 bg-[#8fa89b] text-white text-sm font-semibold px-4 py-2.5">
+      <span className="w-40 shrink-0 bg-[#475C53] text-white text-sm font-semibold px-4 py-2.5">
         {label}
       </span>
-      <span className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-800">
+      <span className="flex-1 bg-[#A3BEB9] px-4 py-2.5 text-sm font-medium text-black">
         {value}
       </span>
     </div>
