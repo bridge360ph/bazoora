@@ -11,7 +11,7 @@ export const SENDER_FILTER_OPTIONS: {
   label: string;
   value: SenderFilterValue;
 }[] = [
-  { label: "All", value: "All" },
+  { label: "All", value: "ALL" },
   { label: "Residents", value: "RESIDENT" },
   { label: "Business", value: "BUSINESS" },
 ];
@@ -24,7 +24,7 @@ export const SENDER_DISPLAY = {
 export const WASTE_TYPE_FILTER_OPTIONS = [
   {
     label: "All",
-    value: "All",
+    value: "ALL",
   },
   {
     label: "Residual",

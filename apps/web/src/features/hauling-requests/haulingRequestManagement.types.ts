@@ -7,11 +7,11 @@ export interface HaulingRequestModalState {
   request: HaulingRequest | null;
 }
 
-// UI-only sender filter; extends senderType with an "All" option.
-export type SenderFilterValue = "All" | HaulingRequest["senderType"];
+// UI-only sender filter; extends senderType with an "ALL" option.
+export type SenderFilterValue = "ALL" | HaulingRequest["senderType"];
 
 export type WasteTypeFilterValue =
-  | "All"
+  | "ALL"
   | "RESIDUAL"
   | "NON_BIODEGRADABLE"
   | "HAZARDOUS"

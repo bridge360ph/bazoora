@@ -42,8 +42,13 @@ export function AdminHaulingRequestManagementPage() {
   const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
 
-  const [senderFilter, setSenderFilter] = useState<SenderFilterValue>("All");
-  const [wasteTypeFilter, setWasteTypeFilter] = useState<WasteTypeFilterValue>("All");
+  // NOTE: "ALL" must match the `allValue="ALL"` / options passed to
+  // FilterByDropdown in HaulingRequestFiltersBar. A mismatched sentinel
+  // (e.g. "All" vs "ALL") breaks both the ghost-button state and the
+  // "show everything" filter bypass below.
+  const [senderFilter, setSenderFilter] = useState<SenderFilterValue>("ALL");
+  const [wasteTypeFilter, setWasteTypeFilter] =
+    useState<WasteTypeFilterValue>("ALL");
   const [page, setPage] = useState(1);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedRequest, setSelectedRequest] = useState<HaulingRequest | null>(
@@ -55,11 +60,11 @@ export function AdminHaulingRequestManagementPage() {
 
     return requests.filter((request) => {
       const matchesSender =
-        senderFilter === "All" ||
+        senderFilter === "ALL" ||
         request.senderType === senderFilter;
 
       const matchesWasteType =
-        wasteTypeFilter === "All" ||
+        wasteTypeFilter === "ALL" ||
         request.wasteType === wasteTypeFilter;
 
       return (
