@@ -4,7 +4,7 @@ import {
   listHaulingRequests,
   uploadImage,
   updateHaulingRequest,
-} from "./api";
+} from "./haulingRequestApi";
 import type { CreateHaulingRequestInput } from "./schemas";
 import { toast } from "sonner";
 
