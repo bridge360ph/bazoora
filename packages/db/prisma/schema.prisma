@@ -16,6 +16,18 @@ enum UserRole {
   RESIDENT
 }
 
+enum EcoAideStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum EcoAideAvailability {
+  AVAILABLE
+  ON_ROUTE
+  OFF_DUTY
+}
+
 model User {
   id              String           @id @default(cuid())
   email           String           @unique
@@ -27,6 +39,7 @@ model User {
   driverLocation  DriverLocation?  @relation("DriverLocations")
   assignedTruck   Truck?           @relation("AssignedDriver")
   assignedRoute   Route?           @relation("AssignedEcoAide")
+  ecoAideProfile  EcoAideProfile?
 }
 
 model ServiceRequest {
@@ -89,4 +102,18 @@ model Route {
   assignedTruck      Truck?   @relation("RouteTruck", fields: [assignedTruckId], references: [id])
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model EcoAideProfile {
+  id             String               @id @default(cuid())
+  sequenceNumber Int                  @unique @default(autoincrement())
+  userId         String               @unique
+  phone          String?
+  status         EcoAideStatus        @default(ACTIVE)
+  availability   EcoAideAvailability  @default(AVAILABLE)
+  archivedAt     DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 }
