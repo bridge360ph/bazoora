@@ -1,4 +1,4 @@
-import { prisma } from "@bazoora/db";
+﻿import { prisma } from "@bazoora/db";
 import type { Prisma } from "@prisma/client";
 import type { FastifyPluginCallback } from "fastify";
 
@@ -13,7 +13,7 @@ type EcoAideAvailabilityInput =
   | "OFF_DUTY";
 
 interface CreateEcoAideProfileBody {
-  userId?: string;
+  email?: string;
   phone?: string | null;
   status?: EcoAideStatusInput;
   availability?: EcoAideAvailabilityInput;
@@ -40,13 +40,11 @@ const validAvailabilities: EcoAideAvailabilityInput[] = [
 const ecoAideProfileInclude = {
   user: {
     select: {
-      id: true,
       name: true,
       email: true,
       role: true,
       assignedRoute: {
         select: {
-          id: true,
           routeNumber: true,
           name: true,
         },
@@ -92,12 +90,34 @@ function normalizePhone(
   return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
+function formatEcoAideId(sequenceNumber: number): string {
+  return `EA-${sequenceNumber.toString().padStart(3, "0")}`;
+}
+
+function parseEcoAideId(value: string): number | null {
+  const match = /^EA-(\d+)$/i.exec(value.trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const sequenceNumber = Number(match[1]);
+
+  if (
+    !Number.isSafeInteger(sequenceNumber) ||
+    sequenceNumber <= 0
+  ) {
+    return null;
+  }
+
+  return sequenceNumber;
+}
+
 function formatEcoAideProfile(
   profile: EcoAideProfileWithUser,
 ) {
   return {
-    id: profile.id,
-    userId: profile.userId,
+    ecoAideId: formatEcoAideId(profile.sequenceNumber),
     name: profile.user.name ?? "Unnamed Eco-Aide",
     email: profile.user.email,
     phone: profile.phone,
@@ -117,6 +137,7 @@ export const ecoAideRoutes: FastifyPluginCallback = (
   app.get("/", async () => {
     const profiles = await prisma.ecoAideProfile.findMany({
       where: {
+        archivedAt: null,
         user: {
           is: {
             role: "ECO_AIDE",
@@ -124,7 +145,7 @@ export const ecoAideRoutes: FastifyPluginCallback = (
         },
       },
       orderBy: {
-        createdAt: "desc",
+        sequenceNumber: "asc",
       },
       include: ecoAideProfileInclude,
     });
@@ -139,12 +160,12 @@ export const ecoAideRoutes: FastifyPluginCallback = (
     const body =
       (request.body ?? {}) as CreateEcoAideProfileBody;
 
-    const userId = body.userId?.trim();
+    const email = body.email?.trim();
 
-    if (!userId) {
+    if (!email) {
       return reply.code(400).send({
         success: false,
-        message: "userId is required.",
+        message: "email is required.",
       });
     }
 
@@ -170,7 +191,7 @@ export const ecoAideRoutes: FastifyPluginCallback = (
 
     const user = await prisma.user.findUnique({
       where: {
-        id: userId,
+        email,
       },
       select: {
         id: true,
@@ -195,23 +216,24 @@ export const ecoAideRoutes: FastifyPluginCallback = (
     const existingProfile =
       await prisma.ecoAideProfile.findUnique({
         where: {
-          userId,
+          userId: user.id,
         },
         select: {
-          id: true,
+          archivedAt: true,
         },
       });
 
     if (existingProfile) {
       return reply.code(409).send({
         success: false,
-        message:
-          "An Eco-Aide profile already exists for this user.",
+        message: existingProfile.archivedAt
+          ? "An archived Eco-Aide profile already exists for this user."
+          : "An Eco-Aide profile already exists for this user.",
       });
     }
 
     const data: Prisma.EcoAideProfileUncheckedCreateInput = {
-      userId,
+      userId: user.id,
     };
 
     const phone = normalizePhone(body.phone);
@@ -239,8 +261,20 @@ export const ecoAideRoutes: FastifyPluginCallback = (
     });
   });
 
-  app.patch("/:id", async (request, reply) => {
-    const { id } = request.params as { id: string };
+  app.patch("/:ecoAideId", async (request, reply) => {
+    const { ecoAideId } = request.params as {
+      ecoAideId: string;
+    };
+
+    const sequenceNumber = parseEcoAideId(ecoAideId);
+
+    if (sequenceNumber === null) {
+      return reply.code(400).send({
+        success: false,
+        message: "Invalid Eco-Aide ID.",
+      });
+    }
+
     const body =
       (request.body ?? {}) as UpdateEcoAideProfileBody;
 
@@ -267,7 +301,7 @@ export const ecoAideRoutes: FastifyPluginCallback = (
     const existingProfile =
       await prisma.ecoAideProfile.findUnique({
         where: {
-          id,
+          sequenceNumber,
         },
         include: {
           user: {
@@ -282,6 +316,13 @@ export const ecoAideRoutes: FastifyPluginCallback = (
       return reply.code(404).send({
         success: false,
         message: "Eco-Aide profile not found.",
+      });
+    }
+
+    if (existingProfile.archivedAt) {
+      return reply.code(409).send({
+        success: false,
+        message: "Eco-Aide profile is archived.",
       });
     }
 
@@ -319,7 +360,7 @@ export const ecoAideRoutes: FastifyPluginCallback = (
 
     const profile = await prisma.ecoAideProfile.update({
       where: {
-        id,
+        sequenceNumber,
       },
       data,
       include: ecoAideProfileInclude,
@@ -331,77 +372,181 @@ export const ecoAideRoutes: FastifyPluginCallback = (
     };
   });
 
-  app.patch("/:id/suspend", async (request, reply) => {
-    const { id } = request.params as { id: string };
+  app.patch(
+    "/:ecoAideId/suspend",
+    async (request, reply) => {
+      const { ecoAideId } = request.params as {
+        ecoAideId: string;
+      };
 
-    const existingProfile =
-      await prisma.ecoAideProfile.findUnique({
+      const sequenceNumber = parseEcoAideId(ecoAideId);
+
+      if (sequenceNumber === null) {
+        return reply.code(400).send({
+          success: false,
+          message: "Invalid Eco-Aide ID.",
+        });
+      }
+
+      const existingProfile =
+        await prisma.ecoAideProfile.findUnique({
+          where: {
+            sequenceNumber,
+          },
+          select: {
+            archivedAt: true,
+          },
+        });
+
+      if (!existingProfile) {
+        return reply.code(404).send({
+          success: false,
+          message: "Eco-Aide profile not found.",
+        });
+      }
+
+      if (existingProfile.archivedAt) {
+        return reply.code(409).send({
+          success: false,
+          message: "Eco-Aide profile is archived.",
+        });
+      }
+
+      const profile = await prisma.ecoAideProfile.update({
         where: {
-          id,
+          sequenceNumber,
         },
-        select: {
-          id: true,
+        data: {
+          status: "SUSPENDED",
         },
+        include: ecoAideProfileInclude,
       });
 
-    if (!existingProfile) {
-      return reply.code(404).send({
-        success: false,
-        message: "Eco-Aide profile not found.",
-      });
-    }
+      return {
+        success: true,
+        data: formatEcoAideProfile(profile),
+      };
+    },
+  );
 
-    const profile = await prisma.ecoAideProfile.update({
-      where: {
-        id,
-      },
-      data: {
-        status: "SUSPENDED",
-      },
-      include: ecoAideProfileInclude,
-    });
+  app.patch(
+    "/:ecoAideId/deactivate",
+    async (request, reply) => {
+      const { ecoAideId } = request.params as {
+        ecoAideId: string;
+      };
 
-    return {
-      success: true,
-      data: formatEcoAideProfile(profile),
-    };
-  });
+      const sequenceNumber = parseEcoAideId(ecoAideId);
 
-  app.patch("/:id/deactivate", async (request, reply) => {
-    const { id } = request.params as { id: string };
+      if (sequenceNumber === null) {
+        return reply.code(400).send({
+          success: false,
+          message: "Invalid Eco-Aide ID.",
+        });
+      }
 
-    const existingProfile =
-      await prisma.ecoAideProfile.findUnique({
+      const existingProfile =
+        await prisma.ecoAideProfile.findUnique({
+          where: {
+            sequenceNumber,
+          },
+          select: {
+            archivedAt: true,
+          },
+        });
+
+      if (!existingProfile) {
+        return reply.code(404).send({
+          success: false,
+          message: "Eco-Aide profile not found.",
+        });
+      }
+
+      if (existingProfile.archivedAt) {
+        return reply.code(409).send({
+          success: false,
+          message: "Eco-Aide profile is archived.",
+        });
+      }
+
+      const profile = await prisma.ecoAideProfile.update({
         where: {
-          id,
+          sequenceNumber,
         },
-        select: {
-          id: true,
+        data: {
+          status: "DEACTIVATED",
+          availability: "OFF_DUTY",
+        },
+        include: ecoAideProfileInclude,
+      });
+
+      return {
+        success: true,
+        data: formatEcoAideProfile(profile),
+      };
+    },
+  );
+
+  app.patch(
+    "/:ecoAideId/archive",
+    async (request, reply) => {
+      const { ecoAideId } = request.params as {
+        ecoAideId: string;
+      };
+
+      const sequenceNumber = parseEcoAideId(ecoAideId);
+
+      if (sequenceNumber === null) {
+        return reply.code(400).send({
+          success: false,
+          message: "Invalid Eco-Aide ID.",
+        });
+      }
+
+      const existingProfile =
+        await prisma.ecoAideProfile.findUnique({
+          where: {
+            sequenceNumber,
+          },
+          select: {
+            archivedAt: true,
+          },
+        });
+
+      if (!existingProfile) {
+        return reply.code(404).send({
+          success: false,
+          message: "Eco-Aide profile not found.",
+        });
+      }
+
+      if (existingProfile.archivedAt) {
+        return reply.code(409).send({
+          success: false,
+          message: "Eco-Aide profile is already archived.",
+        });
+      }
+
+      await prisma.ecoAideProfile.update({
+        where: {
+          sequenceNumber,
+        },
+        data: {
+          archivedAt: new Date(),
+          status: "DEACTIVATED",
+          availability: "OFF_DUTY",
         },
       });
 
-    if (!existingProfile) {
-      return reply.code(404).send({
-        success: false,
-        message: "Eco-Aide profile not found.",
-      });
-    }
-
-    const profile = await prisma.ecoAideProfile.update({
-      where: {
-        id,
-      },
-      data: {
-        status: "DEACTIVATED",
-      },
-      include: ecoAideProfileInclude,
-    });
-
-    return {
-      success: true,
-      data: formatEcoAideProfile(profile),
-    };
-  });
+      return {
+        success: true,
+        data: {
+          ecoAideId: formatEcoAideId(sequenceNumber),
+        },
+        message: "Eco-Aide profile archived.",
+      };
+    },
+  );
 
   done();
 };
