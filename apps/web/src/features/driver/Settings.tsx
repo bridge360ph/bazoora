@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
@@ -22,16 +23,60 @@ const inputClass =
   "w-full bg-white border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900";
 const labelClass = "text-xs font-bold opacity-60 mb-1.5";
 
+/* ---------------- LOG OUT CONFIRMATION MODAL ---------------- */
+function LogoutConfirmModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+            <Icon icon={icons.logout} size={18} />
+          </div>
+          <div>
+            <div className="text-base font-bold text-slate-900">Log Out?</div>
+            <div className="text-xs opacity-55">You'll need to sign in again to access your route.</div>
+          </div>
+        </div>
+
+        <div className="flex gap-2.5">
+          <button
+            className="flex-1 bg-white border border-gray-200 text-slate-700 rounded-xl py-2.5 font-bold text-sm cursor-pointer"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="flex-1 bg-red-600 text-white rounded-xl py-2.5 font-bold text-sm cursor-pointer"
+            onClick={onConfirm}
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- COMPONENT ---------------- */
 export function Settings() {
   const navigate = useNavigate();
+  const clearSession = useAuthStore((s) => s.clear);
+  const [searchParams] = useSearchParams();
 
   const activeKey = "settings";
   const activeMobileKey = "settings";
 
   const isMobile = useIsMobile();
   const [navOpen, setNavOpen] = useState(false);
-  const [tab, setTab] = useState<Tab>("account");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+const tab = (searchParams.get("tab") as Tab | null) ?? "account";
 
   const goTo = (key: string) => {
     setNavOpen(false);
@@ -60,6 +105,15 @@ export function Settings() {
     }
   };
 
+  const goToSettingsTab = (settingsTab: Tab) => {
+    void navigate(`/driver/settings?tab=${settingsTab}`);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    void navigate("/login");
+  };
+
   return (
     <div className={layout}>
       <Sidebar
@@ -75,7 +129,8 @@ export function Settings() {
           isMobile={isMobile}
           title="Settings"
           onToggleNav={() => setNavOpen((v) => !v)}
-          onAvatarClick={() => goTo("settings")}
+          onSelectSettingsTab={goToSettingsTab}
+          onLogout={() => setConfirmOpen(true)}
         />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
@@ -90,7 +145,7 @@ export function Settings() {
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold ${
                     tab === t.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
                   }`}
-                  onClick={() => setTab(t.key)}
+                  onClick={() => goToSettingsTab(t.key)}
                 >
                   <Icon icon={icons[t.icon]} size={14} />
                   {t.label}
@@ -199,7 +254,10 @@ export function Settings() {
 
                 {/* LOG OUT / DELETE ACCOUNT */}
                 <div className={isMobile ? "flex flex-col gap-3" : "grid grid-cols-2 gap-3"}>
-                  <button className="bg-white border border-gray-200 text-slate-700 rounded-xl py-3 font-bold text-sm cursor-pointer flex items-center justify-center gap-2">
+                  <button
+                    className="bg-white border border-gray-200 text-slate-700 rounded-xl py-3 font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
+                    onClick={() => setConfirmOpen(true)}
+                  >
                     <Icon icon={icons.logout} size={15} />
                     Log Out
                   </button>
@@ -228,6 +286,13 @@ export function Settings() {
 
       {isMobile && <BottomNav activeKey={activeMobileKey} onNavigate={goTo} />}
       {isMobile && <Fab onNavigate={goTo} />}
+
+      {confirmOpen && (
+        <LogoutConfirmModal
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleLogout}
+        />
+      )}
     </div>
   );
 }

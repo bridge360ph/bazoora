@@ -1,21 +1,20 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { socket } from "./lib/socket";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
-// admin imports
+import { getSocket, disconnectSocket } from "./lib/socket";
+
+// Auth
+import LoginPage from "./features/auth/components/LoginPage";
+
+// Admin imports
 import { AdminLayout } from "./layouts/AdminLayout";
 import { AdminHome } from "./pages/AdminHome";
-import { AdminAnalyticsPage }
-  from "./features/analytics/AdminAnalyticsPage";
-// driver imports
+import { RoutePlaceholder } from "./pages/RoutePlaceholder";
+import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
+import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
+import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+
+// Driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
-
-import { AdminFleetManagementPage }
-  from "./features/fleet-management/AdminFleetManagementPage";
-
-import { AdminHaulingRequestManagementPage }
-  from "./features/hauling-requests/AdminHaulingRequestManagementPage";
-
 import DriverDashboard from "./features/driver/DriverDashboard";
 import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
@@ -23,23 +22,28 @@ import { ReportIssue } from "./features/driver/ReportIssue";
 import { Messages } from "./features/driver/Messages";
 import { Settings } from "./features/driver/Settings";
 
-// App.tsx is routing configuration only — please don't turn it back into a
-// single dashboard. To ship a screen: replace the matching placeholder element
-// below with your page component. Add a nav link in src/routes/navigation.ts.
-
+// App.tsx is routing configuration only
 function App() {
   useEffect(() => {
-    socket.connect();
+  const socket = getSocket(() => {
+    return localStorage.getItem("token");
+  });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
+  socket.connect();
+
+  return () => {
+    disconnectSocket();
+  };
+}, []);
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/admin" replace />} />
+        {/* AUTH */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Default route */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
         {/* ADMIN */}
         <Route path="/admin" element={<AdminLayout />}>
@@ -85,18 +89,34 @@ function App() {
         <Route path="/driver" element={<DriverLayout />}>
           <Route index element={<DriverDashboard />} />
 
-          <Route path="route" element={<CurrentRoute />} />
+          <Route
+            path="route"
+            element={<CurrentRoute />}
+          />
 
-          <Route path="collections" element={<Collections />} />
+          <Route
+            path="collections"
+            element={<Collections />}
+          />
 
-          <Route path="report" element={<ReportIssue />} />
+          <Route
+            path="report"
+            element={<ReportIssue />}
+          />
 
-          <Route path="messages" element={<Messages />} />
+          <Route
+            path="messages"
+            element={<Messages />}
+          />
 
-          <Route path="settings" element={<Settings />} />
+          <Route
+            path="settings"
+            element={<Settings />}
+          />
         </Route>
 
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        {/* Unknown routes */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

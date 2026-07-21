@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
 import { Header } from "./shared/Header";
+import type { SettingsTab } from "./shared/Header";
 import { BottomNav } from "./shared/BottomNav";
 import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
@@ -50,15 +52,57 @@ const statusClass: Record<ReportStatus, string> = {
 const reportTypes = ["Missed Collection", "Vehicle Problem", "Road Blockage", "Inaccessible Area", "Other"];
 const wasteTypes = ["Residual", "Biodegradable", "Non-Biodegradable", "Hazardous"];
 
+/* ---------------- LOG OUT CONFIRMATION MODAL ---------------- */
+function LogoutConfirmModal({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+            <Icon icon={icons.logout} size={18} />
+          </div>
+          <div>
+            <div className="text-base font-bold text-slate-900">Log Out?</div>
+            <div className="text-xs opacity-55">You'll need to sign in again to access your route.</div>
+          </div>
+        </div>
+
+        <div className="flex gap-2.5">
+          <button
+            className="flex-1 bg-white border border-gray-200 text-slate-700 rounded-xl py-2.5 font-bold text-sm cursor-pointer"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="flex-1 bg-red-600 text-white rounded-xl py-2.5 font-bold text-sm cursor-pointer"
+            onClick={onConfirm}
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- COMPONENT ---------------- */
 export function ReportIssue() {
   const navigate = useNavigate();
+  const clearSession = useAuthStore((s) => s.clear);
 
   const activeKey = "report";
   const activeMobileKey = "report";
 
   const isMobile = useIsMobile();
   const [navOpen, setNavOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [tab, setTab] = useState<"new" | "history">("new");
   const [page, setPage] = useState(1);
 
@@ -90,6 +134,21 @@ export function ReportIssue() {
     }
   };
 
+  // Sends the avatar dropdown straight to a specific Settings tab, so
+  // Account/Notifications/System all land on the right tab instead of
+  // just opening Settings on its default tab.
+  const goToSettingsTab = (settingsTab: SettingsTab) => {
+    void navigate(`/driver/settings?tab=${settingsTab}`);
+  };
+
+  // Logout requires confirmation first — Header's menu just opens the
+  // modal; the modal's own "Log Out" button calls this to actually clear
+  // the session and redirect.
+  const handleLogout = () => {
+    clearSession();
+    void navigate("/login");
+  };
+
   return (
     <div className={layout}>
       <Sidebar
@@ -101,7 +160,13 @@ export function ReportIssue() {
       />
 
       <div className={mainWrap}>
-        <Header isMobile={isMobile} title="Report Issue" onToggleNav={() => setNavOpen((v) => !v)} onAvatarClick={() => goTo("settings")} />
+        <Header
+          isMobile={isMobile}
+          title="Report Issue"
+          onToggleNav={() => setNavOpen((v) => !v)}
+          onSelectSettingsTab={goToSettingsTab}
+          onLogout={() => setConfirmOpen(true)}
+        />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           <div className="max-w-2xl mx-auto flex flex-col gap-4">
@@ -243,6 +308,13 @@ export function ReportIssue() {
 
       {isMobile && <BottomNav activeKey={activeMobileKey} onNavigate={goTo} />}
       {isMobile && <Fab onNavigate={goTo} />}
+
+      {confirmOpen && (
+        <LogoutConfirmModal
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleLogout}
+        />
+      )}
     </div>
   );
 }

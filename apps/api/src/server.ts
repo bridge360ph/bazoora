@@ -6,6 +6,7 @@ import type { HealthResponse } from "@bazoora/shared";
 
 import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
+import { authRoutes } from "./routes/auth.js";
 import { config } from "./plugins/config.js";
 
 const app = Fastify({ logger: true });
@@ -16,6 +17,12 @@ const start = async () => {
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   });
 
+  // Authentication routes
+  await app.register(authRoutes, {
+    prefix: "/auth",
+  });
+
+  // Hauling request routes
   await app.register(haulingRequestRoutes, {
     prefix: "/hauling-requests",
   });
@@ -24,7 +31,7 @@ const start = async () => {
     return { status: "ok" };
   });
 
-  // TODO: Add Socket.IO connection handlers/events.
+  // Socket.IO
   setupSocket(app.server);
 
   await app.listen({
