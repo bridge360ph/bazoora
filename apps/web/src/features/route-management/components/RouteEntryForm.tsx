@@ -17,6 +17,7 @@ interface RouteEntryFormProps {
  * route-specific and has no reason to live in this feature folder.
  */
 export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps) {
+  
   function updateField<Key extends keyof RouteFormValue>(
     key: Key,
     value: RouteFormValue[Key],
@@ -95,16 +96,14 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
           </select>
         </FormField>
 
-        <FormField label="Start Time">
-          <input
-            value={formValue.startTime}
-            onChange={(event) => {
-              updateField("startTime", event.target.value);
-            }}
-            placeholder="e.g. 10:00 AM"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-          />
-        </FormField>
+        <input
+          type="time"
+          value={formValue.startTime}
+          onChange={(event) => {
+            updateField("startTime", event.target.value);
+          }}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+        />
       </div>
 
       {/* <FormField label="Eco-Aide">

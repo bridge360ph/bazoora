@@ -79,12 +79,15 @@ export const updateRouteSchema = {
       },
       name: {
         type: "string",
+        minLength: 5,
       },
       barangay: {
         type: "string",
+        minLength: 5,
       },
       waypoints: {
         type: "string",
+        minLength: 5,
       },
       wasteType: {
         type: "string",
@@ -97,6 +100,7 @@ export const updateRouteSchema = {
       },
       routeType: {
         type: "string",
+        minLength: 3,
     },
     },
   },

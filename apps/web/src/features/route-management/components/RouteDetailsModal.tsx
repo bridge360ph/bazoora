@@ -11,7 +11,10 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
     <Modal title="Route Details" onClose={onClose} width={820}>
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)] gap-x-10 gap-y-4 rounded-xl bg-[#1a3a2e] px-8 py-7">
         <div className="flex flex-col gap-2.5">
-          <DetailItem label="Route ID" value={route.id} />
+          <DetailItem
+            label="Route Number"
+            value={`RT-${String(route.routeNumber).padStart(3, "0")}`}
+          />
           <DetailItem label="Route Name" value={route.name} />
           <DetailItem label="Barangay Coverage" value={route.barangay} />
           <DetailItem label="Waypoint / Collection Points" value={route.waypoints} />

@@ -16,14 +16,6 @@ interface RouteFormModalProps {
   isSubmitting?: boolean;
 }
 
-/**
- * Handles both "Create Route" and "Edit Route" - the two only ever differed
- * by title and save-button label, so they share one modal instead of two
- * near-identical files.
- *
- * NOTE: `ModalFooter` is assumed to be added to @bazoora/ui - it is not
- * route-specific and has no reason to live in this feature folder.
- */
 export function RouteFormModal({
   mode,
   route,
@@ -33,7 +25,12 @@ export function RouteFormModal({
   onClose,
   isSubmitting = false,
 }: RouteFormModalProps) {
-  const title = mode === "create" ? "Create Route" : `Edit Route for ${route?.id}`;
+  const title =
+    mode === "create"
+      ? "Create Route"
+      : route
+        ? `Edit Route RT-${String(route.routeNumber).padStart(3, "0")}`
+        : "Edit Route";
 
   const saveLabel =
     mode === "create"
@@ -44,10 +41,66 @@ export function RouteFormModal({
         ? "Saving..."
         : "Save";
 
+  function getValidationError(): string | null {
+    if (formValue.name.trim().length < 5) {
+      return "Route Name must be at least 5 characters.";
+    }
+
+    if (formValue.barangay.trim().length < 5) {
+      return "Barangay Coverage must be at least 5 characters.";
+    }
+
+    const waypointCount = formValue.waypoints
+      .split(",")
+      .map((stop) => stop.trim())
+      .filter(Boolean).length;
+
+    if (waypointCount < 1) {
+      return "At least one collection point is required.";
+    }
+
+    if (!formValue.wasteType) {
+      return "Waste Type is required.";
+    }
+
+    if (!formValue.collectionDay) {
+      return "Collection Day is required.";
+    }
+
+    if (!formValue.startTime.trim()) {
+      return "Start Time is required.";
+    }
+
+    if (!formValue.routeType.trim()) {
+      return "Route Type is required.";
+    }
+
+    return null;
+  }
+
+  function handleSave() {
+    const validationError = getValidationError();
+
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    onSave();
+  }
+
   return (
     <Modal title={title} onClose={onClose} width={560}>
-      <RouteEntryForm formValue={formValue} setFormValue={setFormValue} />
-      <ModalFooter saveLabel={saveLabel} onSave={onSave} onClose={onClose} />
+      <RouteEntryForm
+        formValue={formValue}
+        setFormValue={setFormValue}
+      />
+
+      <ModalFooter
+        saveLabel={saveLabel}
+        onSave={handleSave}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
