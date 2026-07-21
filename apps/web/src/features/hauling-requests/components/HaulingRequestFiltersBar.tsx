@@ -31,9 +31,7 @@ const WASTE_TYPE_OPTIONS: WasteTypeFilterValue[] = WASTE_TYPE_FILTER_OPTIONS.map
  * "Filter by Sender" and "Filter by Waste Type" are client-side filters.
  * The Eco-Aide search box remains a disabled UI stub until assignment
  * fields are available.
- *
  */
-
 export function HaulingRequestFiltersBar({
   senderFilter,
   wasteTypeFilter,
@@ -41,12 +39,13 @@ export function HaulingRequestFiltersBar({
   onWasteTypeFilterChange,
 }: HaulingRequestFiltersBarProps) {
   return (
-    <div className="text-gray-800 mb-4 flex items-center gap-3">
+    <div className="mb-4 flex items-center gap-3">
       <FilterByDropdown
         label="Filter by Sender"
         value={senderFilter}
         options={SENDER_OPTIONS}
         allValue="ALL"
+        inactiveStyle="ghost"
         onChange={onSenderFilterChange}
       />
 
@@ -55,6 +54,7 @@ export function HaulingRequestFiltersBar({
         value={wasteTypeFilter}
         options={WASTE_TYPE_OPTIONS}
         allValue="ALL"
+        inactiveStyle="ghost"
         onChange={onWasteTypeFilterChange}
       />
 
