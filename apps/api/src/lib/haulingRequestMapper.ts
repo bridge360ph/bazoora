@@ -13,8 +13,7 @@ export function mapHaulingRequest(
 
     requestAddress: request.request_address,
 
-    senderType:
-      request.sender_type as SharedHaulingRequest["senderType"],
+    senderType: request.sender_type,
 
     wasteType: request.waste_type,
 

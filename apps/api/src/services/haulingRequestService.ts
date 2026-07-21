@@ -140,16 +140,6 @@ export async function denyHaulingRequest(
 
   const trimmedReason = denialReason.trim();
 
-  if (!trimmedReason) {
-    throw new Error("Denial reason is required");
-  }
-
-  if (trimmedReason.length < 5) {
-    throw new Error(
-      "Denial reason must be at least 5 characters",
-    );
-  }
-
   if (trimmedReason.length > 500) {
     throw new Error(
       "Denial reason must not exceed 500 characters",

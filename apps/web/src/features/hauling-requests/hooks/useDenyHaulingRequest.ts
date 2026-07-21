@@ -12,10 +12,5 @@ export function useDenyHaulingRequest() {
         queryKey: ["hauling-requests"],
       });
     },
-
-    onError: (error) => {
-      console.error(error.message);
-      alert(error.message); // temporary feedback
-    },
   });
 }

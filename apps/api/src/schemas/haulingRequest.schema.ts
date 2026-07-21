@@ -34,7 +34,7 @@ export const createHaulingRequestSchema = {
       },
       note: {
         type: "string",
-        maxLength: 250,
+        maxLength: 500,
       },
     },
   },
@@ -69,7 +69,7 @@ export const denyHaulingRequestSchema = {
       denialReason: {
         type: "string",
         minLength: 5,
-        maxLength: 250,
+        maxLength: 500,
       },
     },
   },

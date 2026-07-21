@@ -83,6 +83,12 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
           denialReason,
         );
 
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
         return result;
 
       } catch (error) {

@@ -44,7 +44,7 @@ CREATE TABLE "HaulingRequest" (
     "user_id" TEXT NOT NULL,
     "org_id" TEXT,
     "request_address" TEXT NOT NULL,
-    "sender_type" "SenderType",
+    "sender_type" "SenderType" NOT NULL,
     "waste_type" "WasteType" NOT NULL,
     "image_url" TEXT,
     "pickup_date" TIMESTAMP(3),

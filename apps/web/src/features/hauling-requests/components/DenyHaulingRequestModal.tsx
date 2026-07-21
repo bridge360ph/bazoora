@@ -13,6 +13,7 @@ interface DenyHaulingRequestModalProps {
     denialReason: string,
   ) => void;
   isSubmitting: boolean;
+  errorMessage?: string;
 }
 
 export function DenyHaulingRequestModal({
@@ -20,6 +21,7 @@ export function DenyHaulingRequestModal({
   onClose,
   onConfirm,
   isSubmitting,
+  errorMessage,
 }: DenyHaulingRequestModalProps) {
   const [denialReason, setDenialReason] = useState("");
 
@@ -68,13 +70,23 @@ export function DenyHaulingRequestModal({
                   Denial reason is required.
                 </p>
               )}
+
+              {errorMessage && (
+                <p className="text-sm text-red-600">
+                  {errorMessage}
+                </p>
+              )}
             </div>
 
             <p className="text-xs text-gray-500">
               {denialReason.length}/500
             </p>
           </div>
-        </div>
+
+            <p className="text-xs text-gray-500">
+              {denialReason.length}/500
+            </p>
+          </div>
 
         <div className="flex justify-center gap-3 pt-2">
           <Button
