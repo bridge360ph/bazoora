@@ -82,11 +82,7 @@ export function DenyHaulingRequestModal({
               {denialReason.length}/500
             </p>
           </div>
-
-            <p className="text-xs text-gray-500">
-              {denialReason.length}/500
-            </p>
-          </div>
+        </div>
 
         <div className="flex justify-center gap-3 pt-2">
           <Button
