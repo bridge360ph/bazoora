@@ -51,7 +51,6 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         }
 
         return result;
-
       } catch (error) {
         return reply.status(400).send({
           message:
@@ -69,15 +68,15 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       schema: denyHaulingRequestSchema,
     },
     async (request, reply) => {
-      const { id } = request.params as {
-        id: string;
-      };
-
-      const { denialReason } = request.body as {
-        denialReason: string;
-      };
-
       try {
+        const { id } = request.params as {
+          id: string;
+        };
+
+        const { denialReason } = request.body as {
+          denialReason: string;
+        };
+
         const result = await denyHaulingRequest(
           id,
           denialReason,
@@ -90,7 +89,6 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         }
 
         return result;
-
       } catch (error) {
         return reply.status(400).send({
           message:
