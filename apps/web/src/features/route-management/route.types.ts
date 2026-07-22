@@ -1,6 +1,10 @@
-export type RouteStatus = "In Progress" | "Completed" | "Not Started";
+import type { RouteStatus } from "@bazoora/shared";
 
-export type RouteStatusFilter = "All" | RouteStatus;
+export type { RouteStatus };
+
+export type RouteStatusFilter =
+  | "All"
+  | RouteStatus;
 
 export type WasteType =
   | "Regular"

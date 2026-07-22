@@ -1,3 +1,4 @@
+import type { RouteStatus } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 
 // Mock-in memory
@@ -5,14 +6,14 @@ const routes: Route[] = [];
 
 interface Route {
   id: string;
-  routeNumber: string;
+  routeNumber: number;
   name: string;
   barangay: string;
   waypoints: string;
   wasteType: string;
   collectionDay: string;
   startTime: string;
-  status: string;
+  status: RouteStatus;
 }
 
 export function getRoutes() {
@@ -25,7 +26,7 @@ export function getRouteById(id: string) {
   );
 
   if (!route) {
-    throw new Error("Route not found");
+    return null;
   }
 
   return mapRouteToResponse(route);
@@ -42,18 +43,16 @@ export function createRoute(
   );
 
   if (duplicateRoute) {
-    throw new Error("Route already exists");
+    return null;
   }
 
   const nextRouteNumber = routes.length + 1;
 
-  const route = {
-    id: crypto.randomUUID(),
-    routeNumber: `RT-${String(
-      nextRouteNumber,
-    ).padStart(3, "0")}`,
-    status: "Not Started",
+  const route: Route = {
     ...data,
+    id: crypto.randomUUID(),
+    routeNumber: nextRouteNumber,
+    status: "Not Started",
   };
 
   routes.push(route);
@@ -62,19 +61,43 @@ export function createRoute(
 }
 
 
+type UpdateRouteData = Omit<
+  Partial<Route>,
+  "id" | "routeNumber" | "status"
+>;
+
+
 export function updateRoute(
   id: string,
-  data: Partial<Route>,
+  data: UpdateRouteData,
 ) {
   const route = routes.find(
     (route) => route.id === id,
   );
 
   if (!route) {
-    throw new Error("Route not found");
+    return null;
   }
 
   Object.assign(route, data);
+
+  return mapRouteToResponse(route);
+}
+
+
+export function updateRouteStatus(
+  id: string,
+  status: RouteStatus,
+) {
+  const route = routes.find(
+    (route) => route.id === id,
+  );
+
+  if (!route) {
+    return null;
+  }
+
+  route.status = status;
 
   return mapRouteToResponse(route);
 }

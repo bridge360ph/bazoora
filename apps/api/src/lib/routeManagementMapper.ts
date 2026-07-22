@@ -1,6 +1,6 @@
 interface RouteRecord {
   id: string;
-  routeNumber: string;
+  routeNumber: number;
   name: string;
   barangay: string;
   waypoints: string;
