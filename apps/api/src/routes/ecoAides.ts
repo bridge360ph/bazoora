@@ -1,4 +1,4 @@
-﻿import { prisma } from "@bazoora/db";
+import { prisma } from "@bazoora/db";
 import type { Prisma } from "@prisma/client";
 import type { FastifyPluginCallback } from "fastify";
 
