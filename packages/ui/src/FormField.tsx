@@ -1,15 +1,12 @@
-import type { ReactNode } from "react";
+﻿import type { ReactNode } from "react";
 
-interface FormFieldProps {
+export interface FormFieldProps {
   label: string;
   children: ReactNode;
   required?: boolean;
   error?: string;
 }
 
-/**
- * Generic label-above-input wrapper used across form modals.
- */
 export function FormField({
   label,
   children,
@@ -17,11 +14,15 @@ export function FormField({
   error,
 }: FormFieldProps) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-sm font-semibold text-gray-700">
+    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+      <span>
         {label}
+
         {required && (
-          <span className="ml-1 text-red-600" aria-hidden="true">
+          <span
+            aria-hidden="true"
+            className="ml-1 text-red-600"
+          >
             *
           </span>
         )}
@@ -30,7 +31,10 @@ export function FormField({
       {children}
 
       {error && (
-        <span className="text-xs font-medium text-red-600" role="alert">
+        <span
+          role="alert"
+          className="text-xs font-normal text-red-600"
+        >
           {error}
         </span>
       )}

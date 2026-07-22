@@ -33,7 +33,8 @@ export function AssignTruckModal({
   onSave,
   onClose,
 }: AssignTruckModalProps) {
-  const [errors, setErrors] = useState<AssignmentErrors>({});
+  const [errors, setErrors] =
+    useState<AssignmentErrors>({});
 
   function getInputClass(hasError: boolean) {
     return `${inputBaseClass} ${
@@ -47,11 +48,13 @@ export function AssignTruckModal({
     const nextErrors: AssignmentErrors = {};
 
     if (!assignedRoute.trim()) {
-      nextErrors.assignedRoute = "Assigned route is required.";
+      nextErrors.assignedRoute =
+        "Assigned route is required.";
     }
 
     if (!assignedEcoAide.trim()) {
-      nextErrors.assignedEcoAide = "Assigned Eco-Aide is required.";
+      nextErrors.assignedEcoAide =
+        "Assigned Eco-Aide is required.";
     }
 
     setErrors(nextErrors);
@@ -66,8 +69,9 @@ export function AssignTruckModal({
   return (
     <Modal title="Assign Truck" onClose={onClose} width={430}>
       <p className="mb-4 text-xs text-gray-500">
-        Fields marked with <span className="font-bold text-red-600">*</span> are
-        required.
+        Fields marked with{" "}
+        <span className="font-bold text-red-600">*</span>{" "}
+        are required.
       </p>
 
       <FormField label="Truck ID">
@@ -77,6 +81,7 @@ export function AssignTruckModal({
             disabled
             className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-[10px] py-2 text-[13px] text-gray-500"
           />
+
           <input
             value={truck.model}
             disabled
@@ -92,21 +97,28 @@ export function AssignTruckModal({
       >
         <select
           value={assignedRoute}
+          aria-invalid={Boolean(errors.assignedRoute)}
           onChange={(event) => {
             setAssignedRoute(event.target.value);
+
             setErrors((currentErrors) => ({
               ...currentErrors,
               assignedRoute: undefined,
             }));
           }}
-          aria-invalid={Boolean(errors.assignedRoute)}
-          className={getInputClass(Boolean(errors.assignedRoute))}
+          className={getInputClass(
+            Boolean(errors.assignedRoute),
+          )}
         >
-          {routeOptions.map((route) => (
-            <option key={route} value={route}>
-              {route}
-            </option>
-          ))}
+          <option value="">Select route</option>
+
+          {routeOptions
+            .filter((route) => route.trim().length > 0)
+            .map((route) => (
+              <option key={route} value={route}>
+                {route}
+              </option>
+            ))}
         </select>
       </FormField>
 
@@ -117,25 +129,39 @@ export function AssignTruckModal({
       >
         <select
           value={assignedEcoAide}
+          aria-invalid={Boolean(errors.assignedEcoAide)}
           onChange={(event) => {
             setAssignedEcoAide(event.target.value);
+
             setErrors((currentErrors) => ({
               ...currentErrors,
               assignedEcoAide: undefined,
             }));
           }}
-          aria-invalid={Boolean(errors.assignedEcoAide)}
-          className={getInputClass(Boolean(errors.assignedEcoAide))}
+          className={getInputClass(
+            Boolean(errors.assignedEcoAide),
+          )}
         >
-          {ecoAideOptions.map((ecoAide) => (
-            <option key={ecoAide} value={ecoAide}>
-              {ecoAide}
-            </option>
-          ))}
+          <option value="">Select Eco-Aide</option>
+
+          {ecoAideOptions
+            .filter(
+              (ecoAide) =>
+                ecoAide.trim().length > 0,
+            )
+            .map((ecoAide) => (
+              <option key={ecoAide} value={ecoAide}>
+                {ecoAide}
+              </option>
+            ))}
         </select>
       </FormField>
 
-      <ModalFooter saveLabel="Save" onSave={handleSave} onClose={onClose} />
+      <ModalFooter
+        saveLabel="Save"
+        onSave={handleSave}
+        onClose={onClose}
+      />
     </Modal>
   );
 }
