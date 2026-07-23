@@ -9,4 +9,6 @@
 @theme {
   --color-brand: #1a3a2e;
   --color-brand-dark: #12291f;
+  --color-accent-dark: #475c53;
+  --color-accent-light: #a3beb9;
 }
