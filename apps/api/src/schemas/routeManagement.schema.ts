@@ -28,12 +28,12 @@ export interface UpdateRouteBody {
   collectionDay?: string;
   startTime?: string;
   routeType?: string;
-  status?: string;
 }
 
 export const createRouteSchema = {
   body: {
     type: "object",
+    additionalProperties: false,
     required: [
       "name",
       "barangay",
@@ -73,10 +73,8 @@ export const createRouteSchema = {
 export const updateRouteSchema = {
   body: {
     type: "object",
+    additionalProperties: false,
     properties: {
-      status: {
-        type: "string",
-      },
       name: {
         type: "string",
         minLength: 5,
@@ -102,6 +100,35 @@ export const updateRouteSchema = {
         type: "string",
         minLength: 3,
     },
+    },
+  },
+} as const;
+
+
+export const updateRouteStatusSchema = {
+  params: {
+    type: "object",
+    additionalProperties: false,
+    required: ["id"],
+    properties: {
+      id: {
+        type: "string",
+      },
+    },
+  },
+  body: {
+    type: "object",
+    additionalProperties: false,
+    required: ["status"],
+    properties: {
+      status: {
+        type: "string",
+        enum: [
+          "Not Started",
+          "In Progress",
+          "Completed",
+        ],
+      },
     },
   },
 } as const;

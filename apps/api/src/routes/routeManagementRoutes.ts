@@ -1,14 +1,17 @@
 import type { FastifyInstance } from "fastify";
 
+import type { UpdateRouteStatusRequest } from "@bazoora/shared";
+
 import type {
   CreateRouteBody,
   UpdateRouteBody,
 } from "../schemas/routeManagement.schema.js";
 
 import {
-  routeManagementParamsSchema,
   createRouteSchema,
+  routeManagementParamsSchema,
   updateRouteSchema,
+  updateRouteStatusSchema,
 } from "../schemas/routeManagement.schema.js";
 
 import {
@@ -16,12 +19,38 @@ import {
   getRouteById,
   getRoutes,
   updateRoute,
+  updateRouteStatus,
 } from "../services/routeManagementService.js";
-
 
 export function routeManagementRoutes(
   app: FastifyInstance,
 ) {
+  app.get("/", () => {
+    return getRoutes();
+  });
+
+  app.get(
+    "/:id",
+    {
+      schema: routeManagementParamsSchema,
+    },
+    async (request, reply) => {
+      const { id } = request.params as {
+        id: string;
+      };
+
+      const route = await getRouteById(id);
+
+      if (!route) {
+        return reply.status(404).send({
+          message: "Route not found",
+        });
+      }
+
+      return reply.send(route);
+    },
+  );
+
   app.post(
     "/",
     {
@@ -31,7 +60,15 @@ export function routeManagementRoutes(
       const body = request.body as CreateRouteBody;
 
       try {
-        return await createRoute(body);
+        const route = await createRoute(body);
+
+        if (!route) {
+          return reply.status(409).send({
+            message: "Route already exists",
+          });
+        }
+
+        return reply.send(route);
       } catch (error) {
         return reply.status(400).send({
           message: (error as Error).message,
@@ -40,28 +77,34 @@ export function routeManagementRoutes(
     },
   );
 
-
-  app.get("/", () => {
-      return getRoutes();
-    },
-  );
-
-
-  app.get(
-    "/:id",
+  app.patch(
+    "/:id/status",
     {
-      schema: routeManagementParamsSchema,
+      schema: updateRouteStatusSchema,
     },
-    async (request) => {
+    async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
 
-      return getRouteById(id);
+      const { status } =
+        request.body as UpdateRouteStatusRequest;
+
+      const route = await updateRouteStatus(
+        id,
+        status,
+      );
+
+      if (!route) {
+        return reply.status(404).send({
+          message: "Route not found",
+        });
+      }
+
+      return reply.send(route);
     },
   );
 
-  
   app.patch(
     "/:id",
     {
@@ -78,9 +121,20 @@ export function routeManagementRoutes(
       const body = request.body as UpdateRouteBody;
 
       try {
-        return await updateRoute(id, body);
+        const route = await updateRoute(
+          id,
+          body,
+        );
+
+        if (!route) {
+          return reply.status(404).send({
+            message: "Route not found",
+          });
+        }
+
+        return reply.send(route);
       } catch (error) {
-        return reply.status(404).send({
+        return reply.status(400).send({
           message: (error as Error).message,
         });
       }

@@ -4,3 +4,5 @@ export interface HealthResponse {
 }
 
 export * from "./haulingRequest.js";
+export * from "./route.js";
+export * from "./routeStatus.js";
