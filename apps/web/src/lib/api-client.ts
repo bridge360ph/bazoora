@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 /**
  * Central HTTP client.
  *
- * - Base URL from NEXT_PUBLIC_API_URL (e.g. http://localhost:4000/api/v1).
+ * - Base URL from VITE_API_URL (e.g. http://localhost:4000/api/v1).
  * - `withCredentials: true` so the refresh-token httpOnly cookie travels.
  * - Request interceptor injects the current access token from the auth store.
  * - Response interceptor attempts a silent refresh on 401 once, then retries.
