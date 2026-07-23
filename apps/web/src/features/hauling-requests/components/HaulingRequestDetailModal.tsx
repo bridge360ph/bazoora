@@ -85,11 +85,11 @@ export function HaulingRequestDetailModal({
         {request.note && <DetailRow label="Note" value={request.note} />}
 
         <div className="flex rounded-md overflow-hidden">
-          <span className="flex w-40 shrink-0 items-center bg-[#475C53] text-white text-sm font-semibold px-4 py-2.5">
+          <span className="flex w-40 shrink-0 items-center bg-accent-dark text-white text-sm font-semibold px-4 py-2.5">
             Status
           </span>
 
-          <div className="flex flex-1 items-center bg-[#A3BEB9] px-4 py-2.5">
+          <div className="flex flex-1 items-center bg-accent-light px-4 py-2.5">
             <StatusBadge status={STATUS_DISPLAY[request.status]} />
           </div>
         </div>
@@ -128,10 +128,10 @@ export function HaulingRequestDetailModal({
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center bg-gray-50 rounded-md overflow-hidden">
-      <span className="w-40 shrink-0 bg-[#475C53] text-white text-sm font-semibold px-4 py-2.5">
+      <span className="w-40 shrink-0 bg-accent-dark text-white text-sm font-semibold px-4 py-2.5">
         {label}
       </span>
-      <span className="flex-1 bg-[#A3BEB9] px-4 py-2.5 text-sm font-medium text-black">
+      <span className="flex-1 bg-accent-light px-4 py-2.5 text-sm font-medium text-black">
         {value}
       </span>
     </div>
