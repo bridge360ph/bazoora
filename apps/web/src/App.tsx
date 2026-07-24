@@ -6,6 +6,7 @@ import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
+
 // driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
 import ResidentLayout from "./features/residents/components/ResidentLayout";

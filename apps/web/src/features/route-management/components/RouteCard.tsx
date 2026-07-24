@@ -10,7 +10,7 @@ interface RouteCardProps {
 
 export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
   return (
-    <article className="mb-3 rounded-xl bg-[#1a3a2e] p-4">
+    <article className="mb-3 rounded-xl bg-brand p-4">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-white">{route.name}</h2>
@@ -43,7 +43,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onEdit}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-[#1a3a2e]"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           Edit Route
         </button>
@@ -51,7 +51,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onAssign}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-[#1a3a2e]"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           Assign Eco-Aide
         </button>
@@ -59,7 +59,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onView}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-[#1a3a2e]"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           View Details
         </button>

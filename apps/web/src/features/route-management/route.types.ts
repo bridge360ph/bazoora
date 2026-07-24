@@ -4,7 +4,7 @@ import type {
   RouteStatus,
 } from "@bazoora/shared";
 
-// Frontend UI-only types
+export type { RouteStatus };
 
 export type RouteStatusFilter =
   | "All"

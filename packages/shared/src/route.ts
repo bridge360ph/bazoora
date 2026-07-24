@@ -1,7 +1,4 @@
-export type RouteStatus =
-  | "In Progress"
-  | "Completed"
-  | "Not Started";
+import type { RouteStatus } from "./routeStatus.js";
 
 export type WasteType =
   | "Regular"

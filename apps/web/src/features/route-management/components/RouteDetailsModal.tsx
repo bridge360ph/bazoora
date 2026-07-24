@@ -9,7 +9,7 @@ interface RouteDetailsModalProps {
 export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
   return (
     <Modal title="Route Details" onClose={onClose} width={820}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)] gap-x-10 gap-y-4 rounded-xl bg-[#1a3a2e] px-8 py-7">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)] gap-x-10 gap-y-4 rounded-xl bg-brand px-8 py-7">
         <div className="flex flex-col gap-2.5">
           <DetailItem
             label="Route Number"
