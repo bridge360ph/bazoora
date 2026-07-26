@@ -4,7 +4,7 @@
 
 /* Brand color tokens. `@bazoora/ui` and the admin screens reference these as
    Tailwind utilities (bg-brand, text-brand, etc.), so they must be defined here
-   for those classes to generate. Prefer bg-brand over arbitrary bg-[#1a3a2e] so
+   for those classes to generate. Prefer bg-brand over arbitrary bg-brand so
    the brand color stays defined in one place. */
 @theme {
   --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */

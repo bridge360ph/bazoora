@@ -152,7 +152,7 @@ export function AdminHaulingRequestManagementPage() {
             >
               ‹
             </button>
-            <span className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1a3a2e] text-white text-sm font-semibold">
+            <span className="w-8 h-8 flex items-center justify-center rounded-full bg-brand text-white text-sm font-semibold">
               {page}
             </span>
             <button

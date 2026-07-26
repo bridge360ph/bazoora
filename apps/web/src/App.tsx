@@ -89,7 +89,7 @@ function AppContent() {
       {/* Sleek glassmorphic role selector banner */}
       <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black tracking-wider text-[#1a3a2e] dark:text-[#4ade80]">
+          <span className="text-lg font-black tracking-wider text-brand dark:text-[#4ade80]">
              BAZOORA
           </span>
           <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
@@ -110,7 +110,7 @@ function AppContent() {
                   onClick={() => handleRoleChange(r)}
                   className={`rounded-md px-3 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
                     activeKey === r
-                      ? "bg-[#1a3a2e] text-white shadow-md"
+                      ? "bg-brand text-white shadow-md"
                       : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-slate-700"
                   }`}
                 >

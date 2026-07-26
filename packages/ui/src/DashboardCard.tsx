@@ -16,7 +16,7 @@ export function DashboardCard({
       className={[
         "rounded-xl overflow-hidden shadow-sm border",
         variant === "darkGreen"
-          ? "bg-[#185034] border-[#1a3a2e]"
+          ? "bg-secondary border-brand"
           : "bg-white border-gray-200",
         className,
       ].join(" ")}
