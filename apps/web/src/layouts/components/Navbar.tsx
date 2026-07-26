@@ -39,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({
   avatarInitials = "",
   onAvatarClick,
 }) => (
-  <header className="flex items-center h-14 px-5 bg-[#072217] border-b border-[#0f2417]">
+  <header className="flex items-center h-14 px-5 bg-brand-dark border-b border-[#0f2417]">
     {/* Hamburger */}
     <button
       onClick={onMenuToggle}

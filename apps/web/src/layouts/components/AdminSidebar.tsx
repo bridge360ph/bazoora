@@ -19,7 +19,7 @@ export function AdminSidebar({
   },
 }: AdminSidebarProps) {
   return (
-    <aside className="flex h-screen w-[200px] min-w-[200px] flex-col border-r border-[#0f2417] bg-[#072217]">
+    <aside className="flex h-screen w-[200px] min-w-[200px] flex-col border-r border-[#0f2417] bg-brand-dark">
       <div className="flex items-center gap-2.5 border-b border-[#0f2417] px-4 py-5">
         <Logo className="h-8 w-8" />
 
