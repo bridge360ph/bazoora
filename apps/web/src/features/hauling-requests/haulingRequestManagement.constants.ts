@@ -1,11 +1,30 @@
-import type { HaulingRequestStatus } from "@bazoora/shared";
-import type { SenderFilterValue } from "./haulingRequestManagement.types.ts";
+import type {
+  HaulingRequestStatus,
+  SenderType,
+  WasteType,
+} from "@bazoora/shared";
+import type {
+  SenderFilterValue,
+  WasteTypeFilterValue,
+} from "./haulingRequestManagement.types.ts";
 
 export const STATUS_DISPLAY = {
   PENDING: "Pending",
   APPROVED: "Approved",
   DENIED: "Denied",
 } satisfies Record<HaulingRequestStatus, string>;
+
+export const SENDER_DISPLAY = {
+  RESIDENT: "Resident",
+  BUSINESS: "Business",
+} satisfies Record<SenderType, string>;
+
+export const WASTE_TYPE_DISPLAY = {
+  RESIDUAL: "Residual",
+  NON_BIODEGRADABLE: "Non-Biodegradable",
+  HAZARDOUS: "Hazardous",
+  BIODEGRADABLE: "Biodegradable",
+} satisfies Record<WasteType, string>;
 
 export const SENDER_FILTER_OPTIONS: {
   label: string;
@@ -16,33 +35,16 @@ export const SENDER_FILTER_OPTIONS: {
   { label: "Business", value: "BUSINESS" },
 ];
 
-export const SENDER_DISPLAY = {
-  RESIDENT: "Resident",
-  BUSINESS: "Business",
-} as const;
+export const WASTE_TYPE_FILTER_OPTIONS: {
+  label: string;
+  value: WasteTypeFilterValue;
+}[] = [
+  { label: "All", value: "ALL" },
+  { label: "Residual", value: "RESIDUAL" },
+  { label: "Non-Biodegradable", value: "NON_BIODEGRADABLE" },
+  { label: "Hazardous", value: "HAZARDOUS" },
+  { label: "Biodegradable", value: "BIODEGRADABLE" },
+];
 
-export const WASTE_TYPE_FILTER_OPTIONS = [
-  {
-    label: "All",
-    value: "ALL",
-  },
-  {
-    label: "Residual",
-    value: "RESIDUAL",
-  },
-  {
-    label: "Non-Biodegradable",
-    value: "NON_BIODEGRADABLE",
-  },
-  {
-    label: "Hazardous",
-    value: "HAZARDOUS",
-  },
-  {
-    label: "Biodegradable",
-    value: "BIODEGRADABLE",
-  },
-] as const;
-
-// Client-side pagination only; backend returns the full array
+// Client-side pagination only; backend returns the full array.
 export const HAULING_REQUESTS_PAGE_SIZE = 7;

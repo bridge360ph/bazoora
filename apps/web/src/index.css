@@ -7,8 +7,9 @@
    for those classes to generate. Prefer bg-brand over arbitrary bg-[#1a3a2e] so
    the brand color stays defined in one place. */
 @theme {
-  --color-brand: #1a3a2e;
-  --color-brand-dark: #12291f;
-  --color-accent-dark: #475c53;
-  --color-accent-light: #a3beb9;
+  --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */
+  --color-brand-secondary: #185034; /* Secondary brand green used for supporting UI elements (e.g., table headers) */
+  --color-brand-dark: #072217; /* Dark brand variant commonly used for buttons and active states */
+  --color-accent-dark: #475c53; /* Muted green accent used for secondary UI surfaces */
+  --color-accent-light: #a3beb9; /* Light green accent used for subtle backgrounds and highlights */
 }

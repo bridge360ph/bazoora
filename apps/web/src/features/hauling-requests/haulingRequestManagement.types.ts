@@ -1,18 +1,30 @@
-import type { HaulingRequest } from "@bazoora/shared";
+import type {
+  SenderType,
+  WasteType,
+} from "@bazoora/shared";
 
-export type ModalMode = "detail" | "approve" | "deny" | null;
+/**
+ * UI modal state for the hauling request management page.
+ */
+export type ModalMode =
+  | "detail"
+  | "approve"
+  | "deny"
+  | null;
 
-export interface HaulingRequestModalState {
-  mode: ModalMode;
-  request: HaulingRequest | null;
-}
-
-// UI-only sender filter; extends senderType with an "ALL" option.
-export type SenderFilterValue = "ALL" | HaulingRequest["senderType"];
+/**
+ * Filter values extend the shared enums with an "ALL" sentinel
+ * used only by the frontend filter controls.
+ */
+export type SenderFilterValue =
+  | SenderType
+  | "ALL";
 
 export type WasteTypeFilterValue =
-  | "ALL"
-  | "RESIDUAL"
-  | "NON_BIODEGRADABLE"
-  | "HAZARDOUS"
-  | "BIODEGRADABLE";
+  | WasteType
+  | "ALL";
+
+// Actual multi-select values - "ALL" is a picklist-only sentinel (it means
+// "clear this filter"), never a member of the selected-values array itself.
+export type SenderTypeValue = SenderType;
+export type WasteTypeValue = WasteType;
