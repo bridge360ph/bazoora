@@ -1,12 +1,17 @@
 import type { Dispatch, SetStateAction } from "react";
 import { FormField } from "@bazoora/ui";
-import type { WasteType, CollectionDay } from "@bazoora/shared";
+import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
 import type { RouteFormValue } from "../route.types.ts";
+import { useTrucks } from "../../trucks/hooks";
+import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
+import { getAvailableTrucks, getAvailableEcoAides } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteEntryFormProps {
   formValue: RouteFormValue;
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
+  routes: Route[];
+  editingRouteId?: string;
 }
 
 /**
@@ -16,8 +21,13 @@ interface RouteEntryFormProps {
  * NOTE: `FormField` is assumed to be added to @bazoora/ui - it is not
  * route-specific and has no reason to live in this feature folder.
  */
-export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps) {
-  
+export function RouteEntryForm({
+  formValue,
+  setFormValue,
+  routes,
+  editingRouteId,
+}: RouteEntryFormProps) {
+
   function updateField<Key extends keyof RouteFormValue>(
     key: Key,
     value: RouteFormValue[Key],
@@ -27,6 +37,30 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
       [key]: value,
     }));
   }
+
+  const {
+    data: trucks = [],
+    isLoading: trucksLoading,
+    isError: trucksErrored,
+  } = useTrucks();
+
+  const availableTrucks = getAvailableTrucks(
+    trucks,
+    routes,
+    editingRouteId,
+  );
+
+  const {
+    ecoAides,
+    isLoading: ecoAidesLoading,
+    isError: ecoAidesErrored,
+  } = useEcoAideOptions();
+
+  const availableEcoAides = getAvailableEcoAides(
+    ecoAides,
+    routes,
+    editingRouteId,
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,37 +140,63 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
         />
       </div>
 
-      {/* <FormField label="Eco-Aide">
-        <select
-          value={formValue.ecoAide}
-          onChange={(event) => {
-            updateField("ecoAide", event.target.value);
-          }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-        >
-          {ECO_AIDE_OPTIONS.map((ecoAide) => (
-            <option key={ecoAide} value={ecoAide}>
-              {ecoAide}
-            </option>
-          ))}
-        </select>
-      </FormField> */}
+      <FormField label="Eco-Aide">
+        {ecoAidesErrored ? (
+          <p className="text-sm text-red-600">
+            Failed to load Eco-Aides. Please try again.
+          </p>
+        ) : ecoAidesLoading ? (
+          <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
+        ) : availableEcoAides.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No available Eco-Aides right now.
+          </p>
+        ) : (
+          <select
+            value={formValue.assignedEcoAideId ?? ""}
+            onChange={(event) => {
+              updateField("assignedEcoAideId", event.target.value || null);
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            <option value="">Unassigned</option>
+            {availableEcoAides.map((ecoAide) => (
+              <option key={ecoAide.id} value={ecoAide.id}>
+                {ecoAide.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </FormField>
 
-      {/* <FormField label="Fleet Assignment">
-        <select
-          value={formValue.fleetAssignment}
-          onChange={(event) => {
-            updateField("fleetAssignment", event.target.value);
-          }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-        >
-          {FLEET_OPTIONS.map((fleet) => (
-            <option key={fleet} value={fleet}>
-              {fleet}
-            </option>
-          ))}
-        </select>
-      </FormField> */}
+      <FormField label="Fleet Assignment">
+        {trucksErrored ? (
+          <p className="text-sm text-red-600">
+            Failed to load trucks. Please try again.
+          </p>
+        ) : trucksLoading ? (
+          <p className="text-sm text-gray-500">Loading trucks…</p>
+        ) : availableTrucks.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No available trucks right now.
+          </p>
+        ) : (
+          <select
+            value={formValue.assignedTruckId ?? ""}
+            onChange={(event) => {
+              updateField("assignedTruckId", event.target.value || null);
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            <option value="">Unassigned</option>
+            {availableTrucks.map((truck) => (
+              <option key={truck.id} value={truck.id}>
+                {truck.plateNumber}
+              </option>
+            ))}
+          </select>
+        )}
+      </FormField>
     </div>
   );
 }

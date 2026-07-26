@@ -1,5 +1,14 @@
 import type { RouteStatus } from "./routeStatus.js";
 
+/**
+ * Shared Route model returned by the API.
+ *
+ * This is NOT a Prisma model.
+ * It represents the API response contract.
+ *
+ * Frontend should treat this as read-only server data.
+ */
+
 export type WasteType =
   | "Regular"
   | "Recyclable"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Route } from "@bazoora/shared";
-import { fetchRoutes } from "../routeService";
+import { fetchRoutes } from "../routeManagementApi";
 
 interface UseRoutesResult {
   data: Route[] | undefined;

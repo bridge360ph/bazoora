@@ -1,27 +1,37 @@
 import { useState } from "react";
 import type { Route } from "@bazoora/shared";
-import type { RouteFormValue } from "../route.types.ts";
-import { createRouteRequest } from "../routeManagementApi";
+import { assignRouteTruckRequest } from "../routeAssignmentApi";
 
-interface UseCreateRouteOptions {
+interface UseAssignRouteTruckVariables {
+  routeId: string;
+  truckId: string;
+}
+
+interface UseAssignRouteTruckOptions {
   onSuccess?: (route: Route) => void;
 }
 
-interface UseCreateRouteResult {
-  mutate: (formValue: RouteFormValue, options?: UseCreateRouteOptions) => void;
+interface UseAssignRouteTruckResult {
+  mutate: (
+    variables: UseAssignRouteTruckVariables,
+    options?: UseAssignRouteTruckOptions,
+  ) => void;
   isPending: boolean;
   error: Error | null;
 }
 
-export function useCreateRoute(): UseCreateRouteResult {
+export function useAssignRouteTruck(): UseAssignRouteTruckResult {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  function mutate(formValue: RouteFormValue, options?: UseCreateRouteOptions) {
+  function mutate(
+    { routeId, truckId }: UseAssignRouteTruckVariables,
+    options?: UseAssignRouteTruckOptions,
+  ) {
     setIsPending(true);
     setError(null);
 
-    createRouteRequest(formValue)
+    assignRouteTruckRequest(routeId, truckId)
       .then((route) => {
         options?.onSuccess?.(route);
       })

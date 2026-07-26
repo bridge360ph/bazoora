@@ -9,21 +9,25 @@ type RouteFormMode = "create" | "edit";
 interface RouteFormModalProps {
   mode: RouteFormMode;
   route?: Route;
+  routes: Route[];
   formValue: RouteFormValue;
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
   onSave: () => void;
   onClose: () => void;
   isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
 export function RouteFormModal({
   mode,
   route,
+  routes,
   formValue,
   setFormValue,
   onSave,
   onClose,
   isSubmitting = false,
+  errorMessage = null,
 }: RouteFormModalProps) {
   const title =
     mode === "create"
@@ -91,9 +95,15 @@ export function RouteFormModal({
 
   return (
     <Modal title={title} onClose={onClose} width={560}>
+      {errorMessage && (
+        <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
+      )}
+
       <RouteEntryForm
         formValue={formValue}
         setFormValue={setFormValue}
+        routes={routes}
+        editingRouteId={route?.id}
       />
 
       <ModalFooter

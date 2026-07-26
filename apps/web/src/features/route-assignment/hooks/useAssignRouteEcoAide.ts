@@ -1,42 +1,37 @@
 import { useState } from "react";
-import type {
-  Route,
-} from "@bazoora/shared";
-import type {
-  RouteFormValue,
-} from "../route.types.ts";
-import { updateRouteRequest } from "../routeManagementApi";
+import type { Route } from "@bazoora/shared";
+import { assignRouteEcoAideRequest } from "../routeAssignmentApi";
 
-interface UseUpdateRouteVariables {
+interface UseAssignRouteEcoAideVariables {
   routeId: string;
-  formValue: RouteFormValue;
+  ecoAide: string;
 }
 
-interface UseUpdateRouteOptions {
+interface UseAssignRouteEcoAideOptions {
   onSuccess?: (route: Route) => void;
 }
 
-interface UseUpdateRouteResult {
+interface UseAssignRouteEcoAideResult {
   mutate: (
-    variables: UseUpdateRouteVariables,
-    options?: UseUpdateRouteOptions,
+    variables: UseAssignRouteEcoAideVariables,
+    options?: UseAssignRouteEcoAideOptions,
   ) => void;
   isPending: boolean;
   error: Error | null;
 }
 
-export function useUpdateRoute(): UseUpdateRouteResult {
+export function useAssignRouteEcoAide(): UseAssignRouteEcoAideResult {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   function mutate(
-    { routeId, formValue }: UseUpdateRouteVariables,
-    options?: UseUpdateRouteOptions,
+    { routeId, ecoAide }: UseAssignRouteEcoAideVariables,
+    options?: UseAssignRouteEcoAideOptions,
   ) {
     setIsPending(true);
     setError(null);
 
-    updateRouteRequest(routeId, formValue)
+    assignRouteEcoAideRequest(routeId, ecoAide)
       .then((route) => {
         options?.onSuccess?.(route);
       })

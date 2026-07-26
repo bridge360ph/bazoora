@@ -5,11 +5,12 @@ import type { RouteFormValue, RouteStatusFilter } from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
-// import { useAssignRouteEcoAide } from "./hooks/useAssignRouteEcoAide";
+import { useAssignRouteEcoAide } from "../route-assignment/hooks/useAssignRouteEcoAide";
+import { useAssignRouteTruck } from "../route-assignment/hooks/useAssignRouteTruck";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
-// import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
+import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
 import { RouteDetailsModal } from "./components/RouteDetailsModal";
 
 type ModalMode = "create" | "edit" | "assign" | "details" | null;
@@ -24,13 +25,16 @@ const emptyRouteForm: RouteFormValue = {
   collectionDay: "Sunday",
   startTime: "",
   routeType: "Free",
+  assignedEcoAideId: null,
+  assignedTruckId: null,
 };
 
 export function AdminRouteManagementPage() {
   const { data: routes, isLoading, isError, error, refetch } = useRoutes();
   const createRouteMutation = useCreateRoute();
   const updateRouteMutation = useUpdateRoute();
-  // const assignEcoAideMutation = useAssignRouteEcoAide();
+  const assignEcoAideMutation = useAssignRouteEcoAide();
+  const assignTruckMutation = useAssignRouteTruck();
 
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -38,7 +42,7 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
-  // const [assignedEcoAide, setAssignedEcoAide] = useState(ECO_AIDE_OPTIONS[0]);
+  const [assignedEcoAide, setAssignedEcoAide] = useState("");
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -54,7 +58,6 @@ export function AdminRouteManagementPage() {
         normalizedSearch.length === 0 ||
         route.id.toLowerCase().includes(normalizedSearch) ||
         route.name.toLowerCase().includes(normalizedSearch) ||
-        // route.assignedEcoAideId.toLowerCase().includes(normalizedSearch) ||
         route.barangay.toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
@@ -105,19 +108,16 @@ export function AdminRouteManagementPage() {
       wasteType: route.wasteType,
       collectionDay: route.collectionDay,
       startTime: route.startTime,
-      // ecoAide: route.assignedEcoAideId ?? "Unassigned",
-      // fleetAssignment: route.assignedTruckId ?? "Unassigned",
       routeType: route.routeType,
+      assignedEcoAideId: route.assignedEcoAideId,
+      assignedTruckId: route.assignedTruckId,
     });
     setModalMode("edit");
   }
 
   function openAssignModal(route: Route) {
     setSelectedRoute(route);
-    // setAssignedEcoAide(
-    //   ECO_AIDE_OPTIONS.find((option) => option.startsWith(route.assignedEcoAideId ?? "Unassigned")) ??
-    //     ECO_AIDE_OPTIONS[0],
-    // );
+    setAssignedEcoAide(route.assignedEcoAideId ?? "");
     setModalMode("assign");
   }
 
@@ -131,11 +131,52 @@ export function AdminRouteManagementPage() {
     setModalMode(null);
   }
 
+  /**
+   * Applies whichever assignments were picked in the create/edit form, one
+   * at a time, using the existing /assign-eco-aide and /assign-truck
+   * endpoints. The route list is refreshed and the modal closed only once
+   * the whole chain completes. If an assignment fails, its mutation's
+   * `error` is left set for the modal to display and the chain stops there
+   * (the modal stays open).
+   */
+  function applyTruckAssignment(routeId: string) {
+    if (!routeForm.assignedTruckId) {
+      refetch();
+      closeModal();
+      return;
+    }
+
+    assignTruckMutation.mutate(
+      { routeId, truckId: routeForm.assignedTruckId },
+      {
+        onSuccess: () => {
+          refetch();
+          closeModal();
+        },
+      },
+    );
+  }
+
+  function applyEcoAideAssignment(routeId: string) {
+    if (!routeForm.assignedEcoAideId) {
+      applyTruckAssignment(routeId);
+      return;
+    }
+
+    assignEcoAideMutation.mutate(
+      { routeId, ecoAide: routeForm.assignedEcoAideId },
+      {
+        onSuccess: () => {
+          applyTruckAssignment(routeId);
+        },
+      },
+    );
+  }
+
   function handleCreateRoute() {
     createRouteMutation.mutate(routeForm, {
-      onSuccess: () => {
-        refetch();
-        closeModal();
+      onSuccess: (createdRoute) => {
+        applyEcoAideAssignment(createdRoute.id);
       },
     });
   }
@@ -149,6 +190,21 @@ export function AdminRouteManagementPage() {
       { routeId: selectedRoute.id, formValue: routeForm },
       {
         onSuccess: () => {
+          applyEcoAideAssignment(selectedRoute.id);
+        },
+      },
+    );
+  }
+
+  function handleSaveEcoAideAssignment() {
+    if (!selectedRoute) {
+      return;
+    }
+
+    assignEcoAideMutation.mutate(
+      { routeId: selectedRoute.id, ecoAide: assignedEcoAide },
+      {
+        onSuccess: () => {
           refetch();
           closeModal();
         },
@@ -156,21 +212,21 @@ export function AdminRouteManagementPage() {
     );
   }
 
-  // function handleSaveEcoAideAssignment() {
-  //   if (!selectedRoute) {
-  //     return;
-  //   }
+  const formMutationError =
+    createRouteMutation.error?.message ??
+    updateRouteMutation.error?.message ??
+    assignEcoAideMutation.error?.message ??
+    assignTruckMutation.error?.message ??
+    null;
 
-  //   assignEcoAideMutation.mutate(
-  //     { routeId: selectedRoute.id, ecoAide: assignedEcoAide },
-  //     {
-  //       onSuccess: () => {
-  //         refetch();
-  //         closeModal();
-  //       },
-  //     },
-  //   );
-  // }
+  const isFormSubmitting =
+    modalMode === "create"
+      ? createRouteMutation.isPending ||
+        assignEcoAideMutation.isPending ||
+        assignTruckMutation.isPending
+      : updateRouteMutation.isPending ||
+        assignEcoAideMutation.isPending ||
+        assignTruckMutation.isPending;
 
   return (
     <div className="p-6">
@@ -257,11 +313,13 @@ export function AdminRouteManagementPage() {
       {modalMode === "create" && (
         <RouteFormModal
           mode="create"
+          routes={routes ?? []}
           formValue={routeForm}
           setFormValue={setRouteForm}
           onSave={handleCreateRoute}
           onClose={closeModal}
-          isSubmitting={createRouteMutation.isPending}
+          isSubmitting={isFormSubmitting}
+          errorMessage={formMutationError}
         />
       )}
 
@@ -269,24 +327,28 @@ export function AdminRouteManagementPage() {
         <RouteFormModal
           mode="edit"
           route={selectedRoute}
+          routes={routes ?? []}
           formValue={routeForm}
           setFormValue={setRouteForm}
           onSave={handleSaveEditedRoute}
           onClose={closeModal}
-          isSubmitting={updateRouteMutation.isPending}
+          isSubmitting={isFormSubmitting}
+          errorMessage={formMutationError}
         />
       )}
 
-      {/* {modalMode === "assign" && selectedRoute && (
+      {modalMode === "assign" && selectedRoute && (
         <AssignEcoAideModal
           route={selectedRoute}
+          routes={routes ?? []}
           assignedEcoAide={assignedEcoAide}
           setAssignedEcoAide={setAssignedEcoAide}
           onSave={handleSaveEcoAideAssignment}
           onClose={closeModal}
           isSubmitting={assignEcoAideMutation.isPending}
+          errorMessage={assignEcoAideMutation.error?.message ?? null}
         />
-      )} */}
+      )}
 
       {modalMode === "details" && selectedRoute && (
         <RouteDetailsModal route={selectedRoute} onClose={closeModal} />
