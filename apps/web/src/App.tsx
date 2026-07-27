@@ -4,6 +4,7 @@ import { getSocket, disconnectSocket } from "./lib/socket";
 
 // Auth
 import LoginPage from "./features/auth/components/LoginPage";
+import { SettingsPage } from "./features/settings/components/SettingsPage";
 
 // Admin imports
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -81,7 +82,7 @@ function App() {
 
           <Route
             path="settings"
-            element={<RoutePlaceholder title="Settings" />}
+            element={<SettingsPage />}
           />
         </Route>
 

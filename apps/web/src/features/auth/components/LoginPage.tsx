@@ -88,6 +88,7 @@ const role = user.role.toLowerCase();
 
 switch (role) {
   case "admin":
+  case "hauling_admin":
   case "lgu_admin":
     void navigate("/admin");
     break;

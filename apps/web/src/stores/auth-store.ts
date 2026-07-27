@@ -3,6 +3,8 @@ import { deleteCookie, readCookie, writeCookie } from "@/lib/cookies";
 
 export type UserRole =
   | "super_admin"
+  | "government_admin"
+  | "hauling_admin"
   | "government_agency"
   | "lgu"
   | "hauling_org"

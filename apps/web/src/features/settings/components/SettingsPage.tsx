@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@bazoora/ui";
 
 type Tab = "Account" | "Notifications" | "System";
@@ -74,16 +76,20 @@ function validateRequiredAddress(
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clear);
+
   const [tab, setTab] = useState<Tab>("Account");
 
-  const [firstName, setFirstName] = useState("Luz Anthony");
-  const [lastName, setLastName] = useState("Miranda");
-  const [email, setEmail] = useState("luimiranda@ecohaulers.com");
-  const [phone, setPhone] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [barangay, setBarangay] = useState("");
-  const [cityMunicipality, setCityMunicipality] = useState("");
-  const [province, setProvince] = useState("");
+  const [firstName, setFirstName] = useState(authUser?.firstName ?? "");
+  const [lastName, setLastName] = useState(authUser?.lastName ?? "");
+  const [email, setEmail] = useState(authUser?.email ?? "");
+  const [phone, setPhone] = useState(authUser?.phoneNumber ?? authUser?.contactNo ?? "");
+  const [streetAddress, setStreetAddress] = useState(authUser?.address?.line1 ?? "");
+  const [barangay, setBarangay] = useState(authUser?.address?.barangay ?? "");
+  const [cityMunicipality, setCityMunicipality] = useState(authUser?.address?.city ?? "");
+  const [province, setProvince] = useState(authUser?.address?.province ?? "");
   const [postalCode, setPostalCode] = useState("");
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -95,9 +101,9 @@ export function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [dailySummary, setDailySummary] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(authUser?.notificationPreferences?.emailNotif ?? true);
+  const [pushNotifications, setPushNotifications] = useState(authUser?.notificationPreferences?.pushNotif ?? true);
+  const [dailySummary, setDailySummary] = useState(authUser?.notificationPreferences?.collectionReminder ?? false);
 
   const [darkMode, setDarkMode] = useState(() => {
     const savedTheme = window.localStorage.getItem("bazoora-admin-theme");
@@ -114,7 +120,6 @@ export function SettingsPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-
   function showToast(message: string) {
     setToast(message);
 
@@ -645,7 +650,9 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  showToast("Logged out.");
+                  clearSession();
+                  document.documentElement.classList.remove("dark");
+                  void navigate("/login");
                 }}
                 className="w-full rounded-[10px] border-2 border-brand bg-white px-4 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 dark:bg-gray-900 dark:hover:bg-gray-800"
               >
