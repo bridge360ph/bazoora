@@ -62,7 +62,7 @@ export async function listTrucks(): Promise<Truck[]> {
 export async function getTruck(id: string): Promise<Truck> {
   const response = await adminApiClient.get<unknown>(`/trucks/${id}`);
 
-  return envelope(truckSchema).parse(response.data);
+  return envelope(truckSchema).parse(response.data).data;
 }
 
 
