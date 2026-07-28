@@ -17,7 +17,7 @@ import type {
   ModalMode,
   SenderTypeValue,
   WasteTypeValue,
-} from "./haulingRequestManagement.types";
+} from "./haulingRequestManagement.types.ts";
 import {
   HAULING_REQUESTS_PAGE_SIZE,
   STATUS_DISPLAY,

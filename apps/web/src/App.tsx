@@ -14,7 +14,7 @@ import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
-import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+import { AdminHaulingRequestManagementPage } from "./features/hauling-request-management/AdminHaulingRequestManagementPage";
 import { SettingsPage } from "./features/settings/components/SettingsPage";
 import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
 
