@@ -6,6 +6,8 @@ import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
+
+// driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
 import ResidentLayout from "./features/residents/components/ResidentLayout";
 import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
@@ -14,6 +16,7 @@ import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
+import { AdminRouteManagementPage } from "./features/route-management/AdminRouteManagementPage";
 import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
 import { SettingsPage } from "./features/settings/components/SettingsPage";
 import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
@@ -162,7 +165,7 @@ function AppContent() {
             />
             <Route
               path="routes"
-              element={<RoutePlaceholder title="Route Management" />}
+              element={<AdminRouteManagementPage />}
             />
             <Route
               path="hauling"
