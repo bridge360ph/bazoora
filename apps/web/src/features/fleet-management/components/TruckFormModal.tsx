@@ -23,11 +23,11 @@ type TruckFormErrors = Partial<
   Record<ValidatedTruckField, string>
 >;
 
-const DRIVER_NAME_PATTERN = /^[\\p{L} .'-]+$/u;
+const DRIVER_NAME_PATTERN = /^[\p{L} .'-]+$/u;
 const PLATE_NUMBER_PATTERN =
   /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 const TRUCK_MODEL_PATTERN =
-  /^[\\p{L}\\p{N} ./'-]+$/u;
+  /^[\p{L}\p{N} ./'-]+$/u;
 
 const ALLOWED_TRUCK_STATUSES: TruckStatus[] = [
   "Active",
@@ -148,7 +148,7 @@ export function TruckFormModal({
         return "Capacity is required.";
       }
 
-      if (!/^\\d+$/.test(value)) {
+      if (!/^\d+$/.test(value)) {
         return "Capacity must contain digits only.";
       }
 
@@ -314,7 +314,7 @@ export function TruckFormModal({
             aria-invalid={Boolean(errors.capacity)}
             onChange={(event) => {
               const digitsOnly = event.target.value
-                .replace(/\\D/g, "")
+                .replace(/\D/g, "")
                 .slice(0, 6);
 
               updateField("capacity", digitsOnly);
