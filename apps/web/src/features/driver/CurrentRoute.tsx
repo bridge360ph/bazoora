@@ -75,8 +75,18 @@ export function CurrentRoute() {
 
   const isMobile = useIsMobile();
 
-  const [navOpen, setNavOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
+const [navOpen, setNavOpen] = useState(false);
+const [confirmOpen, setConfirmOpen] = useState(false);
+const [startRouteConfirmOpen, setStartRouteConfirmOpen] = useState(false);
+
+const [locationExplanationOpen, setLocationExplanationOpen] =
+  useState(true);
+
+const [locationPermissionOpen, setLocationPermissionOpen] =
+  useState(false);
+
+const [locationPermissionGranted, setLocationPermissionGranted] =
+  useState(false);
 
   const [stops] = useState<Stop[]>([
     {
@@ -95,13 +105,15 @@ export function CurrentRoute() {
     },
   ]);
 
-  const [isPlanning] = useState(false);
-  const [isCollecting] = useState(true);
+const [isPlanning] = useState(false);
+const [isCollecting, setIsCollecting] = useState(false);
 
- const {
+const {
   gpsPos,
   heading,
-} = useDriverGPS();
+} = useDriverGPS({
+  enabled: isCollecting,
+});
 
 
   const routePath: [number, number][] = [];
@@ -126,10 +138,6 @@ export function CurrentRoute() {
         void navigate("/driver/report");
         break;
 
-      case "messages":
-        void navigate("/driver/messages");
-        break;
-
       default:
         break;
     }
@@ -145,6 +153,36 @@ export function CurrentRoute() {
     clearSession();
     void navigate("/login");
   };
+
+  const handleStartRoute = () => {
+    setStartRouteConfirmOpen(true);
+  };
+
+    const confirmStartRoute = () => {
+      setStartRouteConfirmOpen(false);
+      setIsCollecting(true);
+    };
+
+  const requestLocationPermission = () => {
+  if (!navigator.geolocation) {
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    () => {
+      setLocationPermissionGranted(true);
+      setLocationPermissionOpen(false);
+    },
+    () => {
+      setLocationPermissionGranted(false);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    }
+  );
+};
 
   return (
     <div className={layout}>
@@ -201,6 +239,7 @@ export function CurrentRoute() {
                 isPlanning={isPlanning}
                 isCollecting={isCollecting}
                 routePath={routePath}
+                locationPermissionGranted={locationPermissionGranted}
               />
 
               <div
@@ -229,6 +268,16 @@ export function CurrentRoute() {
                 void navigate("/driver/report")
               }
             />
+
+            {locationPermissionGranted && !isCollecting && (
+             <button
+                type="button"
+                onClick={handleStartRoute}
+                className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700"
+              >
+                Start Route
+              </button>
+            )}
           </div>
         </main>
       </div>
@@ -245,6 +294,95 @@ export function CurrentRoute() {
           onNavigate={goTo}
         />
       )}
+
+      {locationExplanationOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">
+              Location Access
+            </h2>
+
+            <p className="mt-3 text-sm leading-5 text-slate-500">
+              Bazoora needs access to your location while you are using
+              the driver route feature. Your location helps the app show
+              your position on the route map and provide accurate route
+              tracking.
+            </p>
+
+            <p className="mt-3 text-sm leading-5 text-slate-500">
+              Please understand that location access is required before
+              you can view and use the route map.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLocationExplanationOpen(false);
+                setLocationPermissionOpen(true);
+              }}
+              className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+            >
+              I Understand
+            </button>
+          </div>
+        </div>
+      )}
+
+      {locationPermissionOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h2 className="text-lg font-bold text-slate-900">
+              Allow Location Access
+            </h2>
+
+            <p className="mt-3 text-sm leading-5 text-slate-500">
+              Allow Bazoora to access your location so your position can
+              be displayed on the route map.
+            </p>
+
+            <button
+              type="button"
+              onClick={requestLocationPermission}
+              className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700"
+            >
+              Allow Location Access
+            </button>
+          </div>
+        </div>
+      )}
+
+    {startRouteConfirmOpen && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+          <h2 className="text-lg font-bold text-slate-900">
+            Start Route?
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Starting the route will enable GPS tracking and allow Bazoora
+            to provide your route directions and estimated arrival time.
+          </p>
+
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStartRouteConfirmOpen(false)}
+              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-slate-700"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={confirmStartRoute}
+              className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
+            >
+              Start Route
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
       {confirmOpen && (
         <LogoutConfirmModal

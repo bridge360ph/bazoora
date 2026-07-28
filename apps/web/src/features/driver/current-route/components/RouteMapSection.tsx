@@ -16,6 +16,7 @@ interface Props {
   isPlanning: boolean;
   isCollecting: boolean;
   routePath?: [number, number][];
+  locationPermissionGranted: boolean;
 }
 
 export default function RouteMapSection({
@@ -25,53 +26,54 @@ export default function RouteMapSection({
   isPlanning,
   isCollecting,
   routePath = [],
+  locationPermissionGranted,
 }: Props) {
-
   const {
-  mapCenter,
-  mapMarkers,
-  mapRoutes,
-  navigationSteps,
-  routeSummary,
-} = useDriverRouteMap({
-  gpsPos,
-  heading,
-  stops,
-  isPlanning,
-  isCollecting,
-  routePath,
-});
-
-  console.warn("RouteMapSection props", {
-    gpsPos,
-    heading,
-    stops,
-    isPlanning,
-    isCollecting,
-  });
-
-  console.warn("Map Data", {
     mapCenter,
     mapMarkers,
     mapRoutes,
     navigationSteps,
     routeSummary,
+  } = useDriverRouteMap({
+    gpsPos,
+    heading,
+    stops,
+    isPlanning,
+    isCollecting,
+    routePath,
   });
 
-  return (
-    <div className="h-[500px] w-full rounded-2xl overflow-hidden">
+  if (!locationPermissionGranted) {
+    return (
+      <div className="h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+        <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
+            <span className="text-2xl">📍</span>
+          </div>
 
+          <h3 className="text-base font-bold text-slate-900">
+            Location Access Required
+          </h3>
+
+          <p className="mt-2 max-w-sm text-sm leading-5 text-slate-500">
+            The route map is unavailable until you allow Bazoora to
+            access your location.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-[500px] w-full overflow-hidden rounded-2xl">
       <SmartMap
         center={mapCenter}
         markers={mapMarkers}
         routes={mapRoutes}
         isCollecting={isCollecting}
-
-        // Navigation HUD
         navigationSteps={navigationSteps}
         routeSummary={routeSummary}
       />
-
     </div>
   );
 }
