@@ -13,7 +13,3 @@
 export interface AssignEcoAideRequest {
   ecoAideId: string;
 }
-
-export interface AssignTruckRequest {
-  truckId: string;
-}

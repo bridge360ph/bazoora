@@ -19,5 +19,4 @@ export interface RouteFormValue {
   startTime: string;
   routeType: string;
   assignedEcoAideId: string | null;
-  assignedTruckId: string | null;
 }

@@ -2,8 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@bazoora/db";
 import type {
   AssignEcoAideRequest,
-  AssignTruckRequest,
-  UserSummary,
+  UserSummary
 } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 
@@ -94,72 +93,6 @@ export async function assignEcoAide(
     if (isUniqueConstraintError(error)) {
       throw new RouteAssignmentError(
         "Eco-Aide is already assigned to another route",
-        409,
-      );
-    }
-
-    throw error;
-  }
-}
-
-
-export async function assignTruck(
-  routeId: string,
-  data: AssignTruckRequest,
-) {
-  const route = await prisma.route.findUnique({
-    where: {
-      id: routeId,
-    },
-  });
-
-
-  if (!route) {
-    throw new RouteAssignmentError("Route not found", 404);
-  }
-
-
-  const truck = await prisma.truck.findUnique({
-    where: {
-      id: data.truckId,
-    },
-    include: {
-      assignedRoute: true,
-    },
-  });
-
-
-  if (!truck) {
-    throw new RouteAssignmentError("Truck not found", 404);
-  }
-
-
-  if (
-    truck.assignedRoute &&
-    truck.assignedRoute.id !== routeId
-  ) {
-    throw new RouteAssignmentError(
-      "Truck is already assigned to another route",
-      409,
-    );
-  }
-
-
-  try {
-    const updatedRoute = await prisma.route.update({
-      where: {
-        id: routeId,
-      },
-      data: {
-        assignedTruckId: data.truckId,
-      },
-    });
-
-    return mapRouteToResponse(updatedRoute);
-  } catch (error) {
-    if (isUniqueConstraintError(error)) {
-      throw new RouteAssignmentError(
-        "Truck is already assigned to another route",
         409,
       );
     }

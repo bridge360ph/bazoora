@@ -1,16 +1,14 @@
 import type { FastifyInstance } from "fastify";
-import type { AssignEcoAideRequest, AssignTruckRequest } from "@bazoora/shared";
+import type { AssignEcoAideRequest } from "@bazoora/shared";
 
 import {
   assignEcoAide,
-  assignTruck,
   listEcoAideOptions,
   RouteAssignmentError,
 } from "../services/routeAssignmentService.js";
 
 import {
-  assignEcoAideSchema,
-  assignTruckSchema,
+  assignEcoAideSchema
 } from "../schemas/routeAssignment.schema.js";
 
 
@@ -54,30 +52,6 @@ export function routeAssignmentRoutes(
 
       try {
         return await assignEcoAide(id, body);
-      } catch (error) {
-        return reply.status(statusCodeFor(error)).send({
-          message: (error as Error).message,
-        });
-      }
-    },
-  );
-
-
-  app.patch(
-    "/:id/assign-truck",
-    {
-      schema: assignTruckSchema,
-    },
-    async (request, reply) => {
-      const { id } = request.params as {
-        id: string;
-      };
-
-      const body = request.body as AssignTruckRequest;
-
-
-      try {
-        return await assignTruck(id, body);
       } catch (error) {
         return reply.status(statusCodeFor(error)).send({
           message: (error as Error).message,

@@ -36,5 +36,4 @@ export interface Route {
   stops: number;
   routeType: string;
   assignedEcoAideId: string | null;
-  assignedTruckId: string | null;
 }

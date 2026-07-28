@@ -3,9 +3,8 @@ import { FormField } from "@bazoora/ui";
 import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
 import type { RouteFormValue } from "../route.types.ts";
-import { useTrucks } from "../../trucks/hooks";
 import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
-import { getAvailableTrucks, getAvailableEcoAides } from "../../route-assignment/routeAssignmentApi";
+import { getAvailableEcoAides } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteEntryFormProps {
   formValue: RouteFormValue;
@@ -37,18 +36,6 @@ export function RouteEntryForm({
       [key]: value,
     }));
   }
-
-  const {
-    data: trucks = [],
-    isLoading: trucksLoading,
-    isError: trucksErrored,
-  } = useTrucks();
-
-  const availableTrucks = getAvailableTrucks(
-    trucks,
-    routes,
-    editingRouteId,
-  );
 
   const {
     ecoAides,
@@ -170,32 +157,9 @@ export function RouteEntryForm({
       </FormField>
 
       <FormField label="Fleet Assignment">
-        {trucksErrored ? (
-          <p className="text-sm text-red-600">
-            Failed to load trucks. Please try again.
-          </p>
-        ) : trucksLoading ? (
-          <p className="text-sm text-gray-500">Loading trucks…</p>
-        ) : availableTrucks.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No available trucks right now.
-          </p>
-        ) : (
-          <select
-            value={formValue.assignedTruckId ?? ""}
-            onChange={(event) => {
-              updateField("assignedTruckId", event.target.value || null);
-            }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-          >
-            <option value="">Unassigned</option>
-            {availableTrucks.map((truck) => (
-              <option key={truck.id} value={truck.id}>
-                {truck.plateNumber}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+          Fleet assignment will be available in a follow-up PR.
+        </div>
       </FormField>
     </div>
   );

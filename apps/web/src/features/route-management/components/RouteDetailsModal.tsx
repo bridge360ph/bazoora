@@ -27,7 +27,7 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
           <DetailItem label="Assigned Eco-Aide" value={route.assignedEcoAideId ?? "Unassigned"} />
           <DetailItem
             label="Fleet Assignment"
-            value={`${route.assignedTruckId ?? "Unassigned"} Isuzu`}
+            value={"Unassigned"}
           />
         </div>
 

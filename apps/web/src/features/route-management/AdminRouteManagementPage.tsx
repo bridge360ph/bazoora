@@ -6,7 +6,6 @@ import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
 import { useAssignRouteEcoAide } from "../route-assignment/hooks/useAssignRouteEcoAide";
-import { useAssignRouteTruck } from "../route-assignment/hooks/useAssignRouteTruck";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
@@ -26,7 +25,6 @@ const emptyRouteForm: RouteFormValue = {
   startTime: "",
   routeType: "Free",
   assignedEcoAideId: null,
-  assignedTruckId: null,
 };
 
 export function AdminRouteManagementPage() {
@@ -34,7 +32,6 @@ export function AdminRouteManagementPage() {
   const createRouteMutation = useCreateRoute();
   const updateRouteMutation = useUpdateRoute();
   const assignEcoAideMutation = useAssignRouteEcoAide();
-  const assignTruckMutation = useAssignRouteTruck();
 
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -109,8 +106,7 @@ export function AdminRouteManagementPage() {
       collectionDay: route.collectionDay,
       startTime: route.startTime,
       routeType: route.routeType,
-      assignedEcoAideId: route.assignedEcoAideId,
-      assignedTruckId: route.assignedTruckId,
+      assignedEcoAideId: route.assignedEcoAideId
     });
     setModalMode("edit");
   }
@@ -133,45 +129,30 @@ export function AdminRouteManagementPage() {
 
   /**
    * Applies whichever assignments were picked in the create/edit form, one
-   * at a time, using the existing /assign-eco-aide and /assign-truck
-   * endpoints. The route list is refreshed and the modal closed only once
+   * at a time, using the existing /assign-eco-aide
+   * endpoint. The route list is refreshed and the modal closed only once
    * the whole chain completes. If an assignment fails, its mutation's
    * `error` is left set for the modal to display and the chain stops there
    * (the modal stays open).
    */
-  function applyTruckAssignment(routeId: string) {
-    if (!routeForm.assignedTruckId) {
-      refetch();
-      closeModal();
-      return;
-    }
 
-    assignTruckMutation.mutate(
-      { routeId, truckId: routeForm.assignedTruckId },
-      {
-        onSuccess: () => {
-          refetch();
-          closeModal();
+    function applyEcoAideAssignment(routeId: string) {
+      if (!routeForm.assignedEcoAideId) {
+        refetch();
+        closeModal();
+        return;
+      }
+
+      assignEcoAideMutation.mutate(
+        { routeId, ecoAide: routeForm.assignedEcoAideId },
+        {
+          onSuccess: () => {
+            refetch();
+            closeModal();
+          },
         },
-      },
-    );
-  }
-
-  function applyEcoAideAssignment(routeId: string) {
-    if (!routeForm.assignedEcoAideId) {
-      applyTruckAssignment(routeId);
-      return;
+      );
     }
-
-    assignEcoAideMutation.mutate(
-      { routeId, ecoAide: routeForm.assignedEcoAideId },
-      {
-        onSuccess: () => {
-          applyTruckAssignment(routeId);
-        },
-      },
-    );
-  }
 
   function handleCreateRoute() {
     createRouteMutation.mutate(routeForm, {
@@ -216,17 +197,14 @@ export function AdminRouteManagementPage() {
     createRouteMutation.error?.message ??
     updateRouteMutation.error?.message ??
     assignEcoAideMutation.error?.message ??
-    assignTruckMutation.error?.message ??
     null;
 
   const isFormSubmitting =
     modalMode === "create"
       ? createRouteMutation.isPending ||
-        assignEcoAideMutation.isPending ||
-        assignTruckMutation.isPending
+        assignEcoAideMutation.isPending
       : updateRouteMutation.isPending ||
-        assignEcoAideMutation.isPending ||
-        assignTruckMutation.isPending;
+        assignEcoAideMutation.isPending
 
   return (
     <div className="p-6">
