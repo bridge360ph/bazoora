@@ -1,7 +1,7 @@
 import type {
   HaulingRequestStatus,
   SenderType,
-  WasteType,
+  HaulingWasteType,
 } from "@bazoora/shared";
 import type {
   SenderFilterValue,
@@ -24,7 +24,7 @@ export const WASTE_TYPE_DISPLAY = {
   NON_BIODEGRADABLE: "Non-Biodegradable",
   HAZARDOUS: "Hazardous",
   BIODEGRADABLE: "Biodegradable",
-} satisfies Record<WasteType, string>;
+} satisfies Record<HaulingWasteType, string>;
 
 export const SENDER_FILTER_OPTIONS: {
   label: string;

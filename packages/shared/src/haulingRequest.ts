@@ -2,7 +2,7 @@ export type SenderType =
   | "RESIDENT"
   | "BUSINESS";
 
-export type WasteType =
+export type HaulingWasteType =
   | "RESIDUAL"
   | "NON_BIODEGRADABLE"
   | "HAZARDOUS"
@@ -24,7 +24,7 @@ export interface HaulingRequest {
 
   senderType: SenderType;
 
-  wasteType: WasteType;
+  wasteType: HaulingWasteType;
 
   imageUrl?: string;
   pickupDate: string;
@@ -52,7 +52,7 @@ export interface CreateHaulingRequestInput {
 
   senderType: SenderType;
 
-  wasteType: WasteType;
+  wasteType: HaulingWasteType;
 
   pickupDate: string;
 

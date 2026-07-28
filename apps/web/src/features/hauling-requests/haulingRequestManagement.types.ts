@@ -1,6 +1,6 @@
 import type {
   SenderType,
-  WasteType,
+  HaulingWasteType,
 } from "@bazoora/shared";
 
 /**
@@ -21,10 +21,10 @@ export type SenderFilterValue =
   | "ALL";
 
 export type WasteTypeFilterValue =
-  | WasteType
+  | HaulingWasteType
   | "ALL";
 
 // Actual multi-select values - "ALL" is a picklist-only sentinel (it means
 // "clear this filter"), never a member of the selected-values array itself.
 export type SenderTypeValue = SenderType;
-export type WasteTypeValue = WasteType;
+export type WasteTypeValue = HaulingWasteType;
