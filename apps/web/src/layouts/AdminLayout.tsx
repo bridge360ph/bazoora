@@ -1,10 +1,7 @@
+import { useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { AdminSidebar } from "./components/AdminSidebar";
 import Navbar from "./components/Navbar";
-
-// Shared chrome for every /admin/* screen. The sidebar lives here once;
-// each page renders into <Outlet />. Feature screens should NOT re-create
-// their own sidebar — they just render their content.
 
 const pageTitles: Record<string, string> = {
   "/admin": "Dashboard",
@@ -19,21 +16,41 @@ const pageTitles: Record<string, string> = {
 
 export function AdminLayout() {
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const title = pageTitles[location.pathname] ?? "Admin";
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f4]">
-      <AdminSidebar />
+      <AdminSidebar
+        isOpen={sidebarOpen}
+        onClose={() => {
+          setSidebarOpen(false);
+        }}
+      />
 
-      <div className="flex flex-1 flex-col min-w-0">
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => {
+            setSidebarOpen(false);
+          }}
+        />
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
         <Navbar
           title={title}
           notificationCount={0}
           avatarInitials="JD"
+          onMenuToggle={() => {
+            setSidebarOpen((current) => !current);
+          }}
         />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
           <Outlet />
         </main>
       </div>
