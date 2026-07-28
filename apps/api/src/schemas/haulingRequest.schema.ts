@@ -1,6 +1,7 @@
 export const createHaulingRequestSchema = {
   body: {
     type: "object",
+    additionalProperties: false,
     required: [
       "requestAddress",
       "senderType",
@@ -43,6 +44,7 @@ export const createHaulingRequestSchema = {
 export const haulingRequestParamsSchema = {
   params: {
     type: "object",
+    additionalProperties: false,
     required: ["id"],
     properties: {
       id: {
@@ -55,6 +57,7 @@ export const haulingRequestParamsSchema = {
 export const denyHaulingRequestSchema = {
   params: {
     type: "object",
+    additionalProperties: false,
     required: ["id"],
     properties: {
       id: {
@@ -64,6 +67,7 @@ export const denyHaulingRequestSchema = {
   },
   body: {
     type: "object",
+    additionalProperties: false,
     required: ["denialReason"],
     properties: {
       denialReason: {
