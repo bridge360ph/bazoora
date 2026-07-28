@@ -1,8 +1,10 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import {
-  INITIAL_APPROVAL_REQUESTS,} from "../ecoAides.data";
+  INITIAL_APPROVAL_REQUESTS,
+  INITIAL_ECO_AIDES,
+} from "../ecoAides.data";
 import type {
   EcoAide,
   EcoAideApprovalRequest,
@@ -36,7 +38,7 @@ const emptyEcoAideForm: Omit<EcoAide, "id" | "addedDate"> = {
 
 export function EcoAideManagementPage() {
   const [activeTab, setActiveTab] = useState<EcoAideManagementTab>("all");
-  const [ecoAides, setEcoAides] = useState<EcoAide[]>([]);
+  const [ecoAides, setEcoAides] = useState<EcoAide[]>(INITIAL_ECO_AIDES);
   const [approvalRequests, setApprovalRequests] = useState<
     EcoAideApprovalRequest[]
   >(INITIAL_APPROVAL_REQUESTS);
@@ -308,6 +310,7 @@ export function EcoAideManagementPage() {
 
       {modalMode === "edit" && (
         <EditEcoAideModal
+          mode="edit"
           title="Edit Eco-Aide Profile"
           formValue={formValue}
           setFormValue={setFormValue}
@@ -318,6 +321,7 @@ export function EcoAideManagementPage() {
 
       {modalMode === "create" && (
         <EditEcoAideModal
+          mode="create"
           title="Create Eco-Aide Account"
           formValue={formValue}
           setFormValue={setFormValue}
@@ -386,7 +390,7 @@ function AllEcoAidesTable({
           <thead>
             <tr className="bg-brand">
               {[
-                "Eco-Aide ID ↓",
+                "Eco-Aide ID â†“",
                 "Eco-Aide Name",
                 "Added",
                 "Status",
@@ -665,7 +669,15 @@ const ALLOWED_ECO_AIDE_STATUSES: EcoAideStatus[] = [
   "Deactivated",
 ];
 
+const CREATE_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+  "Active",
+  "On Duty",
+  "On Route",
+  "Off Duty",
+];
+
 interface EditEcoAideModalProps {
+  mode: "create" | "edit";
   title: string;
   formValue: EcoAideFormValue;
   setFormValue: Dispatch<
@@ -677,6 +689,7 @@ interface EditEcoAideModalProps {
 }
 
 function EditEcoAideModal({
+  mode,
   title,
   formValue,
   setFormValue,
@@ -687,7 +700,7 @@ function EditEcoAideModal({
   const [errors, setErrors] =
     useState<EcoAideFormErrors>({});
 
-  const isCreateMode = title.includes("Create");
+  const isCreateMode = mode === "create";
 
   function updateField<Key extends keyof EcoAideFormValue>(
     key: Key,
@@ -813,9 +826,10 @@ function EditEcoAideModal({
 
     if (
       key === "status" &&
-      !ALLOWED_ECO_AIDE_STATUSES.includes(
-        value as EcoAideStatus,
-      )
+      !(isCreateMode
+        ? CREATE_ECO_AIDE_STATUSES
+        : ALLOWED_ECO_AIDE_STATUSES
+      ).includes(value as EcoAideStatus)
     ) {
       return "Select a valid Eco-Aide status.";
     }
@@ -1132,13 +1146,14 @@ function EditEcoAideModal({
               }}
               className={getInputClassName("status")}
             >
-              {ALLOWED_ECO_AIDE_STATUSES.map(
-                (status) => (
+              {(isCreateMode
+                ? CREATE_ECO_AIDE_STATUSES
+                : ALLOWED_ECO_AIDE_STATUSES
+              ).map((status) => (
                   <option key={status} value={status}>
                     {status}
                   </option>
-                ),
-              )}
+                ))}
             </select>
           </FormField>
 
@@ -1323,13 +1338,13 @@ function Pagination() {
   return (
     <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
       <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ‹
+        â€¹
       </button>
       <button type="button" className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white">
         1
       </button>
       <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ›
+        â€º
       </button>
     </div>
   );
