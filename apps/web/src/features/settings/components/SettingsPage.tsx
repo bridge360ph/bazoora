@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  Bell,
+  CheckCircle2,
+  MonitorCog,
+  Palette,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@bazoora/ui";
 
@@ -371,7 +379,7 @@ export function SettingsPage() {
         {tab === "Account" && (
           <>
             <SectionCard
-              icon="👤"
+              icon={<UserRound size={24} strokeWidth={1.8} />}
               title="Profile Information"
               subtitle="Update your account details"
             >
@@ -569,7 +577,7 @@ export function SettingsPage() {
             </SectionCard>
 
             <SectionCard
-              icon="🛡"
+              icon={<ShieldCheck size={24} strokeWidth={1.8} />}
               title="Security"
               subtitle="Manage your password and security settings"
             >
@@ -674,7 +682,7 @@ export function SettingsPage() {
 
         {tab === "Notifications" && (
           <SectionCard
-            icon="🔔"
+            icon={<Bell size={24} strokeWidth={1.8} />}
             title="Notification Preferences"
             subtitle="Choose how you want to be notified"
           >
@@ -713,7 +721,7 @@ export function SettingsPage() {
         {tab === "System" && (
           <>
             <SectionCard
-              icon="⚙"
+              icon={<Palette size={24} strokeWidth={1.8} />}
               title="Appearance"
               subtitle="Customize the look and feel"
             >
@@ -726,7 +734,7 @@ export function SettingsPage() {
             </SectionCard>
 
             <SectionCard
-              icon="🖥"
+              icon={<MonitorCog size={24} strokeWidth={1.8} />}
               title="System Configuration"
               subtitle="Configure system behavior"
             >
@@ -778,10 +786,11 @@ export function SettingsPage() {
 
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+          className="fixed bottom-6 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
           role="status"
         >
-          ✓ {toast}
+          <CheckCircle2 size={17} aria-hidden="true" />
+          <span>{toast}</span>
         </div>
       )}
     </main>
