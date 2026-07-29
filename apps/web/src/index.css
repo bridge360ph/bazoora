@@ -1,16 +1,18 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
 @source "../src";
 @source "../../../packages/ui/src";
 
 /* Brand color tokens. `@bazoora/ui` and the admin screens reference these as
    Tailwind utilities (bg-brand, text-brand, etc.), so they must be defined here
-   for those classes to generate. Prefer bg-brand over arbitrary bg-[#1a3a2e] so
+   for those classes to generate. Prefer bg-brand over arbitrary bg-brand so
    the brand color stays defined in one place. */
 @theme {
-  --color-brand: #1a3a2e;
-  --color-brand-dark: #12291f;
-  --color-accent-dark: #475c53;
-  --color-accent-light: #a3beb9;
-  --color-brand-accent: #4ade80;   /* light saturated green */
+  --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */
+  --color-brand-secondary: #185034; /* Secondary brand green used for supporting UI elements (e.g., table headers) */
+  --color-brand-dark: #072217; /* Dark brand variant commonly used for buttons and active states */
+  --color-danger: #BA1A1A; /* Destructive actions and error states (e.g., reject, decline, delete) */
+  --color-accent-dark: #475c53; /* Muted green accent used for secondary UI surfaces */
+  --color-accent-light: #a3beb9; /* Muted light green accent used for subtle backgrounds and highlights */
 }

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { getSocket } from "./lib/socket";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -14,6 +13,7 @@ import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
 
 // Page Imports
 import { AdminDashboard } from "./pages/AdminDashboard";
+import { EcoAideManagementPage } from "./features/eco-aides/components/EcoAideManagementPage";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
 import { AdminRouteManagementPage } from "./features/route-management/AdminRouteManagementPage";
@@ -157,7 +157,7 @@ function AppContent() {
             <Route index element={<AdminDashboard />} />
             <Route
               path="eco-aides"
-              element={<RoutePlaceholder title="Eco-Aide Management" />}
+              element={<EcoAideManagementPage />}
             />
             <Route
               path="fleet"

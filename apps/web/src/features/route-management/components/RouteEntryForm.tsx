@@ -51,40 +51,40 @@ export function RouteEntryForm({
 
   return (
     <div className="flex flex-col gap-4">
-      <FormField label="Route Name">
+      <FormField label="Route Name" required>
         <input
           value={formValue.name}
           onChange={(event) => {
             updateField("name", event.target.value);
           }}
-          placeholder="e.g. Brgy. Poblacion Loop"
+          placeholder="Enter Route Name"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
       </FormField>
 
-      <FormField label="Barangay coverage">
+      <FormField label="Barangay Coverage" required>
         <input
           value={formValue.barangay}
           onChange={(event) => {
             updateField("barangay", event.target.value);
           }}
-          placeholder="e.g. Brgy. Poblacion"
+          placeholder="Enter Barangay Coverage"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
       </FormField>
 
-      <FormField label="Waypoints / collection points">
+      <FormField label="Waypoints / Collection Points" required>
         <input
           value={formValue.waypoints}
           onChange={(event) => {
             updateField("waypoints", event.target.value);
           }}
-          placeholder="e.g. Stop A, Stop B, Stop C"
+          placeholder="Enter Waypoints / Collection Points (e.g. Stop A, Stop B, Stop C)"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
       </FormField>
 
-      <FormField label="Waste type">
+      <FormField label="Waste Type">
         <select
           value={formValue.wasteType}
           onChange={(event) => {
@@ -101,7 +101,7 @@ export function RouteEntryForm({
       </FormField>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Collection day">
+        <FormField label="Collection Day">
           <select
             value={formValue.collectionDay}
             onChange={(event) => {
@@ -117,14 +117,16 @@ export function RouteEntryForm({
           </select>
         </FormField>
 
-        <input
-          type="time"
-          value={formValue.startTime}
-          onChange={(event) => {
-            updateField("startTime", event.target.value);
-          }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-        />
+        <FormField label="Start Time">
+          <input
+            type="time"
+            value={formValue.startTime}
+            onChange={(event) => {
+              updateField("startTime", event.target.value);
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          />
+        </FormField>
       </div>
 
       <FormField label="Eco-Aide">
