@@ -139,7 +139,9 @@ export function EcoAideManagementPage() {
     setReason("");
   }
 
-  function saveEditedEcoAide() {
+  function saveEditedEcoAide(
+    validatedFormValue: EcoAideFormValue,
+  ) {
     if (!selectedEcoAide) {
       return;
     }
@@ -149,7 +151,7 @@ export function EcoAideManagementPage() {
         ecoAide.id === selectedEcoAide.id
           ? {
               ...ecoAide,
-              ...formValue,
+              ...validatedFormValue,
             }
           : ecoAide,
       ),
@@ -158,16 +160,22 @@ export function EcoAideManagementPage() {
     closeModal();
   }
 
-  function createEcoAideAccount() {
+  function createEcoAideAccount(
+    validatedFormValue: EcoAideFormValue,
+  ) {
     const nextIdNumber = ecoAides.length + 1;
+
     const nextEcoAide: EcoAide = {
       id: `EA-${String(nextIdNumber).padStart(3, "0")}`,
-      addedDate: "26/03/2026",
-      ...formValue,
-      name: formValue.name.trim() || "New Eco-Aide",
+      addedDate: new Date().toLocaleDateString("en-PH"),
+      ...validatedFormValue,
     };
 
-    setEcoAides((currentEcoAides) => [nextEcoAide, ...currentEcoAides]);
+    setEcoAides((currentEcoAides) => [
+      nextEcoAide,
+      ...currentEcoAides,
+    ]);
+
     closeModal();
   }
 
@@ -302,6 +310,7 @@ export function EcoAideManagementPage() {
 
       {modalMode === "edit" && (
         <EditEcoAideModal
+          mode="edit"
           title="Edit Eco-Aide Profile"
           formValue={formValue}
           setFormValue={setFormValue}
@@ -312,6 +321,7 @@ export function EcoAideManagementPage() {
 
       {modalMode === "create" && (
         <EditEcoAideModal
+          mode="create"
           title="Create Eco-Aide Account"
           formValue={formValue}
           setFormValue={setFormValue}
@@ -380,7 +390,7 @@ function AllEcoAidesTable({
           <thead>
             <tr className="bg-brand">
               {[
-                "Eco-Aide ID ↓",
+                "Eco-Aide ID â†“",
                 "Eco-Aide Name",
                 "Added",
                 "Status",
@@ -465,7 +475,7 @@ function ActionMenu({
         }}
         className="cursor-pointer border-0 bg-transparent text-sm font-extrabold text-gray-900"
       >
-        •••
+        ...
       </button>
 
       {isOpen && (
@@ -596,7 +606,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
         <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">View profile - {ecoAide.name}</h2>
 
         <div className="flex items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">♙</div>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">EA</div>
 
           <div className="flex-1">
             <div className="text-base font-extrabold">{ecoAide.name}</div>
@@ -629,7 +639,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onEdit}>Edit Profile</Button>
           <Button variant="secondary" onClick={onClose}>
-            × Close
+            Close
           </Button>
         </div>
       </div>
@@ -637,16 +647,49 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   );
 }
 
+type EcoAideFormValue = Omit<
+  EcoAide,
+  "id" | "addedDate"
+>;
+
+type EcoAideFormErrors = Partial<
+  Record<keyof EcoAideFormValue, string>
+>;
+
+const ECO_AIDE_NAME_PATTERN = /^[\p{L} .'-]+$/u;
+const PH_MOBILE_PATTERN = /^09\d{9}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const ALLOWED_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+  "Active",
+  "On Duty",
+  "On Route",
+  "Off Duty",
+  "Suspended",
+  "Deactivated",
+];
+
+const CREATE_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+  "Active",
+  "On Duty",
+  "On Route",
+  "Off Duty",
+];
+
 interface EditEcoAideModalProps {
+  mode: "create" | "edit";
   title: string;
-  formValue: Omit<EcoAide, "id" | "addedDate">;
-  setFormValue: Dispatch<SetStateAction<Omit<EcoAide, "id" | "addedDate">>>;
-  onSave: () => void;
+  formValue: EcoAideFormValue;
+  setFormValue: Dispatch<
+    SetStateAction<EcoAideFormValue>
+  >;
+  onSave: (validatedValue: EcoAideFormValue) => void;
   onClose: () => void;
   saveLabel?: string;
 }
 
 function EditEcoAideModal({
+  mode,
   title,
   formValue,
   setFormValue,
@@ -654,69 +697,398 @@ function EditEcoAideModal({
   onClose,
   saveLabel = "Save",
 }: EditEcoAideModalProps) {
-  function updateField<Key extends keyof typeof formValue>(
+  const [errors, setErrors] =
+    useState<EcoAideFormErrors>({});
+
+  const isCreateMode = mode === "create";
+
+  function updateField<Key extends keyof EcoAideFormValue>(
     key: Key,
-    value: (typeof formValue)[Key],
+    value: EcoAideFormValue[Key],
   ) {
     setFormValue((currentValue) => ({
       ...currentValue,
       [key]: value,
     }));
+
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [key]: undefined,
+    }));
+  }
+
+  function validateFieldValue(
+    key: keyof EcoAideFormValue,
+    value: EcoAideFormValue[keyof EcoAideFormValue],
+  ): string | undefined {
+    const stringValue =
+      typeof value === "string" ? value.trim() : "";
+
+    if (key === "name") {
+      if (!stringValue) {
+        return "Eco-Aide name is required.";
+      }
+
+      if (stringValue.length < 2) {
+        return "Name must contain at least 2 characters.";
+      }
+
+      if (stringValue.length > 100) {
+        return "Name must not exceed 100 characters.";
+      }
+
+      if (!ECO_AIDE_NAME_PATTERN.test(stringValue)) {
+        return "Use letters, spaces, periods, hyphens, or apostrophes only.";
+      }
+    }
+
+    if (key === "contactNumber") {
+      if (!stringValue) {
+        return "Contact number is required.";
+      }
+
+      if (!PH_MOBILE_PATTERN.test(stringValue)) {
+        return "Enter exactly 11 digits starting with 09.";
+      }
+    }
+
+    if (key === "birthdate") {
+      if (!stringValue) {
+        return "Birthdate is required.";
+      }
+
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+        stringValue,
+      );
+
+      if (!match) {
+        return "Enter a valid birthdate.";
+      }
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+
+      const birthdate = new Date(year, month - 1, day);
+
+      const isValidDate =
+        birthdate.getFullYear() === year &&
+        birthdate.getMonth() === month - 1 &&
+        birthdate.getDate() === day;
+
+      if (!isValidDate) {
+        return "Enter a valid birthdate.";
+      }
+
+      const today = new Date();
+
+      if (birthdate > today) {
+        return "Birthdate cannot be in the future.";
+      }
+
+      let age = today.getFullYear() - year;
+
+      const birthdayHasNotOccurred =
+        today.getMonth() < month - 1 ||
+        (today.getMonth() === month - 1 &&
+          today.getDate() < day);
+
+      if (birthdayHasNotOccurred) {
+        age -= 1;
+      }
+
+      if (age < 18) {
+        return "Eco-Aide must be at least 18 years old.";
+      }
+    }
+
+    if (key === "address") {
+      if (!stringValue) {
+        return "Address is required.";
+      }
+
+      if (stringValue.length < 5) {
+        return "Address must contain at least 5 characters.";
+      }
+
+      if (stringValue.length > 255) {
+        return "Address must not exceed 255 characters.";
+      }
+    }
+
+    if (key === "assignedTruck" && !stringValue) {
+      return "Select a truck assignment.";
+    }
+
+    if (key === "assignedRoute" && !stringValue) {
+      return "Select a route assignment.";
+    }
+
+    if (
+      key === "status" &&
+      !(isCreateMode
+        ? CREATE_ECO_AIDE_STATUSES
+        : ALLOWED_ECO_AIDE_STATUSES
+      ).includes(value as EcoAideStatus)
+    ) {
+      return "Select a valid Eco-Aide status.";
+    }
+
+    if (key === "email" && isCreateMode) {
+      if (!stringValue) {
+        return "Email address is required.";
+      }
+
+      if (stringValue.length > 254) {
+        return "Email address is too long.";
+      }
+
+      if (!EMAIL_PATTERN.test(stringValue)) {
+        return "Enter a valid email address.";
+      }
+    }
+
+    return undefined;
+  }
+
+  function validateOneField(
+    key: keyof EcoAideFormValue,
+  ) {
+    const error = validateFieldValue(
+      key,
+      formValue[key],
+    );
+
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [key]: error,
+    }));
+  }
+
+  function validateForm(
+    value: EcoAideFormValue,
+  ): EcoAideFormErrors {
+    const fields: Array<keyof EcoAideFormValue> = [
+      "name",
+      "contactNumber",
+      "birthdate",
+      "address",
+      "assignedTruck",
+      "assignedRoute",
+      "status",
+    ];
+
+    if (isCreateMode) {
+      fields.push("email");
+    }
+
+    const validationErrors: EcoAideFormErrors = {};
+
+    for (const field of fields) {
+      const error = validateFieldValue(
+        field,
+        value[field],
+      );
+
+      if (error) {
+        validationErrors[field] = error;
+      }
+    }
+
+    return validationErrors;
+  }
+
+  function handleSubmit() {
+    const normalizedValue: EcoAideFormValue = {
+      ...formValue,
+      name: formValue.name
+        .trim()
+        .replace(/\s+/g, " "),
+      contactNumber: formValue.contactNumber.trim(),
+      birthdate: formValue.birthdate.trim(),
+      address: formValue.address
+        .trim()
+        .replace(/\s+/g, " "),
+      assignedTruck: formValue.assignedTruck.trim(),
+      assignedRoute: formValue.assignedRoute.trim(),
+      email: formValue.email.trim().toLowerCase(),
+    };
+
+    const validationErrors =
+      validateForm(normalizedValue);
+
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    setFormValue(normalizedValue);
+    onSave(normalizedValue);
+  }
+
+  const today = new Date();
+
+  const latestAllowedBirthdate = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  const birthdateMax = [
+    latestAllowedBirthdate.getFullYear(),
+    String(
+      latestAllowedBirthdate.getMonth() + 1,
+    ).padStart(2, "0"),
+    String(latestAllowedBirthdate.getDate()).padStart(
+      2,
+      "0",
+    ),
+  ].join("-");
+
+  function getInputClassName(
+    field: keyof EcoAideFormValue,
+  ) {
+    return `box-border w-full rounded-md border px-2.5 py-2 text-[13px] outline-none placeholder:text-gray-400 ${
+      errors[field]
+        ? "border-red-500 focus:border-red-600"
+        : "border-gray-300 focus:border-brand"
+    }`;
   }
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-[720px] rounded-[10px] bg-white p-7">
-        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
+      <div className="max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[10px] bg-white p-7">
+        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">
+          {title}
+        </h2>
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
-          <FormField label="Eco-Aide Name">
+          <FormField
+            label="Eco-Aide Name"
+            required
+            error={errors.name}
+          >
             <input
               value={formValue.name}
+              maxLength={100}
+              placeholder="Juan Dela Cruz"
+              autoComplete="name"
+              aria-invalid={Boolean(errors.name)}
               onChange={(event) => {
                 updateField("name", event.target.value);
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("name");
+              }}
+              className={getInputClassName("name")}
             />
           </FormField>
 
-          <FormField label="Contact Number">
+          <FormField
+            label="Contact Number"
+            required
+            error={errors.contactNumber}
+          >
             <input
+              type="tel"
               value={formValue.contactNumber}
+              inputMode="numeric"
+              maxLength={11}
+              pattern="09[0-9]{9}"
+              autoComplete="tel"
+              placeholder="09123456789"
+              aria-invalid={Boolean(
+                errors.contactNumber,
+              )}
               onChange={(event) => {
-                updateField("contactNumber", event.target.value);
+                const digitsOnly = event.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 11);
+
+                updateField(
+                  "contactNumber",
+                  digitsOnly,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("contactNumber");
+              }}
+              className={getInputClassName(
+                "contactNumber",
+              )}
             />
           </FormField>
 
-          <FormField label="Birthdate">
+          <FormField
+            label="Birthdate"
+            required
+            error={errors.birthdate}
+          >
             <input
+              type="date"
+              max={birthdateMax}
               value={formValue.birthdate}
+              aria-invalid={Boolean(errors.birthdate)}
               onChange={(event) => {
-                updateField("birthdate", event.target.value);
+                updateField(
+                  "birthdate",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("birthdate");
+              }}
+              className={getInputClassName("birthdate")}
             />
           </FormField>
 
-          <FormField label="Address">
+          <FormField
+            label="Address"
+            required
+            error={errors.address}
+          >
             <input
               value={formValue.address}
+              maxLength={255}
+              placeholder="123 Mabini St., Quezon City"
+              autoComplete="street-address"
+              aria-invalid={Boolean(errors.address)}
               onChange={(event) => {
-                updateField("address", event.target.value);
+                updateField(
+                  "address",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("address");
+              }}
+              className={getInputClassName("address")}
             />
           </FormField>
 
-          <FormField label="Truck Assignment">
+          <FormField
+            label="Truck Assignment"
+            required
+            error={errors.assignedTruck}
+          >
             <select
               value={formValue.assignedTruck}
+              aria-invalid={Boolean(
+                errors.assignedTruck,
+              )}
               onChange={(event) => {
-                updateField("assignedTruck", event.target.value);
+                updateField(
+                  "assignedTruck",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("assignedTruck");
+              }}
+              className={getInputClassName(
+                "assignedTruck",
+              )}
             >
               <option value="">Select truck</option>
               <option value="FL-001">FL-001</option>
@@ -725,13 +1097,28 @@ function EditEcoAideModal({
             </select>
           </FormField>
 
-          <FormField label="Route Assignment">
+          <FormField
+            label="Route Assignment"
+            required
+            error={errors.assignedRoute}
+          >
             <select
               value={formValue.assignedRoute}
+              aria-invalid={Boolean(
+                errors.assignedRoute,
+              )}
               onChange={(event) => {
-                updateField("assignedRoute", event.target.value);
+                updateField(
+                  "assignedRoute",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("assignedRoute");
+              }}
+              className={getInputClassName(
+                "assignedRoute",
+              )}
             >
               <option value="">Select route</option>
               <option value="RT-001">RT-001</option>
@@ -740,40 +1127,71 @@ function EditEcoAideModal({
             </select>
           </FormField>
 
-          <FormField label="Status">
+          <FormField
+            label="Status"
+            required
+            error={errors.status}
+          >
             <select
               value={formValue.status}
+              aria-invalid={Boolean(errors.status)}
               onChange={(event) => {
-                updateField("status", event.target.value as EcoAideStatus);
+                updateField(
+                  "status",
+                  event.target.value as EcoAideStatus,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("status");
+              }}
+              className={getInputClassName("status")}
             >
-              <option value="Active">Active</option>
-              <option value="On Duty">On Duty</option>
-              <option value="On Route">On Route</option>
-              <option value="Off Duty">Off Duty</option>
-              <option value="Suspended">Suspended</option>
-              <option value="Deactivated">Deactivated</option>
+              {(isCreateMode
+                ? CREATE_ECO_AIDE_STATUSES
+                : ALLOWED_ECO_AIDE_STATUSES
+              ).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
             </select>
           </FormField>
 
-          {title.includes("Create") && (
-            <FormField label="Email Address">
+          {isCreateMode && (
+            <FormField
+              label="Email Address"
+              required
+              error={errors.email}
+            >
               <input
+                type="email"
                 value={formValue.email}
+                maxLength={254}
+                placeholder="juan.delacruz@example.com"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
                 onChange={(event) => {
-                  updateField("email", event.target.value);
+                  updateField(
+                    "email",
+                    event.target.value,
+                  );
                 }}
-                className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+                onBlur={() => {
+                  validateOneField("email");
+                }}
+                className={getInputClassName("email")}
               />
             </FormField>
           )}
         </div>
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onSave}>{saveLabel}</Button>
+          <Button onClick={handleSubmit}>
+            {saveLabel}
+          </Button>
+
           <Button variant="secondary" onClick={onClose}>
-            × Close
+            Close
           </Button>
         </div>
       </div>
@@ -809,7 +1227,7 @@ function ConfirmActionModal({
       <div className="w-full max-w-[390px] rounded-[10px] bg-white p-6">
         <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
 
-        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">ⓘ {warning}</div>
+        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">Info: {warning}</div>
 
         <p className="mt-[18px] text-sm">{message}</p>
 
@@ -826,9 +1244,9 @@ function ConfirmActionModal({
         </label>
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onConfirm}>▣ {confirmLabel}</Button>
+          <Button onClick={onConfirm}> {confirmLabel}</Button>
           <Button variant="secondary" onClick={onClose}>
-            × Cancel
+            Cancel
           </Button>
         </div>
       </div>
@@ -839,13 +1257,41 @@ function ConfirmActionModal({
 interface FormFieldProps {
   label: string;
   children: ReactNode;
+  required?: boolean;
+  error?: string;
 }
 
-function FormField({ label, children }: FormFieldProps) {
+function FormField({
+  label,
+  children,
+  required = false,
+  error,
+}: FormFieldProps) {
   return (
     <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-      {label}
+      <span>
+        {label}
+
+        {required && (
+          <span
+            aria-hidden="true"
+            className="ml-1 text-red-600"
+          >
+            *
+          </span>
+        )}
+      </span>
+
       {children}
+
+      {error && (
+        <span
+          role="alert"
+          className="text-xs font-normal text-red-600"
+        >
+          {error}
+        </span>
+      )}
     </label>
   );
 }
@@ -892,13 +1338,13 @@ function Pagination() {
   return (
     <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
       <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ‹
+        â€¹
       </button>
       <button type="button" className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white">
         1
       </button>
       <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ›
+        â€º
       </button>
     </div>
   );
