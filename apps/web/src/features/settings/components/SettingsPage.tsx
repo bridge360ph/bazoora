@@ -4,9 +4,12 @@ import { useNavigate } from "react-router-dom";
 import {
   Bell,
   CheckCircle2,
+  LogOut,
   MonitorCog,
   Palette,
   ShieldCheck,
+  Trash2,
+  UserCog,
   UserRound,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
@@ -654,29 +657,59 @@ export function SettingsPage() {
               </form>
             </SectionCard>
 
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  clearSession();
-                  document.documentElement.classList.remove("dark");
-                  void navigate("/login");
-                }}
-                className="w-full rounded-[10px] border-2 border-brand bg-white px-4 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 dark:bg-gray-900 dark:hover:bg-gray-800"
-              >
-                Log Out
-              </button>
+            <SectionCard
+              icon={<UserCog size={24} strokeWidth={1.8} />}
+              title="Account Actions"
+              subtitle="Manage your current session or account"
+            >
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <div className="flex flex-col gap-4 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Log out of Bazoora
+                    </h3>
+                    <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">
+                      End your current session and return to the login page.
+                    </p>
+                  </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(true);
-                }}
-                className="w-full rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
-              >
-                Delete Account
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSession();
+                      document.documentElement.classList.remove("dark");
+                      void navigate("/login");
+                    }}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-brand bg-white px-4 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  >
+                    <LogOut size={17} aria-hidden="true" />
+                    Log Out
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
+                      Delete account
+                    </h3>
+                    <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">
+                      Permanently remove your account and associated information.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteModal(true);
+                    }}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
+                  >
+                    <Trash2 size={17} aria-hidden="true" />
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
           </>
         )}
 
