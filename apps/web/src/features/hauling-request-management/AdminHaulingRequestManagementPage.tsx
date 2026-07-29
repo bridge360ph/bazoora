@@ -121,6 +121,7 @@ export function AdminHaulingRequestManagementPage() {
   }
 
   function closeModal() {
+    denyMutation.reset();
     setModalMode(null);
     setSelectedRequest(null);
   }
@@ -265,6 +266,11 @@ export function AdminHaulingRequestManagementPage() {
           onClose={closeModal}
           onConfirm={handleDeny}
           isSubmitting={denyMutation.isPending}
+          errorMessage={
+            denyMutation.error instanceof Error
+              ? denyMutation.error.message
+              : undefined
+          }
         />
       )}
     </div>
