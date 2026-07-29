@@ -12,6 +12,7 @@
   --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */
   --color-brand-secondary: #185034; /* Secondary brand green used for supporting UI elements (e.g., table headers) */
   --color-brand-dark: #072217; /* Dark brand variant commonly used for buttons and active states */
+  --color-danger: #BA1A1A; /* Destructive actions and error states (e.g., reject, decline, delete) */
   --color-accent-dark: #475c53; /* Muted green accent used for secondary UI surfaces */
-  --color-accent-light: #a3beb9; /* Light green accent used for subtle backgrounds and highlights */
+  --color-accent-light: #a3beb9; /* Muted light green accent used for subtle backgrounds and highlights */
 }
