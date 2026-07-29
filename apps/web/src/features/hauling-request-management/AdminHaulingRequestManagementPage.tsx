@@ -39,7 +39,9 @@ export function AdminHaulingRequestManagementPage() {
     isError,
     error,
     refetch,
-  } = useHaulingRequests();
+  } = useHaulingRequests({
+    refetchInterval: 10000,
+  });
   const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
 

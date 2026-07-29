@@ -22,14 +22,23 @@ export function useHaulingRequests() {
 
 export function useCreateHaulingRequest() {
   const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (input: CreateHaulingRequestInput) => createHaulingRequest(input),
-    onSuccess: () => {
+    mutationFn: (input: CreateHaulingRequestInput) =>
+      createHaulingRequest(input),
+
+    onSuccess: async () => {
       toast.success("Hauling request submitted successfully!");
-      queryClient.invalidateQueries({ queryKey: haulingKeys.lists() });
+
+      await queryClient.invalidateQueries({
+        queryKey: ["hauling-requests"],
+      });
     },
+
     onError: (error: any) => {
-      toast.error(error.response?.data?.message ?? "Failed to submit request");
+      toast.error(
+        error.response?.data?.message ?? "Failed to submit request"
+      );
     },
   });
 }
