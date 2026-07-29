@@ -112,9 +112,31 @@ export function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  const [emailNotifications, setEmailNotifications] = useState(authUser?.notificationPreferences?.emailNotif ?? true);
-  const [pushNotifications, setPushNotifications] = useState(authUser?.notificationPreferences?.pushNotif ?? true);
-  const [dailySummary, setDailySummary] = useState(authUser?.notificationPreferences?.collectionReminder ?? false);
+  const [emailNotifications, setEmailNotifications] = useState(
+    authUser?.notificationPreferences?.emailNotif ?? true,
+  );
+  const [pushNotifications, setPushNotifications] = useState(
+    authUser?.notificationPreferences?.pushNotif ?? true,
+  );
+  const [dailySummary, setDailySummary] = useState(
+    authUser?.notificationPreferences?.collectionReminder ?? false,
+  );
+  const [savedNotificationPreferences, setSavedNotificationPreferences] =
+    useState({
+      emailNotifications:
+        authUser?.notificationPreferences?.emailNotif ?? true,
+      pushNotifications:
+        authUser?.notificationPreferences?.pushNotif ?? true,
+      dailySummary:
+        authUser?.notificationPreferences?.collectionReminder ?? false,
+    });
+
+  const hasNotificationChanges =
+    emailNotifications !==
+      savedNotificationPreferences.emailNotifications ||
+    pushNotifications !==
+      savedNotificationPreferences.pushNotifications ||
+    dailySummary !== savedNotificationPreferences.dailySummary;
 
   const [darkMode, setDarkMode] = useState(() => {
     const savedTheme = window.localStorage.getItem("bazoora-admin-theme");
@@ -738,15 +760,32 @@ export function SettingsPage() {
               onChange={setDailySummary}
             />
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col items-center gap-2">
               <Button
                 type="button"
+                disabled={!hasNotificationChanges}
                 onClick={() => {
+                  setSavedNotificationPreferences({
+                    emailNotifications,
+                    pushNotifications,
+                    dailySummary,
+                  });
                   showToast("Notification preferences saved.");
                 }}
               >
-                Save Preference
+                {hasNotificationChanges
+                  ? "Save Preferences"
+                  : "Preferences Saved"}
               </Button>
+
+              <p
+                className="text-center text-xs text-gray-500 dark:text-gray-400"
+                aria-live="polite"
+              >
+                {hasNotificationChanges
+                  ? "You have unsaved notification changes."
+                  : "Your notification preferences are up to date."}
+              </p>
             </div>
           </SectionCard>
         )}
