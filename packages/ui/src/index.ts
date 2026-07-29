@@ -13,6 +13,7 @@ export { ModalFooter } from "./ModalFooter";
 export { PaginationControls } from "./PaginationControls";
 
 // Icons
+export { default as HamburgerMenuIcon } from "./icons/hamburger-menu.svg";
 export { default as DashboardIcon } from "./icons/sidebar-dashboard.svg";
 export { default as EcoAideIcon } from "./icons/sidebar-eco-aide-management.svg";
 export { default as FleetManagementIcon } from "./icons/sidebar-truck.svg";
