@@ -5,11 +5,9 @@ import type { RouteFormValue, RouteStatusFilter } from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
-// import { useAssignRouteEcoAide } from "./hooks/useAssignRouteEcoAide";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
-// import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
 import { RouteDetailsModal } from "./components/RouteDetailsModal";
 
 type ModalMode = "create" | "edit" | "assign" | "details" | null;
@@ -30,7 +28,6 @@ export function AdminRouteManagementPage() {
   const { data: routes, isLoading, isError, error, refetch } = useRoutes();
   const createRouteMutation = useCreateRoute();
   const updateRouteMutation = useUpdateRoute();
-  // const assignEcoAideMutation = useAssignRouteEcoAide();
 
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -38,7 +35,6 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
-  // const [assignedEcoAide, setAssignedEcoAide] = useState(ECO_AIDE_OPTIONS[0]);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -105,8 +101,6 @@ export function AdminRouteManagementPage() {
       wasteType: route.wasteType,
       collectionDay: route.collectionDay,
       startTime: route.startTime,
-      // ecoAide: route.assignedEcoAideId ?? "Unassigned",
-      // fleetAssignment: route.assignedTruckId ?? "Unassigned",
       routeType: route.routeType,
     });
     setModalMode("edit");
@@ -114,10 +108,6 @@ export function AdminRouteManagementPage() {
 
   function openAssignModal(route: Route) {
     setSelectedRoute(route);
-    // setAssignedEcoAide(
-    //   ECO_AIDE_OPTIONS.find((option) => option.startsWith(route.assignedEcoAideId ?? "Unassigned")) ??
-    //     ECO_AIDE_OPTIONS[0],
-    // );
     setModalMode("assign");
   }
 
@@ -155,22 +145,6 @@ export function AdminRouteManagementPage() {
       },
     );
   }
-
-  // function handleSaveEcoAideAssignment() {
-  //   if (!selectedRoute) {
-  //     return;
-  //   }
-
-  //   assignEcoAideMutation.mutate(
-  //     { routeId: selectedRoute.id, ecoAide: assignedEcoAide },
-  //     {
-  //       onSuccess: () => {
-  //         refetch();
-  //         closeModal();
-  //       },
-  //     },
-  //   );
-  // }
 
   return (
     <div className="p-6">
@@ -276,17 +250,6 @@ export function AdminRouteManagementPage() {
           isSubmitting={updateRouteMutation.isPending}
         />
       )}
-
-      {/* {modalMode === "assign" && selectedRoute && (
-        <AssignEcoAideModal
-          route={selectedRoute}
-          assignedEcoAide={assignedEcoAide}
-          setAssignedEcoAide={setAssignedEcoAide}
-          onSave={handleSaveEcoAideAssignment}
-          onClose={closeModal}
-          isSubmitting={assignEcoAideMutation.isPending}
-        />
-      )} */}
 
       {modalMode === "details" && selectedRoute && (
         <RouteDetailsModal route={selectedRoute} onClose={closeModal} />

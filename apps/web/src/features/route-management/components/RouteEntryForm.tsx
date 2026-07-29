@@ -105,38 +105,6 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
       </div>
-
-      {/* <FormField label="Eco-Aide">
-        <select
-          value={formValue.ecoAide}
-          onChange={(event) => {
-            updateField("ecoAide", event.target.value);
-          }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-        >
-          {ECO_AIDE_OPTIONS.map((ecoAide) => (
-            <option key={ecoAide} value={ecoAide}>
-              {ecoAide}
-            </option>
-          ))}
-        </select>
-      </FormField> */}
-
-      {/* <FormField label="Fleet Assignment">
-        <select
-          value={formValue.fleetAssignment}
-          onChange={(event) => {
-            updateField("fleetAssignment", event.target.value);
-          }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-        >
-          {FLEET_OPTIONS.map((fleet) => (
-            <option key={fleet} value={fleet}>
-              {fleet}
-            </option>
-          ))}
-        </select>
-      </FormField> */}
     </div>
   );
 }

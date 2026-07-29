@@ -10,7 +10,14 @@ import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { config } from "./plugins/config.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  ajv: {
+    customOptions: {
+      removeAdditional: false,
+    },
+  },
+});
 
 const start = async () => {
   await app.register(cors, {
