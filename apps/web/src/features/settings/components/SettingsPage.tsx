@@ -150,6 +150,16 @@ export function SettingsPage() {
   const [autoAssignRoutes, setAutoAssignRoutes] = useState(true);
   const [realTimeTracking, setRealTimeTracking] = useState(true);
   const [automaticReports, setAutomaticReports] = useState(false);
+  const [savedSystemPreferences, setSavedSystemPreferences] = useState({
+    autoAssignRoutes: true,
+    realTimeTracking: true,
+    automaticReports: false,
+  });
+
+  const hasSystemChanges =
+    autoAssignRoutes !== savedSystemPreferences.autoAssignRoutes ||
+    realTimeTracking !== savedSystemPreferences.realTimeTracking ||
+    automaticReports !== savedSystemPreferences.automaticReports;
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -829,15 +839,32 @@ export function SettingsPage() {
                 onChange={setAutomaticReports}
               />
 
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 flex flex-col items-center gap-2">
                 <Button
                   type="button"
+                  disabled={!hasSystemChanges}
                   onClick={() => {
+                    setSavedSystemPreferences({
+                      autoAssignRoutes,
+                      realTimeTracking,
+                      automaticReports,
+                    });
                     showToast("System preferences saved.");
                   }}
                 >
-                  Save Preference
+                  {hasSystemChanges
+                    ? "Save Preferences"
+                    : "Preferences Saved"}
                 </Button>
+
+                <p
+                  className="text-center text-xs text-gray-500 dark:text-gray-400"
+                  aria-live="polite"
+                >
+                  {hasSystemChanges
+                    ? "You have unsaved system changes."
+                    : "Your system preferences are up to date."}
+                </p>
               </div>
             </SectionCard>
           </>
