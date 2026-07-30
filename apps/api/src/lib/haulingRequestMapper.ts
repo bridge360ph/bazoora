@@ -5,49 +5,49 @@ export function mapHaulingRequest(
   request: PrismaHaulingRequest,
 ): SharedHaulingRequest {
   return {
-    requestId: request.request_id,
+    requestId: request.requestId,
     
-    requestNumber: request.request_number,
+    requestNumber: request.requestNumber,
   
-    userId: request.user_id,
+    userId: request.userId,
 
-    requestAddress: request.request_address,
+    requestAddress: request.requestAddress,
 
-    senderType: request.sender_type,
+    senderType: request.senderType,
 
-    wasteType: request.waste_type,
+    wasteType: request.wasteType,
 
     pickupDate:
-      request.pickup_date?.toISOString() ?? "",
+      request.pickupDate?.toISOString() ?? "",
 
     status: request.status,
 
     archived: request.archived,
 
     createdAt:
-      request.created_at.toISOString(),
+      request.createdAt.toISOString(),
 
     updatedAt:
-      request.updated_at.toISOString(),
+      request.updatedAt.toISOString(),
 
-    ...(request.org_id !== null && {
-      orgId: request.org_id,
+    ...(request.orgId !== null && {
+      orgId: request.orgId,
     }),
 
-    ...(request.image_url !== null && {
-      imageUrl: request.image_url,
+    ...(request.imageUrl !== null && {
+      imageUrl: request.imageUrl,
     }),
 
-    ...(request.approved_by !== null && {
-      approvedBy: request.approved_by,
+    ...(request.approvedBy !== null && {
+      approvedBy: request.approvedBy,
     }),
 
-    ...(request.approved_at !== null && {
-      approvedAt: request.approved_at.toISOString(),
+    ...(request.approvedAt !== null && {
+      approvedAt: request.approvedAt.toISOString(),
     }),
 
-    ...(request.denial_reason !== null && {
-      denialReason: request.denial_reason,
+    ...(request.denialReason !== null && {
+      denialReason: request.denialReason,
     }),
 
     ...(request.note !== null && {

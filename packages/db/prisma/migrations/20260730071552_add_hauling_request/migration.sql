@@ -43,29 +43,29 @@ CREATE TABLE "RequestCounter" (
 
 -- CreateTable
 CREATE TABLE "HaulingRequest" (
-    "request_id" TEXT NOT NULL,
-    "request_number" TEXT NOT NULL,
-    "user_id" TEXT NOT NULL,
-    "org_id" TEXT,
-    "request_address" TEXT NOT NULL,
-    "sender_type" "SenderType" NOT NULL,
-    "waste_type" "WasteType" NOT NULL,
-    "image_url" TEXT,
-    "pickup_date" TIMESTAMP(3),
+    "requestId" TEXT NOT NULL,
+    "requestNumber" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "orgId" TEXT,
+    "requestAddress" TEXT NOT NULL,
+    "senderType" "SenderType" NOT NULL,
+    "wasteType" "WasteType" NOT NULL,
+    "imageUrl" TEXT,
+    "pickupDate" TIMESTAMP(3),
     "status" "HaulingRequestStatus" NOT NULL DEFAULT 'PENDING',
-    "approved_by" TEXT,
-    "approved_at" TIMESTAMP(3),
-    "denial_reason" TEXT,
+    "approvedBy" TEXT,
+    "approvedAt" TIMESTAMP(3),
+    "denialReason" TEXT,
     "note" TEXT,
     "archived" BOOLEAN NOT NULL DEFAULT false,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "HaulingRequest_pkey" PRIMARY KEY ("request_id")
+    CONSTRAINT "HaulingRequest_pkey" PRIMARY KEY ("requestId")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "HaulingRequest_request_number_key" ON "HaulingRequest"("request_number");
+CREATE UNIQUE INDEX "HaulingRequest_requestNumber_key" ON "HaulingRequest"("requestNumber");
 
 -- AddForeignKey
 ALTER TABLE "DriverLocation" ADD CONSTRAINT "DriverLocation_truckId_fkey" FOREIGN KEY ("truckId") REFERENCES "Truck"("id") ON DELETE SET NULL ON UPDATE CASCADE;

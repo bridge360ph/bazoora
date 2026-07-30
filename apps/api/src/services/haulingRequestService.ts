@@ -15,7 +15,7 @@ export async function getHaulingRequests() {
         archived: false,
       },
       orderBy: {
-        created_at: "desc",
+        createdAt: "desc",
       },
     });
 
@@ -41,22 +41,22 @@ export async function createHaulingRequest(
 
     return tx.haulingRequest.create({
       data: {
-        request_number: requestNumber,
+        requestNumber: requestNumber,
 
         // TODO: Replace with authenticated user
-        user_id: "TEMP_USER",
+        userId: "TEMP_USER",
 
-        org_id: null,
+        orgId: null,
 
-        request_address: data.requestAddress,
+        requestAddress: data.requestAddress,
 
-        sender_type: data.senderType,
+        senderType: data.senderType,
 
-        waste_type: data.wasteType,
+        wasteType: data.wasteType,
 
-        pickup_date: new Date(data.pickupDate),
+        pickupDate: new Date(data.pickupDate),
 
-        image_url: data.imageUrl ?? null,
+        imageUrl: data.imageUrl ?? null,
 
         note: data.note ?? null,
 
@@ -77,7 +77,7 @@ export async function approveHaulingRequest(
   const existing =
     await prisma.haulingRequest.findUnique({
       where: {
-        request_id: id,
+        requestId: id,
       },
     });
 
@@ -94,11 +94,11 @@ export async function approveHaulingRequest(
   const request =
     await prisma.haulingRequest.update({
       where: {
-        request_id: id,
+        requestId: id,
       },
       data: {
         status: HaulingRequestStatus.APPROVED,
-        approved_at: new Date(),
+        approvedAt: new Date(),
       },
     });
 
@@ -115,7 +115,7 @@ export async function denyHaulingRequest(
   const existing =
     await prisma.haulingRequest.findUnique({
       where: {
-        request_id: id,
+        requestId: id,
       },
     });
 
@@ -140,11 +140,11 @@ export async function denyHaulingRequest(
   const request =
     await prisma.haulingRequest.update({
       where: {
-        request_id: id,
+        requestId: id,
       },
       data: {
         status: HaulingRequestStatus.DENIED,
-        denial_reason: trimmedReason,
+        denialReason: trimmedReason,
       },
     });
 
