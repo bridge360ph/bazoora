@@ -94,14 +94,18 @@ function getStopCount(waypoints: string): number {
 
 export async function getRoutes() {
   const routes = await prisma.route.findMany({
-    orderBy: {
-      routeNumber: "asc",
-    },
+    orderBy: [
+      {
+        createdAt: "desc",
+      },
+      {
+        routeNumber: "desc",
+      },
+    ],
   });
 
   return routes.map(mapRouteToResponse);
 }
-
 
 export async function getRouteById(id: string) {
   const route = await prisma.route.findUnique({

@@ -14,8 +14,8 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-white">{route.name}</h2>
-          <p className="mt-0.5 text-sm text-white/60">
-            Route RT-{String(route.routeNumber).padStart(3, "0")}
+          <p className="mt-0.5 text-xs text-white/60">
+            Route {route.routeDisplayNumber}
             {" • "}
             Eco-Aide: {route.assignedEcoAideId ?? "Unassigned"}
           </p>

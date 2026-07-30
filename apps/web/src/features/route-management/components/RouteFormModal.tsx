@@ -33,7 +33,7 @@ export function RouteFormModal({
     mode === "create"
       ? "Create Route"
       : route
-        ? `Edit Route RT-${String(route.routeNumber).padStart(3, "0")}`
+        ? `Edit Route ${route.routeDisplayNumber}`
         : "Edit Route";
 
   const saveLabel =
