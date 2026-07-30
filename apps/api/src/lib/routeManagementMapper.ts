@@ -1,4 +1,5 @@
 import type { Route } from "@prisma/client";
+import { generateRouteNumber } from "../lib/displayId.js";
 
 /*
  * Future mapper updates:
@@ -17,5 +18,8 @@ import type { Route } from "@prisma/client";
 export function mapRouteToResponse(
   route: Route,
 ) {
-  return route;
+  return {
+    ...route,
+    routeDisplayNumber: generateRouteNumber(route.routeNumber),
+  };
 }

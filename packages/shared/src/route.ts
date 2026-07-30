@@ -17,6 +17,7 @@ export type CollectionDay =
 export interface Route {
   id: string;
   routeNumber: number;
+  routeDisplayNumber: string;
   name: string;
   barangay: string;
   waypoints: string;

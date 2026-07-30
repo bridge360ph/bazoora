@@ -13,7 +13,7 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
         <div className="flex flex-col gap-2.5">
           <DetailItem
             label="Route Number"
-            value={`RT-${String(route.routeNumber).padStart(3, "0")}`}
+            value={route.routeDisplayNumber}
           />
           <DetailItem label="Route Name" value={route.name} />
           <DetailItem label="Barangay Coverage" value={route.barangay} />
