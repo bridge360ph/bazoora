@@ -17,7 +17,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
           <p className="mt-0.5 text-xs text-white/60">
             Route {route.routeDisplayNumber}
             {" • "}
-            Eco-Aide: {route.assignedEcoAideId ?? "Unassigned"}
+            Eco-Aide: {route.assignedEcoAide?.userNumber ?? "Unassigned"}
           </p>
         </div>
 

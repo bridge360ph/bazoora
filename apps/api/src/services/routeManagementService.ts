@@ -2,6 +2,7 @@ import { prisma } from "@bazoora/db";
 import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
+import { routeEcoAideInclude } from "../lib/routeIncludes.js";
 
 type CreateRouteInput = Pick<
   Route,
@@ -26,7 +27,6 @@ type UpdateRouteInput = Partial<
     | "routeType"
   >
 >;
-
 
 function validateRouteFields(
   data: Partial<CreateRouteInput>,
@@ -76,7 +76,6 @@ function validateRouteFields(
   }
 }
 
-
 function getStopCount(waypoints: string): number {
   const stops = waypoints
     .split(",")
@@ -102,6 +101,7 @@ export async function getRoutes() {
         routeNumber: "desc",
       },
     ],
+    include: routeEcoAideInclude,
   });
 
   return routes.map(mapRouteToResponse);
@@ -112,6 +112,7 @@ export async function getRouteById(id: string) {
     where: {
       id,
     },
+    include: routeEcoAideInclude,
   });
 
   if (!route) {
@@ -120,7 +121,6 @@ export async function getRouteById(id: string) {
 
   return mapRouteToResponse(route);
 }
-
 
 export async function createRoute(
   data: CreateRouteInput,
@@ -151,11 +151,11 @@ export async function createRoute(
       status: "Not Started",
       stops: stopCount,
     },
+    include: routeEcoAideInclude,
   });
 
   return mapRouteToResponse(route);
 }
-
 
 export async function updateRoute(
   id: string,
@@ -188,9 +188,7 @@ export async function updateRoute(
         }),
         ...(data.waypoints !== undefined && {
           waypoints: data.waypoints,
-          stops: getStopCount(
-            data.waypoints,
-          ),
+          stops: getStopCount(data.waypoints),
         }),
         ...(data.wasteType !== undefined && {
           wasteType: data.wasteType,
@@ -205,11 +203,11 @@ export async function updateRoute(
           routeType: data.routeType,
         }),
       },
+      include: routeEcoAideInclude,
     });
 
   return mapRouteToResponse(route);
 }
-
 
 export async function updateRouteStatus(
   id: string,
@@ -234,6 +232,7 @@ export async function updateRouteStatus(
       data: {
         status,
       },
+      include: routeEcoAideInclude,
     });
 
   return mapRouteToResponse(route);

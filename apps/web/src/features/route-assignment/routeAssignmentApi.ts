@@ -9,7 +9,7 @@ const ROUTES_API_URL = "http://localhost:3000/routes";
 
 export async function assignRouteEcoAideRequest(
   routeId: string,
-  ecoAideId: string,
+  ecoAideId: string | null,
 ): Promise<Route> {
   const body: AssignEcoAideRequest = { ecoAideId };
 
@@ -56,17 +56,21 @@ export function getAvailableEcoAides(
   ecoAides: UserSummary[],
   routes: Route[],
   editingRouteId?: string,
+  assignedEcoAideId?: string | null,
 ): UserSummary[] {
+
   const editingRoute = routes.find(
     (route) => route.id === editingRouteId,
   );
-  const currentEcoAideId = editingRoute?.assignedEcoAideId ?? null;
+
+  const currentEcoAideId =
+    assignedEcoAideId ?? editingRoute?.assignedEcoAideId ?? null;
 
   const takenEcoAideIds = new Set(
     routes
       .filter((route) => route.id !== editingRouteId)
       .map((route) => route.assignedEcoAideId)
-      .filter((id): id is string => id !== null),
+      .filter((id): id is string => Boolean(id)),
   );
 
   return ecoAides.filter((ecoAide) => {

@@ -136,7 +136,7 @@ export function RouteEntryForm({
           </p>
         ) : ecoAidesLoading ? (
           <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
-        ) : availableEcoAides.length === 0 ? (
+        ) : availableEcoAides.length === 0 && ecoAides.length === 0 ? (
           <p className="text-sm text-gray-500">
             No available Eco-Aides right now.
           </p>
@@ -151,7 +151,7 @@ export function RouteEntryForm({
             <option value="">Unassigned</option>
             {availableEcoAides.map((ecoAide) => (
               <option key={ecoAide.id} value={ecoAide.id}>
-                {ecoAide.name}
+                {ecoAide.userNumber} - {ecoAide.name}
               </option>
             ))}
           </select>

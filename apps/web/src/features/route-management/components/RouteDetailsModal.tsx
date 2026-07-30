@@ -24,7 +24,10 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
             label="Start Time"
             value={`3/26/2026 ${route.startTime} (${route.collectionDay})`}
           />
-          <DetailItem label="Assigned Eco-Aide" value={route.assignedEcoAideId ?? "Unassigned"} />
+          <DetailItem
+            label="Assigned Eco-Aide"
+            value={route.assignedEcoAide?.userNumber ?? "Unassigned"}
+          />
           <DetailItem
             label="Fleet Assignment"
             value={"Unassigned"}

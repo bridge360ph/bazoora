@@ -10,7 +10,9 @@ export const assignEcoAideSchema = {
     type: "object",
     required: ["ecoAideId"],
     properties: {
-      ecoAideId: { type: "string" },
+      ecoAideId: {
+        type: ["string", "null"],
+      },
     },
   },
 } as const;

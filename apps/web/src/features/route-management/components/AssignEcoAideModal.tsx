@@ -6,8 +6,8 @@ import { getAvailableEcoAides } from "../../route-assignment/routeAssignmentApi"
 interface AssignEcoAideModalProps {
   route: Route;
   routes: Route[];
-  assignedEcoAide: string;
-  setAssignedEcoAide: (ecoAideId: string) => void;
+  assignedEcoAide: string | null;
+  setAssignedEcoAide: (ecoAideId: string | null) => void;
   onSave: () => void;
   onClose: () => void;
   isSubmitting?: boolean;
@@ -36,11 +36,6 @@ export function AssignEcoAideModal({
   const availableEcoAides = getAvailableEcoAides(ecoAides, routes, route.id);
 
   function handleSave() {
-    if (!assignedEcoAide) {
-      alert("Please select an Eco-Aide.");
-      return;
-    }
-
     onSave();
   }
 
@@ -67,22 +62,23 @@ export function AssignEcoAideModal({
             </p>
           ) : isLoading ? (
             <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
-          ) : availableEcoAides.length === 0 ? (
+          ) : availableEcoAides.length === 0 && ecoAides.length === 0 ? (
             <p className="text-sm text-gray-500">
               No available Eco-Aides right now.
             </p>
           ) : (
             <select
-              value={assignedEcoAide}
+              value={assignedEcoAide ?? ""}
               onChange={(event) => {
-                setAssignedEcoAide(event.target.value);
+                setAssignedEcoAide(event.target.value || null);
               }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
             >
-              <option value="">Select an Eco-Aide</option>
+              <option value="">Unassigned</option>
+
               {availableEcoAides.map((ecoAide) => (
                 <option key={ecoAide.id} value={ecoAide.id}>
-                  {ecoAide.name}
+                  {ecoAide.name} ({ecoAide.userNumber})
                 </option>
               ))}
             </select>

@@ -11,5 +11,5 @@
  */
 
 export interface AssignEcoAideRequest {
-  ecoAideId: string;
+  ecoAideId: string | null;
 }

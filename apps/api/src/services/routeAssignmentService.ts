@@ -5,7 +5,7 @@ import type {
   UserSummary
 } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
-
+import { routeEcoAideInclude } from "../lib/routeIncludes.js";
 
 /**
  * Lets the route handler map errors to the right HTTP status instead of
@@ -47,34 +47,39 @@ export async function assignEcoAide(
   }
 
 
-  const ecoAide = await prisma.user.findUnique({
-    where: {
-      id: data.ecoAideId,
-    },
-    include: {
-      assignedRoute: true,
-    },
-  });
+  if (data.ecoAideId) {
+    const ecoAide = await prisma.user.findUnique({
+      where: {
+        id: data.ecoAideId,
+      },
+      select: {
+        id: true,
+        role: true,
+        assignedRoute: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
 
+    if (!ecoAide) {
+      throw new RouteAssignmentError("Eco-Aide not found", 404);
+    }
 
-  if (!ecoAide) {
-    throw new RouteAssignmentError("Eco-Aide not found", 404);
-  }
+    if (ecoAide.role !== "ECO_AIDE") {
+      throw new RouteAssignmentError("User is not an Eco-Aide", 400);
+    }
 
-
-  if (ecoAide.role !== "ECO_AIDE") {
-    throw new RouteAssignmentError("User is not an Eco-Aide", 400);
-  }
-
-
-  if (
-    ecoAide.assignedRoute &&
-    ecoAide.assignedRoute.id !== routeId
-  ) {
-    throw new RouteAssignmentError(
-      "Eco-Aide is already assigned to another route",
-      409,
-    );
+    if (
+      ecoAide.assignedRoute &&
+      ecoAide.assignedRoute.id !== routeId
+    ) {
+      throw new RouteAssignmentError(
+        "Eco-Aide is already assigned to another route",
+        409,
+      );
+    }
   }
 
 
@@ -86,6 +91,7 @@ export async function assignEcoAide(
       data: {
         assignedEcoAideId: data.ecoAideId,
       },
+      include: routeEcoAideInclude,
     });
 
     return mapRouteToResponse(updatedRoute);
@@ -109,19 +115,25 @@ export async function assignEcoAide(
  * accident. UserSummary.name is non-nullable, so a missing name is
  * normalized here rather than left for each consumer to handle.
  */
+
 export async function listEcoAideOptions(): Promise<UserSummary[]> {
   const ecoAides = await prisma.user.findMany({
     where: {
       role: "ECO_AIDE",
+      userNumber: {
+        not: null,          // only show eco-aides with IDs
+      },
     },
     select: {
       id: true,
+      userNumber: true,
       name: true,
     },
   });
 
   return ecoAides.map((ecoAide) => ({
     id: ecoAide.id,
+    userNumber: ecoAide.userNumber ?? "N/A",
     name: ecoAide.name ?? "Unnamed Eco-Aide",
   }));
 }

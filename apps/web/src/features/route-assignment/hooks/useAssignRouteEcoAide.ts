@@ -4,7 +4,7 @@ import { assignRouteEcoAideRequest } from "../routeAssignmentApi";
 
 interface UseAssignRouteEcoAideVariables {
   routeId: string;
-  ecoAide: string;
+  ecoAide: string | null;
 }
 
 interface UseAssignRouteEcoAideOptions {

@@ -39,7 +39,7 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
-  const [assignedEcoAide, setAssignedEcoAide] = useState("");
+  const [assignedEcoAide, setAssignedEcoAide] = useState<string | null>(null);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -106,14 +106,14 @@ export function AdminRouteManagementPage() {
       collectionDay: route.collectionDay,
       startTime: route.startTime,
       routeType: route.routeType,
-      assignedEcoAideId: route.assignedEcoAideId
+      assignedEcoAideId: route.assignedEcoAideId ?? null
     });
     setModalMode("edit");
   }
 
   function openAssignModal(route: Route) {
     setSelectedRoute(route);
-    setAssignedEcoAide(route.assignedEcoAideId ?? "");
+    setAssignedEcoAide(route.assignedEcoAideId ?? null);
     setModalMode("assign");
   }
 
