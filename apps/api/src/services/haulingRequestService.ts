@@ -2,7 +2,8 @@ import { prisma } from "@bazoora/db";
 import { HaulingRequestStatus } from "@prisma/client";
 import type { CreateHaulingRequestInput } from "@bazoora/shared";
 import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
-import { generateHaulingRequestNumber } from "../lib/generateHaulingRequestNumber.js";
+import { generateHaulingRequestNumber } from "../lib/displayId.js";
+import { getNextSequence } from "../lib/counter.js";
 
 /**
  * Get all hauling requests
@@ -24,29 +25,19 @@ export async function getHaulingRequests() {
 /**
  * Create a new hauling request
  */
+/**
+ * Create a new hauling request
+ */
 export async function createHaulingRequest(
   data: CreateHaulingRequestInput,
 ) {
   const request = await prisma.$transaction(async (tx) => {
-    // Request Number Counter
-    const counter = await tx.requestCounter.upsert({
-      where: {
-        id: "hauling_request",
-      },
-      update: {
-        lastValue: {
-          increment: 1,
-        },
-      },
-      create: {
-        id: "hauling_request",
-        lastValue: 1,
-      },
-});
-
-    const requestNumber = generateHaulingRequestNumber(
-      counter.lastValue,
+    const sequence = await getNextSequence(
+      tx,
+      "hauling_request",
     );
+
+    const requestNumber = generateHaulingRequestNumber(sequence);
 
     return tx.haulingRequest.create({
       data: {

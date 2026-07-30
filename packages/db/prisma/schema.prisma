@@ -91,6 +91,11 @@ model Route {
   updatedAt          DateTime @updatedAt
 }
 
+model Counter {
+  entity   String @id
+  sequence Int    @default(0)
+}
+
 // Hauling Request Management
 
 enum HaulingRequestStatus {
