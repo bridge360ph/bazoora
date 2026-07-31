@@ -250,7 +250,7 @@ export function AdminRouteManagementPage() {
               <div>
                 {paginatedRoutes.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
-                    No routes match the current filter.
+                    No routes found.
                   </div>
                 ) : (
                   paginatedRoutes.map((route) => (

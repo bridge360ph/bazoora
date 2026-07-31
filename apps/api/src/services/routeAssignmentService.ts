@@ -43,7 +43,10 @@ export async function assignEcoAide(
   });
 
   if (!route) {
-    throw new RouteAssignmentError("Route not found", 404);
+    throw new RouteAssignmentError(
+      "The selected route could not be found.",
+      404,
+    );
   }
 
 
@@ -64,11 +67,17 @@ export async function assignEcoAide(
     });
 
     if (!ecoAide) {
-      throw new RouteAssignmentError("Eco-Aide not found", 404);
+      throw new RouteAssignmentError(
+        "The selected Eco-Aide could not be found.",
+        404,
+      );
     }
 
     if (ecoAide.role !== "ECO_AIDE") {
-      throw new RouteAssignmentError("User is not an Eco-Aide", 400);
+      throw new RouteAssignmentError(
+        "The selected user is not an Eco-Aide.",
+        400,
+      );
     }
 
     if (
@@ -76,12 +85,11 @@ export async function assignEcoAide(
       ecoAide.assignedRoute.id !== routeId
     ) {
       throw new RouteAssignmentError(
-        "Eco-Aide is already assigned to another route",
+        "This Eco-Aide is already assigned to another route.",
         409,
       );
     }
   }
-
 
   try {
     const updatedRoute = await prisma.route.update({
@@ -98,7 +106,7 @@ export async function assignEcoAide(
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       throw new RouteAssignmentError(
-        "Eco-Aide is already assigned to another route",
+        "This Eco-Aide is already assigned to another route.",
         409,
       );
     }
@@ -106,7 +114,6 @@ export async function assignEcoAide(
     throw error;
   }
 }
-
 
 /**
  * Absorbed from the old standalone /users endpoint: returns the minimal

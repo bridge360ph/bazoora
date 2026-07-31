@@ -50,7 +50,21 @@ export async function updateRouteRequest(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to update route");
+    let message = "Failed to update route";
+
+    try {
+      const error = await response.json();
+
+      if (typeof error.message === "string") {
+        message = error.message;
+      }
+    } catch {
+      // Response wasn't JSON; fall back to the default message.
+    }
+
+    throw new Error(
+      `${message} (HTTP ${response.status})`,
+    );
   }
 
   return response.json();

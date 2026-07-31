@@ -25,6 +25,7 @@ type UpdateRouteInput = Partial<
     | "collectionDay"
     | "startTime"
     | "routeType"
+    | "assignedEcoAideId"
   >
 >;
 
@@ -201,6 +202,9 @@ export async function updateRoute(
         }),
         ...(data.routeType !== undefined && {
           routeType: data.routeType,
+        }),
+        ...(data.assignedEcoAideId !== undefined && {
+          assignedEcoAideId: data.assignedEcoAideId,
         }),
       },
       include: routeEcoAideInclude,

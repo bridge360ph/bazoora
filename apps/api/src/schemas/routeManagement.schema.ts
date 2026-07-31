@@ -18,6 +18,7 @@ export interface CreateRouteBody {
   collectionDay: string;
   startTime: string;
   routeType: string;
+  assignedEcoAideId: string | null;
 }
 
 export interface UpdateRouteBody {
@@ -28,6 +29,7 @@ export interface UpdateRouteBody {
   collectionDay?: string;
   startTime?: string;
   routeType?: string;
+  assignedEcoAideId: string | null;
 }
 
 export const createRouteSchema = {
@@ -65,6 +67,9 @@ export const createRouteSchema = {
       routeType: {
         type: "string",
       },
+      assignedEcoAideId: {
+        type: ["string", "null"],
+      },
     },
   },
 } as const;
@@ -96,10 +101,13 @@ export const updateRouteSchema = {
       startTime: {
         type: "string",
       },
+      assignedEcoAideId: {
+        type: ["string", "null"],
+      },
       routeType: {
         type: "string",
         minLength: 3,
-    },
+      },
     },
   },
 } as const;
