@@ -1,4 +1,4 @@
-import type { HaulingRequest } from "@bazoora/shared";
+import type { HaulingRequest, Route, AssignedEcoAide } from "@bazoora/shared";
 import { useMemo, useState } from "react";
 import {
   DataTable,
@@ -9,6 +9,7 @@ import {
 import { useHaulingRequests } from "./hooks/useHaulingRequests";
 import { useApproveHaulingRequest } from "./hooks/useApproveHaulingRequest";
 import { useDenyHaulingRequest } from "./hooks/useDenyHaulingRequest";
+import { useRoutes } from "../route-management/hooks/useRoutes";
 import { HaulingRequestFiltersBar } from "./components/HaulingRequestFiltersBar";
 import { HaulingRequestDetailModal } from "./components/HaulingRequestDetailModal";
 import { ApproveHaulingRequestModal } from "./components/ApproveHaulingRequestModal";
@@ -44,14 +45,27 @@ export function AdminHaulingRequestManagementPage() {
   });
   const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
+  const { data: routes } = useRoutes();
+  const assignableRoutes = useMemo(() => {
+    if (!routes) return [];
+
+    return routes.filter(
+      (route): route is Route & {
+        assignedEcoAide: AssignedEcoAide;
+      } =>
+        route.assignedEcoAide !== null,
+    );
+  }, [routes]);
 
   // Multi-select filters: an empty array means "no filter applied" (show
   // everything). Selecting one or more values ORs them together within the
   // same filter, and ANDs across the two filters - see filteredRequests.
-  const [selectedSenders, setSelectedSenders] = useState<SenderTypeValue[]>([]);
-  const [selectedWasteTypes, setSelectedWasteTypes] = useState<
-    WasteTypeValue[]
-  >([]);
+  const [selectedSenders, setSelectedSenders] =
+    useState<SenderTypeValue[]>([]);
+
+  const [selectedWasteTypes, setSelectedWasteTypes] =
+    useState<WasteTypeValue[]>([]);
+
   const [page, setPage] = useState(1);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedRequest, setSelectedRequest] = useState<HaulingRequest | null>(
@@ -128,7 +142,14 @@ export function AdminHaulingRequestManagementPage() {
     setSelectedRequest(null);
   }
 
-  function handleApprove(requestId: string) {
+  function handleApprove(requestId: string, routeId: string) {
+    // routeId is captured here so the modal/page contract already matches
+    // what the backend will eventually need. HaulingRequest has no Route
+    // relationship yet, so it isn't sent to the backend for this increment —
+    // only requestId is. Once the backend can persist a route assignment
+    // (e.g. via PickupTask), this is the only function that needs to change.
+    void routeId;
+
     approveMutation.mutate(requestId, { onSuccess: closeModal });
   }
 
@@ -182,15 +203,16 @@ export function AdminHaulingRequestManagementPage() {
 
   return (
     <div className="p-6">
-      <HaulingRequestFiltersBar
-        selectedSenders={selectedSenders}
-        selectedWasteTypes={selectedWasteTypes}
-        onToggleSender={toggleSender}
-        onClearSenders={clearSenders}
-        onToggleWasteType={toggleWasteType}
-        onClearWasteTypes={clearWasteTypes}
-        onClearAll={clearAllFilters}
-      />
+    <HaulingRequestFiltersBar
+      selectedSenders={selectedSenders}
+      selectedWasteTypes={selectedWasteTypes}
+
+      onToggleSender={toggleSender}
+      onClearSenders={clearSenders}
+      onToggleWasteType={toggleWasteType}
+      onClearWasteTypes={clearWasteTypes}
+      onClearAll={clearAllFilters}
+    />
 
       {isLoading && (
         <div className="py-16 text-center text-gray-400 text-sm">
@@ -256,6 +278,7 @@ export function AdminHaulingRequestManagementPage() {
       {modalMode === "approve" && selectedRequest && (
         <ApproveHaulingRequestModal
           request={selectedRequest}
+          assignableRoutes={assignableRoutes}
           onClose={closeModal}
           onConfirm={handleApprove}
           isSubmitting={approveMutation.isPending}

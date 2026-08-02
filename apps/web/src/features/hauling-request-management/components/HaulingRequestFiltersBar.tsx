@@ -31,14 +31,12 @@ function findLabel<T extends string>(
 }
 
 /**
- * "Filter by Sender" and "Filter by Waste Type" are client-side, multi-select
- * filters. Selecting one or more values shows them as removable chips below
- * the dropdowns, plus a "Clear All Filters" action. The Eco-Aide search box
- * remains a disabled UI stub until assignment fields are available.
+ * Sender and waste type are client-side multi-select filters.
  */
 export function HaulingRequestFiltersBar({
   selectedSenders,
   selectedWasteTypes,
+
   onToggleSender,
   onClearSenders,
   onToggleWasteType,
@@ -74,7 +72,7 @@ export function HaulingRequestFiltersBar({
           type="text"
           disabled
           placeholder="Search Eco-Aide by name or ID..."
-          title="Coming soon — Eco-Aide assignment is not yet tracked by the backend"
+          title="Coming soon — available once hauling requests are linked to assigned routes."
           className="flex-1 cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-400"
         />
       </div>
