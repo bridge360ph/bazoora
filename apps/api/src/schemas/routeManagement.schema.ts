@@ -18,6 +18,7 @@ export interface CreateRouteBody {
   collectionDay: string;
   startTime: string;
   routeType: string;
+  assignedEcoAideId: string | null;
 }
 
 export interface UpdateRouteBody {
@@ -28,7 +29,7 @@ export interface UpdateRouteBody {
   collectionDay?: string;
   startTime?: string;
   routeType?: string;
-  status?: string;
+  assignedEcoAideId: string | null;
 }
 
 export const createRouteSchema = {
@@ -42,6 +43,7 @@ export const createRouteSchema = {
       "wasteType",
       "collectionDay",
       "startTime",
+      "routeType",
     ],
     properties: {
       name: {
@@ -62,32 +64,33 @@ export const createRouteSchema = {
       startTime: {
         type: "string",
       },
+      routeType: {
+        type: "string",
+      },
+      assignedEcoAideId: {
+        type: ["string", "null"],
+      },
     },
   },
 } as const;
 
+
 export const updateRouteSchema = {
-  params: {
-    type: "object",
-    required: ["id"],
-    properties: {
-      id: {
-        type: "string",
-      },
-    },
-  },
   body: {
     type: "object",
     additionalProperties: false,
     properties: {
       name: {
         type: "string",
+        minLength: 5,
       },
       barangay: {
         type: "string",
+        minLength: 5,
       },
       waypoints: {
         type: "string",
+        minLength: 5,
       },
       wasteType: {
         type: "string",
@@ -98,33 +101,42 @@ export const updateRouteSchema = {
       startTime: {
         type: "string",
       },
+      assignedEcoAideId: {
+        type: ["string", "null"],
+      },
+      routeType: {
+        type: "string",
+        minLength: 3,
+      },
     },
   },
 } as const;
 
-  export const updateRouteStatusSchema = {
-    params: {
-      type: "object",
-      required: ["id"],
-      properties: {
-        id: {
-          type: "string",
-        },
+
+export const updateRouteStatusSchema = {
+  params: {
+    type: "object",
+    additionalProperties: false,
+    required: ["id"],
+    properties: {
+      id: {
+        type: "string",
       },
     },
-    body: {
-      type: "object",
-      additionalProperties: false,
-      required: ["status"],
-      properties: {
-        status: {
-          type: "string",
-          enum: [
-            "Not Started",
-            "In Progress",
-            "Completed",
-          ],
-        },
+  },
+  body: {
+    type: "object",
+    additionalProperties: false,
+    required: ["status"],
+    properties: {
+      status: {
+        type: "string",
+        enum: [
+          "Not Started",
+          "In Progress",
+          "Completed",
+        ],
       },
     },
-  } as const;
+  },
+} as const;

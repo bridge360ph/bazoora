@@ -1,5 +1,5 @@
 import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
-import type { Route } from "../route.types";
+import type { Route } from "@bazoora/shared";
 
 interface RouteDetailsModalProps {
   route: Route;
@@ -9,9 +9,12 @@ interface RouteDetailsModalProps {
 export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
   return (
     <Modal title="Route Details" onClose={onClose} width={820}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)] gap-x-10 gap-y-4 rounded-xl bg-[#1a3a2e] px-8 py-7">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(220px,320px)] gap-x-10 gap-y-4 rounded-xl bg-brand px-8 py-7">
         <div className="flex flex-col gap-2.5">
-          <DetailItem label="Route ID" value={route.id} />
+          <DetailItem
+            label="Route Number"
+            value={route.routeDisplayNumber}
+          />
           <DetailItem label="Route Name" value={route.name} />
           <DetailItem label="Barangay Coverage" value={route.barangay} />
           <DetailItem label="Waypoint / Collection Points" value={route.waypoints} />
@@ -21,10 +24,17 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
             label="Start Time"
             value={`3/26/2026 ${route.startTime} (${route.collectionDay})`}
           />
-          <DetailItem label="Assigned Eco-Aide" value={route.ecoAide} />
+          <DetailItem
+            label="Assigned Eco-Aide"
+            value={
+              route.assignedEcoAide
+                ? `${route.assignedEcoAide.name} (${route.assignedEcoAide.userNumber})`
+                : "Unassigned"
+            }
+          />
           <DetailItem
             label="Fleet Assignment"
-            value={`${route.fleetAssignment} Isuzu`}
+            value={"Unassigned"}
           />
         </div>
 

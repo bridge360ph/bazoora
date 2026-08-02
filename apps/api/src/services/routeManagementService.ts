@@ -1,29 +1,120 @@
+import { prisma } from "@bazoora/db";
+import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
+import { routeEcoAideInclude } from "../lib/routeIncludes.js";
 
-// Mock-in memory
-const routes: Route[] = [];
+type CreateRouteInput = Pick<
+  Route,
+  | "name"
+  | "barangay"
+  | "waypoints"
+  | "wasteType"
+  | "collectionDay"
+  | "startTime"
+  | "routeType"
+>;
 
-interface Route {
-  id: string;
-  routeNumber: number;
-  name: string;
-  barangay: string;
-  waypoints: string;
-  wasteType: string;
-  collectionDay: string;
-  startTime: string;
-  status: RouteStatus;
+type UpdateRouteInput = Partial<
+  Pick<
+    Route,
+    | "name"
+    | "barangay"
+    | "waypoints"
+    | "wasteType"
+    | "collectionDay"
+    | "startTime"
+    | "routeType"
+    | "assignedEcoAideId"
+  >
+>;
+
+function validateRouteFields(
+  data: Partial<CreateRouteInput>,
+) {
+  const minLengthFields = [
+    {
+      value: data.name,
+      label: "Route name",
+    },
+    {
+      value: data.barangay,
+      label: "Barangay",
+    },
+  ];
+
+  for (const field of minLengthFields) {
+    if (
+      field.value !== undefined &&
+      field.value.trim().length < 5
+    ) {
+      throw new Error(
+        `${field.label} must be at least 5 characters`,
+      );
+    }
+  }
+
+  if (
+    data.startTime !== undefined &&
+    !data.startTime.trim()
+  ) {
+    throw new Error(
+      "Start time is required",
+    );
+  }
+
+  if (
+    data.routeType !== undefined &&
+    !data.routeType.trim()
+  ) {
+    throw new Error(
+      "Route type is required",
+    );
+  }
+
+  if (data.waypoints !== undefined) {
+    getStopCount(data.waypoints);
+  }
 }
 
-export function getRoutes() {
+function getStopCount(waypoints: string): number {
+  const stops = waypoints
+    .split(",")
+    .map((stop) => stop.trim())
+    .filter(Boolean);
+
+  if (stops.length < 1) {
+    throw new Error(
+      "At least one collection point is required",
+    );
+  }
+
+  return stops.length;
+}
+
+export async function getRoutes() {
+  const routes = await prisma.route.findMany({
+    orderBy: [
+      {
+        createdAt: "desc",
+      },
+      {
+        routeNumber: "desc",
+      },
+    ],
+    include: routeEcoAideInclude,
+  });
+
   return routes.map(mapRouteToResponse);
 }
 
-export function getRouteById(id: string) {
-  const route = routes.find(
-    (route) => route.id === id,
-  );
+export async function getRouteById(id: string) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id,
+    },
+    include: routeEcoAideInclude,
+  });
 
   if (!route) {
     return null;
@@ -32,72 +123,121 @@ export function getRouteById(id: string) {
   return mapRouteToResponse(route);
 }
 
-
-export function createRoute(
-  data: Omit<Route, "id" | "routeNumber" | "status">,
+export async function createRoute(
+  data: CreateRouteInput,
 ) {
-  const duplicateRoute = routes.find(
-    (route) =>
-      route.name === data.name &&
-      route.barangay === data.barangay,
-  );
+  validateRouteFields(data);
+
+  const duplicateRoute = await prisma.route.findFirst({
+    where: {
+      name: data.name,
+      barangay: data.barangay,
+    },
+  });
 
   if (duplicateRoute) {
     return null;
   }
 
-  const nextRouteNumber = routes.length + 1;
+  const routeCount = await prisma.route.count();
 
-  const route: Route = {
-    ...data,
-    id: crypto.randomUUID(),
-    routeNumber: nextRouteNumber,
-    status: "Not Started",
-  };
+  const stopCount = getStopCount(
+    data.waypoints,
+  );
 
-  routes.push(route);
+  const route = await prisma.route.create({
+    data: {
+      ...data,
+      routeNumber: routeCount + 1,
+      status: "Not Started",
+      stops: stopCount,
+    },
+    include: routeEcoAideInclude,
+  });
 
   return mapRouteToResponse(route);
 }
 
-
-type UpdateRouteData = Omit<
-  Partial<Route>,
-  "id" | "routeNumber" | "status"
->;
-
-
-export function updateRoute(
+export async function updateRoute(
   id: string,
-  data: UpdateRouteData,
+  data: UpdateRouteInput,
 ) {
-  const route = routes.find(
-    (route) => route.id === id,
-  );
+  const existingRoute =
+    await prisma.route.findUnique({
+      where: {
+        id,
+      },
+    });
 
-  if (!route) {
+  if (!existingRoute) {
     return null;
   }
 
-  Object.assign(route, data);
+  validateRouteFields(data);
+
+  const route =
+    await prisma.route.update({
+      where: {
+        id,
+      },
+      data: {
+        ...(data.name !== undefined && {
+          name: data.name,
+        }),
+        ...(data.barangay !== undefined && {
+          barangay: data.barangay,
+        }),
+        ...(data.waypoints !== undefined && {
+          waypoints: data.waypoints,
+          stops: getStopCount(data.waypoints),
+        }),
+        ...(data.wasteType !== undefined && {
+          wasteType: data.wasteType,
+        }),
+        ...(data.collectionDay !== undefined && {
+          collectionDay: data.collectionDay,
+        }),
+        ...(data.startTime !== undefined && {
+          startTime: data.startTime,
+        }),
+        ...(data.routeType !== undefined && {
+          routeType: data.routeType,
+        }),
+        ...(data.assignedEcoAideId !== undefined && {
+          assignedEcoAideId: data.assignedEcoAideId,
+        }),
+      },
+      include: routeEcoAideInclude,
+    });
 
   return mapRouteToResponse(route);
 }
 
-
-export function updateRouteStatus(
+export async function updateRouteStatus(
   id: string,
   status: RouteStatus,
 ) {
-  const route = routes.find(
-    (route) => route.id === id,
-  );
+  const existingRoute =
+    await prisma.route.findUnique({
+      where: {
+        id,
+      },
+    });
 
-  if (!route) {
+  if (!existingRoute) {
     return null;
   }
 
-  route.status = status;
+  const route =
+    await prisma.route.update({
+      where: {
+        id,
+      },
+      data: {
+        status,
+      },
+      include: routeEcoAideInclude,
+    });
 
   return mapRouteToResponse(route);
 }

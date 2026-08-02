@@ -18,6 +18,7 @@ enum UserRole {
 
 model User {
   id              String           @id @default(cuid())
+  userNumber      String?          @unique             // user-facing display id, temporarily optional
   email           String           @unique
   name            String?
   password        String
@@ -59,6 +60,7 @@ model DriverLocation {
 
 model Truck {
   id               String           @id @default(cuid())
+  truckNumber     String?           @unique             // user-facing display id, temporarily optional
   plateNumber      String           @unique
   model            String?
   capacity         String?

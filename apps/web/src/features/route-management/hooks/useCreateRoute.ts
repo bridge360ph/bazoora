@@ -1,6 +1,7 @@
 import { useState } from "react";
-import type { Route, RouteFormValue } from "../route.types";
-import { createRouteRequest } from "../routeService";
+import type { Route } from "@bazoora/shared";
+import type { RouteFormValue } from "../route.types.ts";
+import { createRouteRequest } from "../routeManagementApi";
 
 interface UseCreateRouteOptions {
   onSuccess?: (route: Route) => void;

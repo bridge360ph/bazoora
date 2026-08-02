@@ -1,10 +1,10 @@
 import { useState } from "react";
-import type { Route } from "../route.types";
-import { assignRouteEcoAideRequest } from "../routeService";
+import type { Route } from "@bazoora/shared";
+import { assignRouteEcoAideRequest } from "../routeAssignmentApi";
 
 interface UseAssignRouteEcoAideVariables {
   routeId: string;
-  ecoAide: string;
+  ecoAide: string | null;
 }
 
 interface UseAssignRouteEcoAideOptions {

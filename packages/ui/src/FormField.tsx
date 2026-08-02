@@ -15,13 +15,13 @@ export function FormField({
 }: FormFieldProps) {
   return (
     <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-      <span>
+      <span className="inline-flex items-center">
         {label}
 
         {required && (
           <span
             aria-hidden="true"
-            className="ml-1 text-red-600"
+            className="ml-1 text-red-500"
           >
             *
           </span>

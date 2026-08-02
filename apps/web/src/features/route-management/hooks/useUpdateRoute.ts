@@ -1,6 +1,11 @@
 import { useState } from "react";
-import type { Route, RouteFormValue } from "../route.types";
-import { updateRouteRequest } from "../routeService";
+import type {
+  Route,
+} from "@bazoora/shared";
+import type {
+  RouteFormValue,
+} from "../route.types.ts";
+import { updateRouteRequest } from "../routeManagementApi";
 
 interface UseUpdateRouteVariables {
   routeId: string;

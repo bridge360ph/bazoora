@@ -180,7 +180,11 @@ function AppContent() {
               element={<NotificationsPage />}
             />
             <Route path="settings" element={<SettingsPage />} />
-          </Route>
+            </Route>
+            <Route
+              path="route-management"
+              element={<AdminRouteManagementPage />}
+            />
 
           {/* DRIVER */}
           <Route path="/driver" element={<DriverLayout />}>
