@@ -15,6 +15,8 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@bazoora/ui";
 
+import { PhilippineAddressFields } from "./PhilippineAddressFields";
+
 type Tab = "Account" | "Notifications" | "System";
 
 interface ProfileErrors {
@@ -23,6 +25,7 @@ interface ProfileErrors {
   email?: string;
   phone?: string;
   streetAddress?: string;
+  region?: string;
   barangay?: string;
   cityMunicipality?: string;
   province?: string;
@@ -98,6 +101,7 @@ export function SettingsPage() {
   const [email, setEmail] = useState(authUser?.email ?? "");
   const [phone, setPhone] = useState(authUser?.phoneNumber ?? authUser?.contactNo ?? "");
   const [streetAddress, setStreetAddress] = useState(authUser?.address?.line1 ?? "");
+  const [region, setRegion] = useState("");
   const [barangay, setBarangay] = useState(authUser?.address?.barangay ?? "");
   const [cityMunicipality, setCityMunicipality] = useState(authUser?.address?.city ?? "");
   const [province, setProvince] = useState(authUser?.address?.province ?? "");
@@ -211,6 +215,9 @@ export function SettingsPage() {
           5,
         );
         break;
+      case "region":
+        error = validateRequiredAddress(region, "Region");
+        break;
       case "barangay":
         error = validateRequiredAddress(barangay, "Barangay");
         break;
@@ -261,6 +268,7 @@ export function SettingsPage() {
         "House/unit number and street",
         5,
       ),
+      region: validateRequiredAddress(region, "Region"),
       barangay: validateRequiredAddress(barangay, "Barangay"),
       cityMunicipality: validateRequiredAddress(
         cityMunicipality,
@@ -285,6 +293,7 @@ export function SettingsPage() {
     setLastName(lastName.trim().replace(/\s+/g, " "));
     setEmail(email.trim().toLowerCase());
     setStreetAddress(streetAddress.trim().replace(/\s+/g, " "));
+    setRegion(region.trim().replace(/\s+/g, " "));
     setBarangay(barangay.trim().replace(/\s+/g, " "));
     setCityMunicipality(cityMunicipality.trim().replace(/\s+/g, " "));
     setProvince(province.trim().replace(/\s+/g, " "));
@@ -525,66 +534,41 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <Field
-                    label="Barangay"
-                    value={barangay}
-                    onChange={(value) => {
-                      setBarangay(value);
+                <div className="mb-3.5">
+                  <PhilippineAddressFields
+                    value={{
+                      region,
+                      province,
+                      cityMunicipality,
+                      barangay,
+                      postalCode,
+                    }}
+                    errors={{
+                      region: profileErrors.region,
+                      province: profileErrors.province,
+                      cityMunicipality: profileErrors.cityMunicipality,
+                      barangay: profileErrors.barangay,
+                    }}
+                    onChange={(address) => {
+                      setRegion(address.region);
+                      setProvince(address.province);
+                      setCityMunicipality(address.cityMunicipality);
+                      setBarangay(address.barangay);
+                      setPostalCode(address.postalCode);
+
                       setProfileErrors((errors) => ({
                         ...errors,
-                        barangay: undefined,
-                      }));
-                    }}
-                    onBlur={() => {
-                      validateProfileField("barangay");
-                    }}
-                    error={profileErrors.barangay}
-                    required
-                    maxLength={120}
-                    placeholder="Barangay San Antonio"
-                  />
-                  <Field
-                    label="City/Municipality"
-                    value={cityMunicipality}
-                    onChange={(value) => {
-                      setCityMunicipality(value);
-                      setProfileErrors((errors) => ({
-                        ...errors,
+                        region: undefined,
+                        province: undefined,
                         cityMunicipality: undefined,
+                        barangay: undefined,
+                        postalCode: undefined,
                       }));
                     }}
-                    onBlur={() => {
-                      validateProfileField("cityMunicipality");
-                    }}
-                    error={profileErrors.cityMunicipality}
-                    required
-                    maxLength={120}
-                    autoComplete="address-level2"
-                    placeholder="Quezon City"
                   />
                 </div>
 
-                <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <Field
-                    label="Province"
-                    value={province}
-                    onChange={(value) => {
-                      setProvince(value);
-                      setProfileErrors((errors) => ({
-                        ...errors,
-                        province: undefined,
-                      }));
-                    }}
-                    onBlur={() => {
-                      validateProfileField("province");
-                    }}
-                    error={profileErrors.province}
-                    required
-                    maxLength={120}
-                    autoComplete="address-level1"
-                    placeholder="Metro Manila"
-                  />
+                <div className="mb-5">
                   <Field
                     label="ZIP/Postal Code"
                     value={postalCode}
@@ -604,6 +588,7 @@ export function SettingsPage() {
                     inputMode="numeric"
                     autoComplete="postal-code"
                     placeholder="1100"
+                    helpText="Auto-filled when available. Otherwise, enter the correct 4-digit ZIP code."
                   />
                 </div>
 
@@ -956,6 +941,7 @@ interface FieldProps {
   type?: string;
   placeholder?: string;
   error?: string;
+  helpText?: string;
   required?: boolean;
   maxLength?: number;
   inputMode?: "text" | "numeric" | "email" | "tel";
@@ -970,6 +956,7 @@ function Field({
   type = "text",
   placeholder = "",
   error,
+  helpText,
   required = false,
   maxLength,
   inputMode,
@@ -999,20 +986,24 @@ function Field({
         inputMode={inputMode}
         autoComplete={autoComplete}
         aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : undefined}
+        aria-describedby={error || helpText ? errorId : undefined}
         className={`w-full rounded-lg border bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 ${
           error
             ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
             : "border-gray-300 focus:border-brand focus:ring-brand/15"
         }`}
       />
-      {error && (
+      {(error || helpText) && (
         <span
           id={errorId}
-          role="alert"
-          className="mt-1.5 block text-xs font-normal text-red-600"
+          role={error ? "alert" : undefined}
+          className={`mt-1.5 block text-xs font-normal ${
+            error
+              ? "text-red-600"
+              : "text-gray-500 dark:text-gray-400"
+          }`}
         >
-          {error}
+          {error ?? helpText}
         </span>
       )}
     </label>
