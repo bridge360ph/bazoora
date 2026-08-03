@@ -10,7 +10,7 @@ export function setupSocket(server: HttpServer): SocketIOServer {
   // allowlist (comma-separated CORS_ORIGIN), defaulting to the local dev origin.
   const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
     .split(",")
-    .map((origin) => origin.trim())
+    .map((origin) => origin.replace(/['"]/g, "").trim())
     .filter(Boolean);
 
   const socketIO = new SocketIOServer(server, {

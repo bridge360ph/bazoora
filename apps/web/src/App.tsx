@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { getSocket } from "./lib/socket";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
-import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
