@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 import type { RouteFormValue, RouteStatusFilter } from "./route.types";
@@ -40,6 +40,16 @@ export function AdminRouteManagementPage() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
   const [assignedEcoAide, setAssignedEcoAide] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -136,10 +146,11 @@ export function AdminRouteManagementPage() {
    * (the modal stays open).
    */
 
-    function applyEcoAideAssignment(routeId: string) {
+    function applyEcoAideAssignment(routeId: string, successMessage: string) {
       if (!routeForm.assignedEcoAideId) {
         refetch();
         closeModal();
+        setSuccessMessage(successMessage);
         return;
       }
 
@@ -149,6 +160,7 @@ export function AdminRouteManagementPage() {
           onSuccess: () => {
             refetch();
             closeModal();
+            setSuccessMessage(successMessage);
           },
         },
       );
@@ -157,7 +169,7 @@ export function AdminRouteManagementPage() {
   function handleCreateRoute() {
     createRouteMutation.mutate(routeForm, {
       onSuccess: (createdRoute) => {
-        applyEcoAideAssignment(createdRoute.id);
+        applyEcoAideAssignment(createdRoute.id, "Route created successfully.");
       },
     });
   }
@@ -171,14 +183,14 @@ export function AdminRouteManagementPage() {
       { routeId: selectedRoute.id, formValue: routeForm },
       {
         onSuccess: () => {
-          applyEcoAideAssignment(selectedRoute.id);
+          applyEcoAideAssignment(selectedRoute.id, "Route updated successfully.");
         },
       },
     );
   }
 
   function handleSaveEcoAideAssignment() {
-    if (!selectedRoute) {
+    if (!selectedRoute || !assignedEcoAide) {
       return;
     }
 
@@ -188,6 +200,7 @@ export function AdminRouteManagementPage() {
         onSuccess: () => {
           refetch();
           closeModal();
+          setSuccessMessage("Eco-Aide assigned successfully.");
         },
       },
     );
@@ -211,6 +224,12 @@ export function AdminRouteManagementPage() {
       <div className="mb-6 flex justify-end">
         <Button onClick={openCreateModal}>+ Create Route</Button>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">
+          {successMessage}
+        </div>
+      )}
 
       <div className="mb-5 grid grid-cols-3 gap-4">
         <StatCard label="Completed" value={completedCount} />
@@ -250,7 +269,9 @@ export function AdminRouteManagementPage() {
               <div>
                 {paginatedRoutes.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
-                    No routes found.
+                    {routes && routes.length === 0
+                      ? "No routes have been created yet."
+                      : "No routes match the current filter."}
                   </div>
                 ) : (
                   paginatedRoutes.map((route) => (

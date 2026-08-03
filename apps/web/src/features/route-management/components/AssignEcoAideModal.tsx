@@ -35,12 +35,24 @@ export function AssignEcoAideModal({
   const { ecoAides, isLoading, isError } = useEcoAideOptions();
   const availableEcoAides = getAvailableEcoAides(ecoAides, routes, route.id);
 
+  function handleClose() {
+    if (isSubmitting) {
+      return;
+    }
+
+    onClose();
+  }
+
   function handleSave() {
+    if (isSubmitting || !assignedEcoAide) {
+      return;
+    }
+
     onSave();
   }
 
   return (
-    <Modal title={`Assign eco-aide to ${routeLabel}`} onClose={onClose} width={560}>
+    <Modal title={`Assign eco-aide to ${routeLabel}`} onClose={handleClose} width={560}>
       {errorMessage && (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       )}
@@ -62,9 +74,13 @@ export function AssignEcoAideModal({
             </p>
           ) : isLoading ? (
             <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
-          ) : availableEcoAides.length === 0 && ecoAides.length === 0 ? (
+          ) : ecoAides.length === 0 ? (
             <p className="text-sm text-gray-500">
-              No available Eco-Aides right now.
+              No Eco-Aides exist yet.
+            </p>
+          ) : availableEcoAides.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              All Eco-Aides are already assigned to other routes.
             </p>
           ) : (
             <select
@@ -86,7 +102,12 @@ export function AssignEcoAideModal({
         </FormField>
       </div>
 
-      <ModalFooter saveLabel={saveLabel} onSave={handleSave} onClose={onClose} />
+      <ModalFooter
+        saveLabel={saveLabel}
+        onSave={handleSave}
+        onClose={handleClose}
+        saveDisabled={isSubmitting || !assignedEcoAide}
+      />
     </Modal>
   );
 }

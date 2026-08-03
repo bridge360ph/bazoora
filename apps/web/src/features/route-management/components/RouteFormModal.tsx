@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { Modal, ModalFooter } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 import type { RouteFormValue } from "../route.types.ts";
-import { RouteEntryForm } from "./RouteEntryForm";
+import { RouteEntryForm, getRouteFormValidationError } from "./RouteEntryForm";
 
 type RouteFormMode = "create" | "edit";
 
@@ -45,45 +45,13 @@ export function RouteFormModal({
         ? "Saving..."
         : "Save";
 
-  function getValidationError(): string | null {
-    if (formValue.name.trim().length < 5) {
-      return "Route Name must be at least 5 characters.";
-    }
-
-    if (formValue.barangay.trim().length < 5) {
-      return "Barangay Coverage must be at least 5 characters.";
-    }
-
-    const waypointCount = formValue.waypoints
-      .split(",")
-      .map((stop) => stop.trim())
-      .filter(Boolean).length;
-
-    if (waypointCount < 1) {
-      return "At least one collection point is required.";
-    }
-
-    if (!formValue.wasteType) {
-      return "Waste Type is required.";
-    }
-
-    if (!formValue.collectionDay) {
-      return "Collection Day is required.";
-    }
-
-    if (!formValue.startTime.trim()) {
-      return "Start Time is required.";
-    }
-
-    if (!formValue.routeType.trim()) {
-      return "Route Type is required.";
-    }
-
-    return null;
-  }
+  const validationError = getRouteFormValidationError(formValue);
+  const isFormValid = validationError === null;
 
   function handleSave() {
-    const validationError = getValidationError();
+    if (isSubmitting) {
+      return;
+    }
 
     if (validationError) {
       alert(validationError);
@@ -93,8 +61,16 @@ export function RouteFormModal({
     onSave();
   }
 
+  function handleClose() {
+    if (isSubmitting) {
+      return;
+    }
+
+    onClose();
+  }
+
   return (
-    <Modal title={title} onClose={onClose} width={560}>
+    <Modal title={title} onClose={handleClose} width={560}>
       {errorMessage && (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       )}
@@ -106,10 +82,17 @@ export function RouteFormModal({
         editingRouteId={route?.id}
       />
 
+      {!isFormValid && (
+        <p className="mt-3 text-sm text-gray-500">
+          {validationError}
+        </p>
+      )}
+
       <ModalFooter
         saveLabel={saveLabel}
         onSave={handleSave}
-        onClose={onClose}
+        onClose={handleClose}
+        saveDisabled={!isFormValid || isSubmitting}
       />
     </Modal>
   );

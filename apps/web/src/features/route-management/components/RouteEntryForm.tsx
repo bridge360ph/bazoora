@@ -14,6 +14,52 @@ interface RouteEntryFormProps {
 }
 
 /**
+ * Single source of truth for client-side validation, reused by
+ * RouteFormModal to decide when Save/Create should be enabled and as the
+ * final guard on submit. Mirrors validateRouteFields in
+ * routeManagementService.ts — the backend remains the source of truth,
+ * this only avoids a round-trip for obviously-invalid input.
+ */
+export function getRouteFormValidationError(
+  formValue: RouteFormValue,
+): string | null {
+  if (formValue.name.trim().length < 5) {
+    return "Route Name must be at least 5 characters.";
+  }
+
+  if (formValue.barangay.trim().length < 5) {
+    return "Barangay Coverage must be at least 5 characters.";
+  }
+
+  const waypointCount = formValue.waypoints
+    .split(",")
+    .map((stop) => stop.trim())
+    .filter(Boolean).length;
+
+  if (waypointCount < 1) {
+    return "At least one collection point is required.";
+  }
+
+  if (!formValue.wasteType) {
+    return "Waste Type is required.";
+  }
+
+  if (!formValue.collectionDay) {
+    return "Collection Day is required.";
+  }
+
+  if (!formValue.startTime.trim()) {
+    return "Start Time is required.";
+  }
+
+  if (!formValue.routeType.trim()) {
+    return "Route Type is required.";
+  }
+
+  return null;
+}
+
+/**
  * The actual set of inputs for creating/editing a route. Rendered inside
  * RouteFormModal for both the "create" and "edit" modes so they stay in sync.
  *
@@ -48,6 +94,18 @@ export function RouteEntryForm({
     routes,
     editingRouteId,
   );
+  // Only flag a field once the user has put something in it — an empty,
+  // untouched form shouldn't open with validation errors already showing.
+  const showNameError =
+    formValue.name.length > 0 && formValue.name.trim().length < 5;
+  const showBarangayError =
+    formValue.barangay.length > 0 && formValue.barangay.trim().length < 5;
+  const waypointCount = formValue.waypoints
+    .split(",")
+    .map((stop) => stop.trim())
+    .filter(Boolean).length;
+  const showWaypointsError =
+    formValue.waypoints.length > 0 && waypointCount < 1;
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,6 +118,11 @@ export function RouteEntryForm({
           placeholder="Enter Route Name"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
+        {showNameError && (
+          <p className="mt-1 text-xs text-red-600">
+            Route Name must be at least 5 characters.
+          </p>
+        )}
       </FormField>
 
       <FormField label="Barangay Coverage" required>
@@ -71,6 +134,11 @@ export function RouteEntryForm({
           placeholder="Enter Barangay Coverage"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
+        {showBarangayError && (
+          <p className="mt-1 text-xs text-red-600">
+            Barangay Coverage must be at least 5 characters.
+          </p>
+        )}
       </FormField>
 
       <FormField label="Waypoints / Collection Points" required>
@@ -82,6 +150,11 @@ export function RouteEntryForm({
           placeholder="Enter Waypoints / Collection Points (e.g. Stop A, Stop B, Stop C)"
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
         />
+        {showWaypointsError && (
+          <p className="mt-1 text-xs text-red-600">
+            At least one collection point is required.
+          </p>
+        )}
       </FormField>
 
       <FormField label="Waste Type">
@@ -136,9 +209,13 @@ export function RouteEntryForm({
           </p>
         ) : ecoAidesLoading ? (
           <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
-        ) : availableEcoAides.length === 0 && ecoAides.length === 0 ? (
+        ) : ecoAides.length === 0 ? (
           <p className="text-sm text-gray-500">
-            No available Eco-Aides right now.
+            No Eco-Aides exist yet.
+          </p>
+        ) : availableEcoAides.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            All Eco-Aides are already assigned to other routes.
           </p>
         ) : (
           <select
