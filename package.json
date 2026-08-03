@@ -1,0 +1,23 @@
+{
+  "name": "bazoora-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bazoora — Digital Waste Management Platform",
+  "packageManager": "pnpm@10.28.1",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@bazoora/web",
+    "dev:api": "turbo run dev --filter=@bazoora/api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "turbo": "^2.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}
