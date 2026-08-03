@@ -1,0 +1,58 @@
+# Render Blueprint for the Bazoora API (staging).
+#
+# What this codifies:
+#   - a managed Postgres database (bazoora-db)
+#   - the API web service, with DATABASE_URL wired automatically from the DB
+#
+# Values marked `sync: false` are NOT stored here; set them per-environment in
+# the Render dashboard (Environment tab). Everything else is reproducible.
+#
+# Runtime note: the API is started with tsx (see @bazoora/api "start" script),
+# not `node dist/...`. That is deliberate: @bazoora/db exports TypeScript source
+# (packages/db/src/index.ts), so a compiled dist entry cannot resolve it at
+# runtime. tsx runs the API from source and resolves the workspace packages.
+# The build still runs so @bazoora/shared and @bazoora/ui produce their dist,
+# which the API imports at runtime.
+
+databases:
+  - name: bazoora-db
+    databaseName: bazoora
+    user: bazoora
+    plan: free
+    region: singapore
+
+services:
+  - type: web
+    name: bazoora
+    runtime: node
+    plan: free
+    region: singapore
+    branch: staging
+    autoDeploy: true
+    healthCheckPath: /
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @bazoora/db db:deploy && pnpm build --filter=@bazoora/api
+    startCommand: pnpm --filter @bazoora/api start
+    envVars:
+      # Wired automatically from the managed database above (internal URL).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bazoora-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      # Pin to match CI (Node 22); Render otherwise defaults to the latest.
+      - key: NODE_VERSION
+        value: "22"
+      # Comma-separated allowlist of frontend origins. Set in the dashboard.
+      # Must be explicit origins, never "*", because the API enables CORS credentials.
+      - key: CORS_ORIGIN
+        sync: false
+      # Optional: only needed if the S3 upload features are exercised.
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
