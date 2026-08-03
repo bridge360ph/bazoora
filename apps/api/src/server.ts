@@ -8,6 +8,7 @@ import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
+import { locationRoutes } from "./routes/locationRoutes.js";
 import { config } from "./plugins/config.js";
 
 const app = Fastify({
@@ -22,6 +23,7 @@ const app = Fastify({
 const start = async () => {
   await app.register(cors, {
     origin: config.corsOrigin,
+    credentials: true,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   });
 
@@ -35,6 +37,10 @@ const start = async () => {
   
   await app.register(trucksRoutes, {
     prefix: "/trucks",
+  });
+
+  await app.register(locationRoutes, {
+    prefix: "/locations",
   });
 
   app.get("/", (): HealthResponse => {
