@@ -135,6 +135,10 @@ export async function createRoute(
   });
 
   if (duplicateRoute) {
+    // Reuses the same "not found"-style null return as a missing route.
+    // If the route handler ever needs to tell these apart in the response
+    // (e.g. a specific "route already exists" message), this is the place
+    // to throw a distinct error instead.
     return null;
   }
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 import type { RouteFormValue, RouteStatusFilter } from "./route.types";
@@ -35,6 +35,16 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -126,6 +136,7 @@ export function AdminRouteManagementPage() {
       onSuccess: () => {
         refetch();
         closeModal();
+        setSuccessMessage("Route created successfully.");
       },
     });
   }
@@ -141,6 +152,7 @@ export function AdminRouteManagementPage() {
         onSuccess: () => {
           refetch();
           closeModal();
+          setSuccessMessage("Route updated successfully.");
         },
       },
     );
@@ -151,6 +163,12 @@ export function AdminRouteManagementPage() {
       <div className="mb-6 flex justify-end">
         <Button onClick={openCreateModal}>+ Create Route</Button>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">
+          {successMessage}
+        </div>
+      )}
 
       <div className="mb-5 grid grid-cols-3 gap-4">
         <StatCard label="Completed" value={completedCount} />
@@ -190,7 +208,9 @@ export function AdminRouteManagementPage() {
               <div>
                 {paginatedRoutes.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
-                    No routes match the current filter.
+                    {routes && routes.length === 0
+                      ? "No routes have been created yet."
+                      : "No routes match the current filter."}
                   </div>
                 ) : (
                   paginatedRoutes.map((route) => (
@@ -236,6 +256,7 @@ export function AdminRouteManagementPage() {
           onSave={handleCreateRoute}
           onClose={closeModal}
           isSubmitting={createRouteMutation.isPending}
+          errorMessage={createRouteMutation.error?.message ?? null}
         />
       )}
 
@@ -248,6 +269,7 @@ export function AdminRouteManagementPage() {
           onSave={handleSaveEditedRoute}
           onClose={closeModal}
           isSubmitting={updateRouteMutation.isPending}
+          errorMessage={updateRouteMutation.error?.message ?? null}
         />
       )}
 

@@ -51,7 +51,9 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onAssign}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-brand"
+          disabled
+          title="Eco-Aide Assignment is coming soon"
+          className="cursor-not-allowed rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-brand opacity-50"
         >
           Assign Eco-Aide
         </button>
