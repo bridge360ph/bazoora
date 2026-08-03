@@ -1,18 +1,22 @@
-# Render Blueprint for the Bazoora API (staging).
+# Render Blueprint for Bazoora (staging).
 #
-# What this codifies:
-#   - a managed Postgres database (bazoora-db)
-#   - the API web service, with DATABASE_URL wired automatically from the DB
+# One repo, two services per environment:
+#   - bazoora      : the API (Fastify Node web service) + managed Postgres
+#   - bazoora-web  : the PWA frontend (Vite static site, served from Render's CDN)
 #
 # Values marked `sync: false` are NOT stored here; set them per-environment in
 # the Render dashboard (Environment tab). Everything else is reproducible.
 #
-# Runtime note: the API is started with tsx (see @bazoora/api "start" script),
-# not `node dist/...`. That is deliberate: @bazoora/db exports TypeScript source
-# (packages/db/src/index.ts), so a compiled dist entry cannot resolve it at
-# runtime. tsx runs the API from source and resolves the workspace packages.
-# The build still runs so @bazoora/shared and @bazoora/ui produce their dist,
-# which the API imports at runtime.
+# Cross-wiring done once in the dashboard after both services exist:
+#   - bazoora-web  VITE_API_URL  = https://<the API service URL>
+#   - bazoora      CORS_ORIGIN   = https://<the static site URL>
+# VITE_* vars are baked in at build time, so changing them requires a rebuild.
+#
+# Runtime note (API): started with tsx (see @bazoora/api "start" script), not
+# `node dist/...`. @bazoora/db exports TypeScript source (packages/db/src), so a
+# compiled dist entry cannot resolve it at runtime. tsx runs the API from source
+# and resolves the workspace packages; the build still runs so @bazoora/shared
+# and @bazoora/ui emit the dist the API imports.
 
 databases:
   - name: bazoora-db
@@ -22,6 +26,7 @@ databases:
     region: singapore
 
 services:
+  # --- API (Fastify) ---
   - type: web
     name: bazoora
     runtime: node
@@ -43,8 +48,9 @@ services:
       # Pin to match CI (Node 22); Render otherwise defaults to the latest.
       - key: NODE_VERSION
         value: "22"
-      # Comma-separated allowlist of frontend origins. Set in the dashboard.
-      # Must be explicit origins, never "*", because the API enables CORS credentials.
+      # Comma-separated allowlist of frontend origins (the static site URL).
+      # Set in the dashboard. Must be explicit origins, never "*", because the
+      # API enables CORS credentials.
       - key: CORS_ORIGIN
         sync: false
       # Optional: only needed if the S3 upload features are exercised.
@@ -55,4 +61,40 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       - key: AWS_S3_BUCKET
+        sync: false
+
+  # --- Frontend (Vite PWA, static) ---
+  - type: web
+    name: bazoora-web
+    runtime: static
+    branch: staging
+    autoDeploy: true
+    buildCommand: pnpm install --frozen-lockfile && pnpm build --filter=@bazoora/web
+    staticPublishPath: apps/web/dist
+    # SPA client-side routing: serve index.html for any path without a matching
+    # static file. Real files (assets, sw.js, manifest) are served directly first.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      # Full URL of the API service, e.g. https://bazoora.onrender.com.
+      # Baked in at build time, so a change needs a rebuild.
+      - key: VITE_API_URL
+        sync: false
+      - key: VITE_MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: VITE_FIREBASE_API_KEY
+        sync: false
+      - key: VITE_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: VITE_FIREBASE_PROJECT_ID
+        sync: false
+      - key: VITE_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: VITE_FIREBASE_SENDER_ID
+        sync: false
+      - key: VITE_FIREBASE_APP_ID
+        sync: false
+      - key: VITE_FIREBASE_VAPID_KEY
         sync: false
