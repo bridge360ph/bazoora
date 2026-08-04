@@ -1,15 +1,22 @@
 # Render Blueprint for Bazoora (staging).
 #
 # One repo, two services per environment:
-#   - bazoora      : the API (Fastify Node web service) + managed Postgres
+#   - bazoora      : the API (Fastify Node web service)
 #   - bazoora-web  : the PWA frontend (Vite static site, served from Render's CDN)
+#
+# The Postgres database is intentionally NOT declared here. Databases are
+# stateful and env-specific (their name, user, and credentials differ per env),
+# and infrastructure-as-code should not be able to recreate or delete them. The
+# DB is provisioned once in the dashboard (staging: `staging-db`) and its
+# Internal Database URL is pasted into DATABASE_URL below (sync: false).
 #
 # Values marked `sync: false` are NOT stored here; set them per-environment in
 # the Render dashboard (Environment tab). Everything else is reproducible.
 #
-# Cross-wiring done once in the dashboard after both services exist:
-#   - bazoora-web  VITE_API_URL  = https://<the API service URL>
+# Cross-wiring done once in the dashboard:
+#   - bazoora      DATABASE_URL  = the DB's Internal Database URL (e.g. staging-db)
 #   - bazoora      CORS_ORIGIN   = https://<the static site URL>
+#   - bazoora-web  VITE_API_URL  = https://<the API service URL>
 # VITE_* vars are baked in at build time, so changing them requires a rebuild.
 #
 # Runtime note (API): started with tsx (see @bazoora/api "start" script), not
@@ -17,13 +24,6 @@
 # compiled dist entry cannot resolve it at runtime. tsx runs the API from source
 # and resolves the workspace packages; the build still runs so @bazoora/shared
 # and @bazoora/ui emit the dist the API imports.
-
-databases:
-  - name: bazoora-db
-    databaseName: bazoora
-    user: bazoora
-    plan: free
-    region: singapore
 
 services:
   # --- API (Fastify) ---
@@ -38,11 +38,12 @@ services:
     buildCommand: pnpm install --frozen-lockfile && pnpm --filter @bazoora/db db:deploy && pnpm build --filter=@bazoora/api
     startCommand: pnpm --filter @bazoora/api start
     envVars:
-      # Wired automatically from the managed database above (internal URL).
+      # Paste the DB's Internal Database URL here in the dashboard (staging: the
+      # `staging-db` Internal Database URL). Internal avoids egress and works at
+      # build time for the migrate step; append `?sslmode=require` if using an
+      # external URL.
       - key: DATABASE_URL
-        fromDatabase:
-          name: bazoora-db
-          property: connectionString
+        sync: false
       - key: NODE_ENV
         value: production
       # Pin to match CI (Node 22); Render otherwise defaults to the latest.
