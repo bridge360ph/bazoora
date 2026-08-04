@@ -16,6 +16,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { env } from "@/lib/env";
+import { haversineMeters } from "@/lib/geo";
 
 /* ─── Maneuver Icon HUD Helper ──────────────────────────────────────── */
 function ManeuverIcon({ type, modifier }: { type?: string; modifier?: string }) {
@@ -268,16 +269,6 @@ function MapboxLine({
   );
 }
 
-/* ─── Helper for distance calculation ───────────────────────────────── */
-function distanceMeters(lng1: number, lat1: number, lng2: number, lat2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 /* ─── Mapbox Route Resolver ─────────────────────────────────────────── */
 function DirectionsRoute({
@@ -306,7 +297,7 @@ function DirectionsRoute({
         const wp0 = parsedWaypoints[0];
         const pr0 = prev[0];
         if (wp0 && pr0) {
-          const d = distanceMeters(wp0[0], wp0[1], pr0[0], pr0[1]);
+          const d = haversineMeters(wp0[0], wp0[1], pr0[0], pr0[1]);
           if (d < 25) {
             return;
           }
@@ -470,33 +461,57 @@ export default function SmartMap({
     }
   }, [is3D]);
 
+  const [dynamicBearings, setDynamicBearings] = useState<Record<string, number>>({});
   const prevMarkerPositionsRef = useRef<
     Record<string, { lat: number; lng: number; bearing: number }>
   >({});
 
-  const getDynamicBearing = useCallback((marker: MapMarker): number | undefined => {
-    if (marker.bearing !== undefined) return marker.bearing;
-    if (!marker.id || (marker.icon !== "truck" && marker.icon !== "eco")) return undefined;
+  useEffect(() => {
+    const nextBearings: Record<string, number> = {};
+    const currentIds = new Set<string>();
 
-    const [lat, lng] = marker.position;
-    const prev = prevMarkerPositionsRef.current[marker.id];
-    let computedBearing = prev?.bearing;
+    for (const marker of markers) {
+      if (!marker.id) continue;
+      currentIds.add(marker.id);
 
-    if (prev && (prev.lat !== lat || prev.lng !== lng)) {
-      const dLon = ((lng - prev.lng) * Math.PI) / 180;
-      const lat1Rad = (prev.lat * Math.PI) / 180;
-      const lat2Rad = (lat * Math.PI) / 180;
-      const y = Math.sin(dLon) * Math.cos(lat2Rad);
-      const x =
-        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
-        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-      const brng = (Math.atan2(y, x) * 180) / Math.PI;
-      computedBearing = (brng + 360) % 360;
+      if (marker.bearing !== undefined) {
+        nextBearings[marker.id] = marker.bearing;
+        continue;
+      }
+
+      if (marker.icon !== "truck" && marker.icon !== "eco") continue;
+
+      const [lat, lng] = marker.position;
+      const prev = prevMarkerPositionsRef.current[marker.id];
+      let computedBearing = prev?.bearing;
+
+      if (prev && (prev.lat !== lat || prev.lng !== lng)) {
+        const dLon = ((lng - prev.lng) * Math.PI) / 180;
+        const lat1Rad = (prev.lat * Math.PI) / 180;
+        const lat2Rad = (lat * Math.PI) / 180;
+        const y = Math.sin(dLon) * Math.cos(lat2Rad);
+        const x =
+          Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+          Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+        const brng = (Math.atan2(y, x) * 180) / Math.PI;
+        computedBearing = (brng + 360) % 360;
+      }
+
+      prevMarkerPositionsRef.current[marker.id] = { lat, lng, bearing: computedBearing ?? 0 };
+      if (computedBearing !== undefined) {
+        nextBearings[marker.id] = computedBearing;
+      }
     }
 
-    prevMarkerPositionsRef.current[marker.id] = { lat, lng, bearing: computedBearing ?? 0 };
-    return computedBearing;
-  }, []);
+    // Prune stale marker positions from prevMarkerPositionsRef
+    for (const id of Object.keys(prevMarkerPositionsRef.current)) {
+      if (!currentIds.has(id)) {
+        delete prevMarkerPositionsRef.current[id];
+      }
+    }
+
+    setDynamicBearings(nextBearings);
+  }, [markers]);
 
   const renderMarkerIcon = useCallback((m: MapMarker, rotation?: number) => {
     const rot = rotation ?? m.bearing;
@@ -635,18 +650,19 @@ export default function SmartMap({
         {/* Markers */}
         {markers.map((marker, i) => {
           const mId = marker.id ?? `marker-${i}`;
-          const dynamicBearing = getDynamicBearing(marker);
+          const dynamicBearing = marker.bearing ?? dynamicBearings[mId];
           return (
             <div key={mId}>
               <Marker
                 longitude={marker.position[1]}
                 latitude={marker.position[0]}
+                style={{ transition: "transform 1000ms ease-out" }}
                 onClick={(e: any) => {
                   e.originalEvent.stopPropagation();
                   setActivePopupId(mId);
                 }}
               >
-                <div className="cursor-pointer transition-all duration-1000 ease-out">
+                <div className="cursor-pointer">
                   {renderMarkerIcon(marker, dynamicBearing)}
                 </div>
               </Marker>
