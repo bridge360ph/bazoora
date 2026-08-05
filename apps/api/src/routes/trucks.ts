@@ -2,41 +2,27 @@
 import type { FastifyPluginAsync } from "fastify";
 import { prisma } from "@bazoora/db";
 import { emitTruckLocation } from "../plugins/socket.js";
-import { verifyAccessToken } from "../lib/jwt.js";
+import { authGuard, requireRole } from "../lib/auth.js";
 
 // In-memory store for planned routes
 const plannedRoutes = new Map<string, any[]>();
 
 export const trucksRoutes: FastifyPluginAsync = async (app) => {
-  // Helper to extract driver/user info from auth token
-  // Returns null when the request can't be authenticated. Callers must reject
-  // with 401 on null. The mock fallback is DEV/DEMO ONLY (Role Simulator) and
-  // fails closed in production — no more defaulting to a mock identity. See #52.
-  const getDriverIdFromAuth = (
-    authorizationHeader?: string,
-  ): { driverId: string; orgId: string } | null => {
-    if (authorizationHeader && authorizationHeader.startsWith("Bearer ")) {
-      const token = authorizationHeader.substring(7);
-      try {
-        const payload = verifyAccessToken(token);
-        return {
-          driverId: payload.sub,
-          orgId: payload.organizationId ?? "org-1",
-        };
-      } catch {
-        // fall through to dev fallback / rejection
-      }
-    }
-
-    if (process.env.NODE_ENV !== "production") {
-      return { driverId: "usr-mock-1", orgId: "org-1" };
-    }
-
-    return null;
-  };
-
   // GET /trucks
-  app.get("/", async (_req, _reply) => {
+  app.get(
+    "/",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(
+          "SUPER_ADMIN",
+          "GOVERNMENT_ADMIN",
+          "HAULING_ADMIN",
+          "DRIVER",
+        ),
+      ],
+    },
+    async (_req, _reply) => {
     const trucks = await prisma.truck.findMany({
       include: {
         assignedDriver: {
@@ -64,45 +50,26 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         organizationId: "org-1",
       };
     });
-
-    return { success: true, data: formatted };
-  });
+      return { success: true, data: formatted };
+    },
+  );
 
   // GET /trucks/me
-  app.get("/me", async (req, reply) => {
-    const auth = getDriverIdFromAuth(req.headers.authorization);
-    if (!auth) {
-      return reply.code(401).send({ success: false, error: "unauthorized" });
-    }
-    const { driverId } = auth;
+  app.get(
+    "/me",
+    {
+      preHandler: [
+        authGuard,
+        requireRole("DRIVER"),
+      ],
+    },
+    async (req, reply) => {
+      const driverId = req.user.sub;
 
-    // Ensure the driver user exists in the DB to prevent foreign key errors
-    await prisma.user.upsert({
-      where: { id: driverId },
-      update: {},
-      create: {
-        id: driverId,
-        email: `${driverId}@bazoora.com`,
-        password: "", // TODO: seed drivers through the proper auth flow
-        role: "DRIVER",
-      },
-    });
-
-    let truck = await prisma.truck.findFirst({
-      where: { assignedDriverId: driverId },
-      include: {
-        assignedDriver: {
-          include: {
-            driverLocation: true,
-          },
+      const truck = await prisma.truck.findFirst({
+        where: {
+          assignedDriverId: driverId,
         },
-      },
-    });
-
-    // If no truck assigned to this driver, assign one or create one
-    if (!truck) {
-      truck = await prisma.truck.findFirst({
-        where: { assignedDriverId: null },
         include: {
           assignedDriver: {
             include: {
@@ -113,170 +80,215 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       });
 
       if (!truck) {
-        truck = await prisma.truck.findFirst({
-          include: {
-            assignedDriver: {
-              include: {
-                driverLocation: true,
-              },
-            },
-          },
+        return reply.code(404).send({
+          success: false,
+          error: "No truck is assigned to this driver.",
         });
       }
 
-      if (!truck) {
-        // Create new truck
-        truck = await prisma.truck.create({
-          data: {
-            plateNumber: "LGU-TRK-777",
-            model: "Fuso Canter",
-            capacity: "5 Tons",
-            status: "Idle",
-            assignedDriverId: driverId,
-          },
-          include: {
-            assignedDriver: {
-              include: {
-                driverLocation: true,
-              },
-            },
-          },
-        });
-      } else {
-        // Assign this truck to the driver
-        truck = await prisma.truck.update({
-          where: { id: truck.id },
-          data: { assignedDriverId: driverId },
-          include: {
-            assignedDriver: {
-              include: {
-                driverLocation: true,
-              },
-            },
-          },
-        });
-      }
-    }
+      const location = truck.assignedDriver?.driverLocation;
 
-    const location = truck.assignedDriver?.driverLocation;
-
-    // Map to expected client shape
-    const formatted = {
-      id: truck.id,
-      plateNumber: truck.plateNumber,
-      status: truck.status === "Active" ? "active" : "idle",
-      currentLocation: location
-        ? {
-            lat: location.latitude,
-            lng: location.longitude,
-            timestamp: location.updatedAt.toISOString(),
-          }
-        : null,
-      plannedRoute: plannedRoutes.get(truck.id) || [],
-      organizationId: "org-1",
-    };
-
-    return { success: true, data: formatted };
-  });
+      return reply.send({
+        success: true,
+        data: {
+          id: truck.id,
+          plateNumber: truck.plateNumber,
+          status: truck.status === "Active" ? "active" : "idle",
+          currentLocation: location
+            ? {
+                lat: location.latitude,
+                lng: location.longitude,
+                timestamp: location.updatedAt.toISOString(),
+              }
+            : null,
+          plannedRoute: plannedRoutes.get(truck.id) || [],
+          organizationId: "org-1",
+        },
+      });
+    },
+  );
 
   // POST /trucks/:id/location
-  app.post("/:id/location", async (req, reply) => {
-    const { id } = req.params as { id: string };
-    const body = req.body as {
-      lat: number;
-      lng: number;
-      heading?: number;
-      speed?: number;
-      timestamp: string;
-    };
+  app.post(
+    "/:id/location",
+    {
+      preHandler: [
+        authGuard,
+        requireRole("DRIVER"),
+      ],
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
+      const driverId = req.user.sub;
 
-    const auth = getDriverIdFromAuth(req.headers.authorization);
-    if (!auth) {
-      return reply.code(401).send({ success: false, error: "unauthorized" });
-    }
-    const { driverId, orgId } = auth;
+      const body = req.body as {
+        lat: number;
+        lng: number;
+        heading?: number;
+        speed?: number;
+        timestamp: string;
+      };
 
-    // Ensure the driver user exists in the DB to prevent foreign key errors
-    await prisma.user.upsert({
-      where: { id: driverId },
-      update: {},
-      create: {
-        id: driverId,
-        email: `${driverId}@bazoora.com`,
-        password: "", // TODO: seed drivers through the proper auth flow
-        role: "DRIVER",
-      },
-    });
+      const assignedTruck = await prisma.truck.findFirst({
+        where: {
+          id,
+          assignedDriverId: driverId,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-    // Upsert coordinates in DriverLocation table
-    const location = await prisma.driverLocation.upsert({
-      where: { driverId },
-      update: {
-        latitude: body.lat,
-        longitude: body.lng,
-      },
-      create: {
-        driverId,
-        latitude: body.lat,
-        longitude: body.lng,
-      },
-    });
+      if (!assignedTruck) {
+        return reply.code(403).send({
+          success: false,
+          error: "You may only update the location of your assigned truck.",
+        });
+      }
 
-    // Update truck status to Active and ensure driver assignment is linked
-    await prisma.truck.update({
-      where: { id },
-      data: {
-        status: "Active",
-        assignedDriverId: driverId,
-      },
-    });
+      const location = await prisma.driverLocation.upsert({
+        where: { driverId },
+        update: {
+          truckId: id,
+          latitude: body.lat,
+          longitude: body.lng,
+        },
+        create: {
+          driverId,
+          truckId: id,
+          latitude: body.lat,
+          longitude: body.lng,
+        },
+      });
 
-    // Broadcast live coordinates to Room
-    emitTruckLocation(orgId, {
-      truckId: id,
-      lat: body.lat,
-      lng: body.lng,
-      timestamp: body.timestamp,
-    });
+      await prisma.truck.update({
+        where: { id },
+        data: {
+          status: "Active",
+        },
+      });
 
-    return { success: true, data: location };
-  });
+      emitTruckLocation("org-1", {
+        truckId: id,
+        lat: body.lat,
+        lng: body.lng,
+        timestamp: body.timestamp,
+      });
+
+      return reply.send({
+        success: true,
+        data: location,
+      });
+    },
+  );
 
   // PATCH /trucks/:id
-  app.patch("/:id", async (req, _reply) => {
-    const { id } = req.params as { id: string };
-    const body = req.body as {
-      plannedRoute?: any[];
-      status?: string;
-    };
+  app.patch(
+    "/:id",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(
+          "SUPER_ADMIN",
+          "GOVERNMENT_ADMIN",
+          "HAULING_ADMIN",
+        ),
+      ],
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
 
-    const updated = await prisma.truck.update({
-      where: { id },
-      data: {
-        status: body.status === "active" ? "Active" : "Idle",
-      },
-    });
+      const body = req.body as {
+        plannedRoute?: any[];
+        status?: string;
+      };
 
-    if (body.plannedRoute) {
-      plannedRoutes.set(id, body.plannedRoute);
-    }
+      const existingTruck = await prisma.truck.findUnique({
+        where: { id },
+        select: { id: true },
+      });
 
-    return { success: true, data: updated };
-  });
+      if (!existingTruck) {
+        return reply.code(404).send({
+          success: false,
+          error: "Truck was not found.",
+        });
+      }
+
+      const updated = await prisma.truck.update({
+        where: { id },
+        data: {
+          status: body.status === "active" ? "Active" : "Idle",
+        },
+      });
+
+      if (body.plannedRoute) {
+        plannedRoutes.set(id, body.plannedRoute);
+      }
+
+      return reply.send({
+        success: true,
+        data: updated,
+      });
+    },
+  );
 
   // POST /trucks/:id/finish-route
-  app.post("/:id/finish-route", async (req, _reply) => {
-    const { id } = req.params as { id: string };
+  app.post(
+    "/:id/finish-route",
+    {
+      preHandler: authGuard,
+    },
+    async (req, reply) => {
+      const { id } = req.params as { id: string };
 
-    const updated = await prisma.truck.update({
-      where: { id },
-      data: {
-        status: "Idle",
-      },
-    });
+      const truck = await prisma.truck.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          assignedDriverId: true,
+        },
+      });
 
-    plannedRoutes.delete(id);
+      if (!truck) {
+        return reply.code(404).send({
+          success: false,
+          error: "Truck was not found.",
+        });
+      }
 
-    return { success: true, data: updated };
-  });
+      const adminRoles = [
+        "SUPER_ADMIN",
+        "GOVERNMENT_ADMIN",
+        "HAULING_ADMIN",
+      ];
+
+      const isAdmin = adminRoles.includes(req.user.role);
+      const isAssignedDriver =
+        req.user.role === "DRIVER" &&
+        truck.assignedDriverId === req.user.sub;
+
+      if (!isAdmin && !isAssignedDriver) {
+        return reply.code(403).send({
+          success: false,
+          error:
+            "You may only finish a route for your assigned truck.",
+        });
+      }
+
+      const updated = await prisma.truck.update({
+        where: { id },
+        data: {
+          status: "Idle",
+        },
+      });
+
+      plannedRoutes.delete(id);
+
+      return reply.send({
+        success: true,
+        data: updated,
+      });
+    },
+  );
 };

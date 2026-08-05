@@ -1,29 +1,53 @@
 import type { FastifyPluginCallback } from "fastify";
 
 import {
+  authGuard,
+  requireRole,
+} from "../lib/auth.js";
+import {
+  createHaulingRequestSchema,
+  haulingRequestParamsSchema,
+} from "../schemas/haulingRequest.schema.js";
+import {
   approveHaulingRequest,
   createHaulingRequest,
   denyHaulingRequest,
   getHaulingRequests,
 } from "../services/haulingRequestService.js";
 
-import {
-  createHaulingRequestSchema,
-  haulingRequestParamsSchema,
-} from "../schemas/haulingRequest.schema.js";
+const adminRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+] as const;
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
   app,
   _opts,
   done,
 ) => {
-  app.get("/", () => {
-    return getHaulingRequests();
-  });
+  app.get(
+    "/",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    () => {
+      return getHaulingRequests();
+    },
+  );
 
   app.post(
     "/",
-    { schema: createHaulingRequestSchema },
+    {
+      schema: createHaulingRequestSchema,
+      preHandler: [
+        authGuard,
+        requireRole("RESIDENT", "BUSINESS"),
+      ],
+    },
     (request) => {
       return createHaulingRequest(
         request.body as never,
@@ -33,9 +57,17 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
 
   app.patch(
     "/:id/approve",
-    { schema: haulingRequestParamsSchema },
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
     (request, reply) => {
-      const { id } = request.params as { id: string };
+      const { id } = request.params as {
+        id: string;
+      };
 
       const result = approveHaulingRequest(id);
 
@@ -51,9 +83,17 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
 
   app.patch(
     "/:id/deny",
-    { schema: haulingRequestParamsSchema },
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
     (request, reply) => {
-      const { id } = request.params as { id: string };
+      const { id } = request.params as {
+        id: string;
+      };
 
       const result = denyHaulingRequest(id);
 
