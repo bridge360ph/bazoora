@@ -9,6 +9,8 @@ import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { config } from "./plugins/config.js";
+import { authPlugin } from "./plugins/auth.js";
+import { authRoutes } from "./routes/authRoutes.js";
 
 const app = Fastify({
   logger: true,
@@ -27,6 +29,12 @@ const start = async () => {
     credentials: true,
   });
 
+  await app.register(authPlugin);
+
+  await app.register(authRoutes, {
+    prefix: "/auth",
+  });
+
   await app.register(haulingRequestRoutes, {
     prefix: "/hauling-requests",
   });
@@ -43,7 +51,10 @@ const start = async () => {
     return { status: "ok" };
   });
 
-  setupSocket(app.server);
+  setupSocket(
+    app.server,
+    (token) => app.jwt.verify(token),
+  );
 
   await app.listen({
     port: config.port,
