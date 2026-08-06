@@ -1,5 +1,25 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Bell,
+  CheckCircle2,
+  LogOut,
+  MonitorCog,
+  Palette,
+  ShieldCheck,
+  Trash2,
+  UserCog,
+  UserRound,
+} from "lucide-react";
+import {
+  changeMyPassword,
+  getApiErrorMessage,
+  getMySettings,
+  updateMyProfile,
+  updateMyPreferences,
+} from "@/features/settings/api";
+import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@bazoora/ui";
 
 type Tab = "Account" | "Notifications" | "System";
@@ -74,16 +94,20 @@ function validateRequiredAddress(
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clear);
+
   const [tab, setTab] = useState<Tab>("Account");
 
-  const [firstName, setFirstName] = useState("Luz Anthony");
-  const [lastName, setLastName] = useState("Miranda");
-  const [email, setEmail] = useState("luimiranda@ecohaulers.com");
-  const [phone, setPhone] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
-  const [barangay, setBarangay] = useState("");
-  const [cityMunicipality, setCityMunicipality] = useState("");
-  const [province, setProvince] = useState("");
+  const [firstName, setFirstName] = useState(authUser?.firstName ?? "");
+  const [lastName, setLastName] = useState(authUser?.lastName ?? "");
+  const [email, setEmail] = useState(authUser?.email ?? "");
+  const [phone, setPhone] = useState(authUser?.phoneNumber ?? authUser?.contactNo ?? "");
+  const [streetAddress, setStreetAddress] = useState(authUser?.address?.line1 ?? "");
+  const [barangay, setBarangay] = useState(authUser?.address?.barangay ?? "");
+  const [cityMunicipality, setCityMunicipality] = useState(authUser?.address?.city ?? "");
+  const [province, setProvince] = useState(authUser?.address?.province ?? "");
   const [postalCode, setPostalCode] = useState("");
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
@@ -95,9 +119,31 @@ export function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
 
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [dailySummary, setDailySummary] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(
+    authUser?.notificationPreferences?.emailNotif ?? true,
+  );
+  const [pushNotifications, setPushNotifications] = useState(
+    authUser?.notificationPreferences?.pushNotif ?? true,
+  );
+  const [dailySummary, setDailySummary] = useState(
+    authUser?.notificationPreferences?.collectionReminder ?? false,
+  );
+  const [savedNotificationPreferences, setSavedNotificationPreferences] =
+    useState({
+      emailNotifications:
+        authUser?.notificationPreferences?.emailNotif ?? true,
+      pushNotifications:
+        authUser?.notificationPreferences?.pushNotif ?? true,
+      dailySummary:
+        authUser?.notificationPreferences?.collectionReminder ?? false,
+    });
+
+  const hasNotificationChanges =
+    emailNotifications !==
+      savedNotificationPreferences.emailNotifications ||
+    pushNotifications !==
+      savedNotificationPreferences.pushNotifications ||
+    dailySummary !== savedNotificationPreferences.dailySummary;
 
   const [darkMode, setDarkMode] = useState(() => {
     const savedTheme = window.localStorage.getItem("bazoora-admin-theme");
@@ -111,10 +157,24 @@ export function SettingsPage() {
   const [autoAssignRoutes, setAutoAssignRoutes] = useState(true);
   const [realTimeTracking, setRealTimeTracking] = useState(true);
   const [automaticReports, setAutomaticReports] = useState(false);
+  const [savedSystemPreferences, setSavedSystemPreferences] = useState({
+    darkMode,
+    autoAssignRoutes: true,
+    realTimeTracking: true,
+    automaticReports: false,
+  });
+
+  const hasSystemChanges =
+    darkMode !== savedSystemPreferences.darkMode ||
+    autoAssignRoutes !== savedSystemPreferences.autoAssignRoutes ||
+    realTimeTracking !== savedSystemPreferences.realTimeTracking ||
+    automaticReports !== savedSystemPreferences.automaticReports;
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   function showToast(message: string) {
     setToast(message);
 
@@ -122,6 +182,74 @@ export function SettingsPage() {
       setToast(null);
     }, 3000);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSettings() {
+      try {
+        const data = await getMySettings();
+
+        if (cancelled) {
+          return;
+        }
+
+        const { profile, user } = data;
+        const nameParts = (user.name ?? "").trim().split(/\s+/);
+
+        setFirstName(profile.firstName ?? nameParts[0] ?? "");
+        setLastName(profile.lastName ?? nameParts.slice(1).join(" "));
+        setEmail(user.email);
+        setPhone(profile.phoneNumber ?? "");
+        setStreetAddress(profile.streetAddress ?? "");
+        setBarangay(profile.barangay ?? "");
+        setCityMunicipality(profile.cityMunicipality ?? "");
+        setProvince(profile.province ?? "");
+        setPostalCode(profile.postalCode ?? "");
+
+        setEmailNotifications(profile.emailNotifications);
+        setPushNotifications(profile.pushNotifications);
+        setDailySummary(profile.dailySummary);
+        setSavedNotificationPreferences({
+          emailNotifications: profile.emailNotifications,
+          pushNotifications: profile.pushNotifications,
+          dailySummary: profile.dailySummary,
+        });
+
+        setDarkMode(profile.darkMode);
+        setAutoAssignRoutes(profile.autoAssignRoutes);
+        setRealTimeTracking(profile.realTimeTracking);
+        setAutomaticReports(profile.automaticReports);
+        setSavedSystemPreferences({
+          darkMode: profile.darkMode,
+          autoAssignRoutes: profile.autoAssignRoutes,
+          realTimeTracking: profile.realTimeTracking,
+          automaticReports: profile.automaticReports,
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setToast(
+            getApiErrorMessage(
+              error,
+              "Unable to load your settings information.",
+            ),
+          );
+
+          window.setTimeout(() => {
+            if (!cancelled) {
+              setToast(null);
+            }
+          }, 3000);
+        }
+      }
+    }
+
+    void loadSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
@@ -192,7 +320,7 @@ export function SettingsPage() {
     return error;
   }
 
-  function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextErrors: ProfileErrors = {
@@ -233,15 +361,92 @@ export function SettingsPage() {
       return;
     }
 
-    setFirstName(firstName.trim().replace(/\s+/g, " "));
-    setLastName(lastName.trim().replace(/\s+/g, " "));
-    setEmail(email.trim().toLowerCase());
-    setStreetAddress(streetAddress.trim().replace(/\s+/g, " "));
-    setBarangay(barangay.trim().replace(/\s+/g, " "));
-    setCityMunicipality(cityMunicipality.trim().replace(/\s+/g, " "));
-    setProvince(province.trim().replace(/\s+/g, " "));
+    const normalizedProfile = {
+      firstName: firstName.trim().replace(/\s+/g, " "),
+      lastName: lastName.trim().replace(/\s+/g, " "),
+      email: email.trim().toLowerCase(),
+      phoneNumber: phone,
+      streetAddress: streetAddress.trim().replace(/\s+/g, " "),
+      barangay: barangay.trim().replace(/\s+/g, " "),
+      cityMunicipality: cityMunicipality.trim().replace(/\s+/g, " "),
+      province: province.trim().replace(/\s+/g, " "),
+      postalCode,
+    };
 
-    showToast("Profile information saved.");
+    setIsSavingProfile(true);
+
+    try {
+      const savedData = await updateMyProfile(normalizedProfile);
+      const savedProfile = savedData.profile;
+
+      setFirstName(savedProfile.firstName ?? normalizedProfile.firstName);
+      setLastName(savedProfile.lastName ?? normalizedProfile.lastName);
+      setEmail(savedData.user.email);
+      setPhone(savedProfile.phoneNumber ?? "");
+      setStreetAddress(savedProfile.streetAddress ?? "");
+      setBarangay(savedProfile.barangay ?? "");
+      setCityMunicipality(savedProfile.cityMunicipality ?? "");
+      setProvince(savedProfile.province ?? "");
+      setPostalCode(savedProfile.postalCode ?? "");
+
+      showToast("Profile information saved.");
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(
+          error,
+          "Unable to save your profile information.",
+        ),
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  async function savePreferences(successMessage: string) {
+    setIsSavingPreferences(true);
+
+    try {
+      const savedProfile = await updateMyPreferences({
+        emailNotifications,
+        pushNotifications,
+        dailySummary,
+        darkMode,
+        autoAssignRoutes,
+        realTimeTracking,
+        automaticReports,
+      });
+
+      setEmailNotifications(savedProfile.emailNotifications);
+      setPushNotifications(savedProfile.pushNotifications);
+      setDailySummary(savedProfile.dailySummary);
+      setSavedNotificationPreferences({
+        emailNotifications: savedProfile.emailNotifications,
+        pushNotifications: savedProfile.pushNotifications,
+        dailySummary: savedProfile.dailySummary,
+      });
+
+      setDarkMode(savedProfile.darkMode);
+      setAutoAssignRoutes(savedProfile.autoAssignRoutes);
+      setRealTimeTracking(savedProfile.realTimeTracking);
+      setAutomaticReports(savedProfile.automaticReports);
+      setSavedSystemPreferences({
+        darkMode: savedProfile.darkMode,
+        autoAssignRoutes: savedProfile.autoAssignRoutes,
+        realTimeTracking: savedProfile.realTimeTracking,
+        automaticReports: savedProfile.automaticReports,
+      });
+
+      showToast(successMessage);
+    } catch (error) {
+      showToast(
+        getApiErrorMessage(
+          error,
+          "Unable to save your preferences.",
+        ),
+      );
+    } finally {
+      setIsSavingPreferences(false);
+    }
   }
 
   function validatePasswordField(field: keyof PasswordErrors) {
@@ -280,7 +485,7 @@ export function SettingsPage() {
     return error;
   }
 
-  function handlePasswordUpdate(event: FormEvent<HTMLFormElement>) {
+  async function handlePasswordUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextErrors: PasswordErrors = {
@@ -308,13 +513,50 @@ export function SettingsPage() {
       return;
     }
 
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowCurrentPassword(false);
-    setShowNewPassword(false);
-    setShowConfirmPassword(false);
-    showToast("Password updated successfully.");
+    setIsUpdatingPassword(true);
+
+    try {
+      await changeMyPassword({
+        currentPassword,
+        newPassword,
+      });
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+
+      showToast("Password updated. Please log in again.");
+
+      window.setTimeout(() => {
+        clearSession();
+        document.documentElement.classList.remove("dark");
+        void navigate("/login");
+      }, 800);
+    } catch (error) {
+      const message = getApiErrorMessage(
+        error,
+        "Unable to update your password.",
+      );
+
+      if (message === "Current password is incorrect.") {
+        setPasswordErrors((errors) => ({
+          ...errors,
+          currentPassword: message,
+        }));
+      } else {
+        setPasswordErrors((errors) => ({
+          ...errors,
+          newPassword: message,
+        }));
+      }
+
+      showToast(message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   }
 
   return (
@@ -366,7 +608,7 @@ export function SettingsPage() {
         {tab === "Account" && (
           <>
             <SectionCard
-              icon="👤"
+              icon={<UserRound size={24} strokeWidth={1.8} />}
               title="Profile Information"
               subtitle="Update your account details"
             >
@@ -559,12 +801,14 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit">Save Changes</Button>
+                <Button type="submit" disabled={isSavingProfile}>
+                  {isSavingProfile ? "Saving..." : "Save Changes"}
+                </Button>
               </form>
             </SectionCard>
 
             <SectionCard
-              icon="🛡"
+              icon={<ShieldCheck size={24} strokeWidth={1.8} />}
               title="Security"
               subtitle="Manage your password and security settings"
             >
@@ -613,8 +857,8 @@ export function SettingsPage() {
                       setShowNewPassword((visible) => !visible);
                     }}
                     autoComplete="new-password"
-                    helpText="Use 8–128 characters with uppercase, lowercase, number, and special character."
                   />
+                  <PasswordRequirements password={newPassword} />
                   <PasswordField
                     label="Confirm New Password"
                     value={confirmPassword}
@@ -637,37 +881,71 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit">Update Password</Button>
+                <Button type="submit" disabled={isUpdatingPassword}>
+                  {isUpdatingPassword ? "Updating..." : "Update Password"}
+                </Button>
               </form>
             </SectionCard>
 
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  showToast("Logged out.");
-                }}
-                className="w-full rounded-[10px] border-2 border-brand bg-white px-4 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 dark:bg-gray-900 dark:hover:bg-gray-800"
-              >
-                Log Out
-              </button>
+            <SectionCard
+              icon={<UserCog size={24} strokeWidth={1.8} />}
+              title="Account Actions"
+              subtitle="Manage your current session or account"
+            >
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <div className="flex flex-col gap-4 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Log out of Bazoora
+                    </h3>
+                    <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">
+                      End your current session and return to the login page.
+                    </p>
+                  </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(true);
-                }}
-                className="w-full rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
-              >
-                Delete Account
-              </button>
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSession();
+                      document.documentElement.classList.remove("dark");
+                      void navigate("/login");
+                    }}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border-2 border-brand bg-white px-4 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 dark:bg-gray-900 dark:hover:bg-gray-800"
+                  >
+                    <LogOut size={17} aria-hidden="true" />
+                    Log Out
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
+                      Delete account
+                    </h3>
+                    <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">
+                      Permanently remove your account and associated information.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteModal(true);
+                    }}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
+                  >
+                    <Trash2 size={17} aria-hidden="true" />
+                    Delete Account
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
           </>
         )}
 
         {tab === "Notifications" && (
           <SectionCard
-            icon="🔔"
+            icon={<Bell size={24} strokeWidth={1.8} />}
             title="Notification Preferences"
             subtitle="Choose how you want to be notified"
           >
@@ -690,15 +968,29 @@ export function SettingsPage() {
               onChange={setDailySummary}
             />
 
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col items-center gap-2">
               <Button
                 type="button"
+                disabled={!hasNotificationChanges || isSavingPreferences}
                 onClick={() => {
-                  showToast("Notification preferences saved.");
+                  void savePreferences("Notification preferences saved.");
                 }}
               >
-                Save Preference
+                {isSavingPreferences
+                  ? "Saving..."
+                  : hasNotificationChanges
+                    ? "Save Preferences"
+                    : "Preferences Saved"}
               </Button>
+
+              <p
+                className="text-center text-xs text-gray-500 dark:text-gray-400"
+                aria-live="polite"
+              >
+                {hasNotificationChanges
+                  ? "You have unsaved notification changes."
+                  : "Your notification preferences are up to date."}
+              </p>
             </div>
           </SectionCard>
         )}
@@ -706,7 +998,7 @@ export function SettingsPage() {
         {tab === "System" && (
           <>
             <SectionCard
-              icon="⚙"
+              icon={<Palette size={24} strokeWidth={1.8} />}
               title="Appearance"
               subtitle="Customize the look and feel"
             >
@@ -719,7 +1011,7 @@ export function SettingsPage() {
             </SectionCard>
 
             <SectionCard
-              icon="🖥"
+              icon={<MonitorCog size={24} strokeWidth={1.8} />}
               title="System Configuration"
               subtitle="Configure system behavior"
             >
@@ -742,15 +1034,29 @@ export function SettingsPage() {
                 onChange={setAutomaticReports}
               />
 
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 flex flex-col items-center gap-2">
                 <Button
                   type="button"
+                  disabled={!hasSystemChanges || isSavingPreferences}
                   onClick={() => {
-                    showToast("System preferences saved.");
+                    void savePreferences("System preferences saved.");
                   }}
                 >
-                  Save Preference
+                  {isSavingPreferences
+                    ? "Saving..."
+                    : hasSystemChanges
+                      ? "Save Preferences"
+                      : "Preferences Saved"}
                 </Button>
+
+                <p
+                  className="text-center text-xs text-gray-500 dark:text-gray-400"
+                  aria-live="polite"
+                >
+                  {hasSystemChanges
+                    ? "You have unsaved system changes."
+                    : "Your system preferences are up to date."}
+                </p>
               </div>
             </SectionCard>
           </>
@@ -771,10 +1077,11 @@ export function SettingsPage() {
 
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+          className="fixed bottom-6 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
           role="status"
         >
-          ✓ {toast}
+          <CheckCircle2 size={17} aria-hidden="true" />
+          <span>{toast}</span>
         </div>
       )}
     </main>
@@ -901,6 +1208,71 @@ function Field({
         </span>
       )}
     </label>
+  );
+}
+
+interface PasswordRequirementsProps {
+  password: string;
+}
+
+function PasswordRequirements({
+  password,
+}: PasswordRequirementsProps) {
+  const requirements = [
+    {
+      label: "8–128 characters",
+      isValid: password.length >= 8 && password.length <= 128,
+    },
+    {
+      label: "At least one lowercase letter",
+      isValid: /[a-z]/.test(password),
+    },
+    {
+      label: "At least one uppercase letter",
+      isValid: /[A-Z]/.test(password),
+    },
+    {
+      label: "At least one number",
+      isValid: /\d/.test(password),
+    },
+    {
+      label: "At least one special character",
+      isValid: /[^A-Za-z0-9]/.test(password),
+    },
+  ];
+
+  return (
+    <div
+      className="grid gap-1.5 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-950 sm:grid-cols-2"
+      aria-label="Password requirements"
+      aria-live="polite"
+      role="list"
+    >
+      {requirements.map((requirement) => (
+        <div
+          key={requirement.label}
+          className={`flex items-center gap-2 text-xs font-medium ${
+            requirement.isValid
+              ? "text-green-600 dark:text-green-400"
+              : "text-red-600 dark:text-red-400"
+          }`}
+          role="listitem"
+        >
+          <span
+            className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+              requirement.isValid
+                ? "bg-green-100 dark:bg-green-950"
+                : "bg-red-100 dark:bg-red-950"
+            }`}
+            aria-hidden="true"
+          >
+            {requirement.isValid ? "✓" : "×"}
+          </span>
+
+          <span>{requirement.label}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 

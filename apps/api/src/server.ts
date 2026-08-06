@@ -13,6 +13,7 @@ import { analyticsRoutes } from "./routes/analyticsRoutes.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
+import { settingsRoutes } from "./routes/settingsRoutes.js";
 
 const app = Fastify({
   logger: true,
@@ -35,6 +36,10 @@ const start = async () => {
 
   await app.register(authRoutes, {
     prefix: "/auth",
+  });
+
+  await app.register(settingsRoutes, {
+    prefix: "/settings",
   });
 
   await app.register(haulingRequestRoutes, {
