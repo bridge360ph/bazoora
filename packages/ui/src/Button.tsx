@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const baseClasses =
-  "inline-flex cursor-pointer items-center justify-center gap-2 rounded-md border-0 font-medium";
+  "inline-flex items-center justify-center gap-2 rounded-md border-0 font-medium transition-colors";
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "bg-brand text-white",
@@ -38,12 +38,24 @@ export function Button({
   size = "md",
   className = "",
   type = "button",
+  disabled = false,
   ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      disabled={disabled}
+      className={`
+        ${baseClasses}
+        ${variantClasses[variant]}
+        ${sizeClasses[size]}
+        ${
+          disabled
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer"
+        }
+        ${className}
+      `}
       {...props}
     >
       {children}
