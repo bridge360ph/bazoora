@@ -20,6 +20,7 @@ import type {
 import {
   HAULING_REQUESTS_PAGE_SIZE,
   STATUS_DISPLAY,
+  WASTE_TYPE_DISPLAY,
 } from "./haulingRequestManagement.constants.ts";
 
 /**
@@ -76,18 +77,20 @@ export function AdminHaulingRequestManagementPage() {
     approveMutation.mutate(requestId, { onSuccess: closeModal });
   }
 
-  function handleDeny(requestId: string) {
-    denyMutation.mutate(requestId, { onSuccess: closeModal });
+  function handleDeny(requestId: string, denialReason: string) {
+    denyMutation.mutate(
+      { requestId, denialReason },
+      { onSuccess: closeModal },
+    );
   }
 
   const columns: Column<HaulingRequest>[] = [
     { key: "requestId", header: "Request ID" },
     { key: "requestAddress", header: "Location" },
     {
-      // TODO: `wasteType` not yet on HaulingRequest — backend/Prisma pending.
       key: "wasteType",
       header: "Waste Type",
-      render: () => <span className="text-gray-400">N/A</span>,
+      render: (row) => <span>{WASTE_TYPE_DISPLAY[row.wasteType]}</span>,
     },
     { key: "senderType", header: "Sent By" },
     {
@@ -183,6 +186,11 @@ export function AdminHaulingRequestManagementPage() {
           onClose={closeModal}
           onConfirm={handleApprove}
           isSubmitting={approveMutation.isPending}
+          errorMessage={
+            approveMutation.error instanceof Error
+              ? approveMutation.error.message
+              : undefined
+          }
         />
       )}
 
@@ -192,6 +200,11 @@ export function AdminHaulingRequestManagementPage() {
           onClose={closeModal}
           onConfirm={handleDeny}
           isSubmitting={denyMutation.isPending}
+          errorMessage={
+            denyMutation.error instanceof Error
+              ? denyMutation.error.message
+              : undefined
+          }
         />
       )}
     </div>

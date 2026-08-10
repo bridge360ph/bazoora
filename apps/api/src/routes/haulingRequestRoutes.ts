@@ -1,4 +1,5 @@
 import type { FastifyPluginCallback } from "fastify";
+import type { CreateHaulingRequestInput } from "@bazoora/shared";
 
 import {
   authGuard,
@@ -6,6 +7,7 @@ import {
 } from "../lib/auth.js";
 import {
   createHaulingRequestSchema,
+  denyHaulingRequestSchema,
   haulingRequestParamsSchema,
 } from "../schemas/haulingRequest.schema.js";
 import {
@@ -34,8 +36,8 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         requireRole(...adminRoles),
       ],
     },
-    () => {
-      return getHaulingRequests();
+    async () => {
+      return await getHaulingRequests();
     },
   );
 
@@ -48,9 +50,10 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         requireRole("RESIDENT", "BUSINESS"),
       ],
     },
-    (request) => {
-      return createHaulingRequest(
-        request.body as never,
+    async (request) => {
+      return await createHaulingRequest(
+        request.body as CreateHaulingRequestInput,
+        request.user.sub,
       );
     },
   );
@@ -64,46 +67,74 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         requireRole(...adminRoles),
       ],
     },
-    (request, reply) => {
-      const { id } = request.params as {
-        id: string;
-      };
+    async (request, reply) => {
+      try {
+        const { id } = request.params as {
+          id: string;
+        };
 
-      const result = approveHaulingRequest(id);
+        const result = await approveHaulingRequest(
+          id,
+          request.user.sub,
+        );
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to approve request",
         });
       }
-
-      return result;
     },
   );
 
   app.patch(
     "/:id/deny",
     {
-      schema: haulingRequestParamsSchema,
+      schema: denyHaulingRequestSchema,
       preHandler: [
         authGuard,
         requireRole(...adminRoles),
       ],
     },
-    (request, reply) => {
-      const { id } = request.params as {
-        id: string;
-      };
+    async (request, reply) => {
+      try {
+        const { id } = request.params as {
+          id: string;
+        };
 
-      const result = denyHaulingRequest(id);
+        const { denialReason } = request.body as {
+          denialReason: string;
+        };
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        const result = await denyHaulingRequest(
+          id,
+          denialReason,
+        );
+
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid denial reason",
         });
       }
-
-      return result;
     },
   );
 

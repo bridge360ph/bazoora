@@ -113,3 +113,43 @@ model Counter {
   entity   String @id
   sequence Int    @default(0)
 }
+
+// Hauling Request Management
+
+enum HaulingRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum WasteType {
+  RESIDUAL
+  NON_BIODEGRADABLE
+  HAZARDOUS
+  BIODEGRADABLE
+}
+
+enum SenderType {
+  RESIDENT
+  BUSINESS
+}
+
+model HaulingRequest {
+  requestId      String               @id @default(cuid())
+  requestNumber  String               @unique
+  userId         String
+  orgId          String?
+  requestAddress String
+  senderType     SenderType
+  wasteType      WasteType
+  imageUrl       String?
+  pickupDate     DateTime?
+  status         HaulingRequestStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  denialReason   String?
+  note           String?
+  archived       Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
