@@ -2,6 +2,9 @@ import type { Prisma } from "@bazoora/db";
 
 type CounterEntity =
   | "hauling_request"
+  | "truck"
+  | "eco_aide"
+  | "route";
 
 export async function getNextSequence(
   tx: Prisma.TransactionClient,

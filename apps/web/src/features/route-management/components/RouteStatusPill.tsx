@@ -1,4 +1,4 @@
-import type { RouteStatus } from "../route.types";
+import type { RouteStatus } from "@bazoora/shared";
 
 const statusStyles: Record<RouteStatus, string> = {
   "In Progress": "bg-[#fef3c7] text-[#92400e] border border-[#fbbf24]",

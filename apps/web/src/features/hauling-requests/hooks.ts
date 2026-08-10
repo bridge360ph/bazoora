@@ -4,7 +4,7 @@ import {
   listHaulingRequests,
   uploadImage,
   updateHaulingRequest,
-} from "./haulingRequestApi";
+} from "./api";
 import type { CreateHaulingRequestInput } from "./schemas";
 import { toast } from "sonner";
 
@@ -22,23 +22,14 @@ export function useHaulingRequests() {
 
 export function useCreateHaulingRequest() {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (input: CreateHaulingRequestInput) =>
-      createHaulingRequest(input),
-
-    onSuccess: async () => {
+    mutationFn: (input: CreateHaulingRequestInput) => createHaulingRequest(input),
+    onSuccess: () => {
       toast.success("Hauling request submitted successfully!");
-
-      await queryClient.invalidateQueries({
-        queryKey: ["hauling-requests"],
-      });
+      queryClient.invalidateQueries({ queryKey: haulingKeys.lists() });
     },
-
     onError: (error: any) => {
-      toast.error(
-        error.response?.data?.message ?? "Failed to submit request"
-      );
+      toast.error(error.response?.data?.message ?? "Failed to submit request");
     },
   });
 }

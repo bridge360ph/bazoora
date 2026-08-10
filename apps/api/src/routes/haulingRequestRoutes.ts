@@ -2,47 +2,81 @@ import type { FastifyPluginCallback } from "fastify";
 import type { CreateHaulingRequestInput } from "@bazoora/shared";
 
 import {
+  authGuard,
+  requireRole,
+} from "../lib/auth.js";
+import {
+  createHaulingRequestSchema,
+  denyHaulingRequestSchema,
+  haulingRequestParamsSchema,
+} from "../schemas/haulingRequest.schema.js";
+import {
   approveHaulingRequest,
   createHaulingRequest,
   denyHaulingRequest,
   getHaulingRequests,
 } from "../services/haulingRequestService.js";
 
-import {
-  createHaulingRequestSchema,
-  haulingRequestParamsSchema,
-  denyHaulingRequestSchema,
-} from "../schemas/haulingRequest.schema.js";
+const adminRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+] as const;
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
   app,
   _opts,
   done,
 ) => {
-  app.get("/", async () => {
-    return await getHaulingRequests();
-  });
+  app.get(
+    "/",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async () => {
+      return await getHaulingRequests();
+    },
+  );
 
   app.post(
     "/",
-    { schema: createHaulingRequestSchema },
+    {
+      schema: createHaulingRequestSchema,
+      preHandler: [
+        authGuard,
+        requireRole("RESIDENT", "BUSINESS"),
+      ],
+    },
     async (request) => {
       return await createHaulingRequest(
         request.body as CreateHaulingRequestInput,
+        request.user.sub,
       );
     },
   );
 
   app.patch(
     "/:id/approve",
-    { schema: haulingRequestParamsSchema },
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
     async (request, reply) => {
       try {
-        const { id } =
-          request.params as { id: string };
+        const { id } = request.params as {
+          id: string;
+        };
 
-        const result =
-          await approveHaulingRequest(id);
+        const result = await approveHaulingRequest(
+          id,
+          request.user.sub,
+        );
 
         if (!result) {
           return reply.status(404).send({
@@ -66,6 +100,10 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
     "/:id/deny",
     {
       schema: denyHaulingRequestSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
     },
     async (request, reply) => {
       try {

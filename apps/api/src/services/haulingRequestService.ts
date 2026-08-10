@@ -23,13 +23,11 @@ export async function getHaulingRequests() {
 }
 
 /**
- * Create a new hauling request
- */
-/**
- * Create a new hauling request
+ * Create a new hauling request on behalf of the authenticated requester.
  */
 export async function createHaulingRequest(
   data: CreateHaulingRequestInput,
+  userId: string,
 ) {
   const request = await prisma.$transaction(async (tx) => {
     const sequence = await getNextSequence(
@@ -43,8 +41,7 @@ export async function createHaulingRequest(
       data: {
         requestNumber: requestNumber,
 
-        // TODO: Replace with authenticated user
-        userId: "TEMP_USER",
+        userId,
 
         orgId: null,
 
@@ -69,10 +66,11 @@ export async function createHaulingRequest(
 }
 
 /**
- * Approve a hauling request
+ * Approve a hauling request, recording which admin approved it.
  */
 export async function approveHaulingRequest(
   id: string,
+  approvedBy: string,
 ) {
   const existing =
     await prisma.haulingRequest.findUnique({
@@ -98,6 +96,7 @@ export async function approveHaulingRequest(
       },
       data: {
         status: HaulingRequestStatus.APPROVED,
+        approvedBy,
         approvedAt: new Date(),
       },
     });

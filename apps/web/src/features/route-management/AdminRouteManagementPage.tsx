@@ -1,19 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
-import { ECO_AIDE_OPTIONS, FLEET_OPTIONS } from "./route.mockData";
-import type {
-  Route,
-  RouteFormValue,
-  RouteStatusFilter,
-} from "./route.types";
+import type { Route } from "@bazoora/shared";
+import type { RouteFormValue, RouteStatusFilter } from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
-import { useAssignRouteEcoAide } from "./hooks/useAssignRouteEcoAide";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
-import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
 import { RouteDetailsModal } from "./components/RouteDetailsModal";
 
 type ModalMode = "create" | "edit" | "assign" | "details" | null;
@@ -27,8 +21,6 @@ const emptyRouteForm: RouteFormValue = {
   wasteType: "Regular",
   collectionDay: "Sunday",
   startTime: "",
-  ecoAide: ECO_AIDE_OPTIONS[0],
-  fleetAssignment: FLEET_OPTIONS[0],
   routeType: "Free",
 };
 
@@ -36,7 +28,6 @@ export function AdminRouteManagementPage() {
   const { data: routes, isLoading, isError, error, refetch } = useRoutes();
   const createRouteMutation = useCreateRoute();
   const updateRouteMutation = useUpdateRoute();
-  const assignEcoAideMutation = useAssignRouteEcoAide();
 
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -44,7 +35,16 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
-  const [assignedEcoAide, setAssignedEcoAide] = useState(ECO_AIDE_OPTIONS[0]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -60,7 +60,7 @@ export function AdminRouteManagementPage() {
         normalizedSearch.length === 0 ||
         route.id.toLowerCase().includes(normalizedSearch) ||
         route.name.toLowerCase().includes(normalizedSearch) ||
-        route.ecoAide.toLowerCase().includes(normalizedSearch) ||
+        // route.assignedEcoAideId.toLowerCase().includes(normalizedSearch) ||
         route.barangay.toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
@@ -111,8 +111,6 @@ export function AdminRouteManagementPage() {
       wasteType: route.wasteType,
       collectionDay: route.collectionDay,
       startTime: route.startTime,
-      ecoAide: route.ecoAide,
-      fleetAssignment: route.fleetAssignment,
       routeType: route.routeType,
     });
     setModalMode("edit");
@@ -120,10 +118,6 @@ export function AdminRouteManagementPage() {
 
   function openAssignModal(route: Route) {
     setSelectedRoute(route);
-    setAssignedEcoAide(
-      ECO_AIDE_OPTIONS.find((option) => option.startsWith(route.ecoAide)) ??
-        ECO_AIDE_OPTIONS[0],
-    );
     setModalMode("assign");
   }
 
@@ -142,6 +136,7 @@ export function AdminRouteManagementPage() {
       onSuccess: () => {
         refetch();
         closeModal();
+        setSuccessMessage("Route created successfully.");
       },
     });
   }
@@ -157,22 +152,7 @@ export function AdminRouteManagementPage() {
         onSuccess: () => {
           refetch();
           closeModal();
-        },
-      },
-    );
-  }
-
-  function handleSaveEcoAideAssignment() {
-    if (!selectedRoute) {
-      return;
-    }
-
-    assignEcoAideMutation.mutate(
-      { routeId: selectedRoute.id, ecoAide: assignedEcoAide },
-      {
-        onSuccess: () => {
-          refetch();
-          closeModal();
+          setSuccessMessage("Route updated successfully.");
         },
       },
     );
@@ -183,6 +163,12 @@ export function AdminRouteManagementPage() {
       <div className="mb-6 flex justify-end">
         <Button onClick={openCreateModal}>+ Create Route</Button>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">
+          {successMessage}
+        </div>
+      )}
 
       <div className="mb-5 grid grid-cols-3 gap-4">
         <StatCard label="Completed" value={completedCount} />
@@ -222,7 +208,9 @@ export function AdminRouteManagementPage() {
               <div>
                 {paginatedRoutes.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
-                    No routes match the current filter.
+                    {routes && routes.length === 0
+                      ? "No routes have been created yet."
+                      : "No routes match the current filter."}
                   </div>
                 ) : (
                   paginatedRoutes.map((route) => (
@@ -268,6 +256,7 @@ export function AdminRouteManagementPage() {
           onSave={handleCreateRoute}
           onClose={closeModal}
           isSubmitting={createRouteMutation.isPending}
+          errorMessage={createRouteMutation.error?.message ?? null}
         />
       )}
 
@@ -280,17 +269,7 @@ export function AdminRouteManagementPage() {
           onSave={handleSaveEditedRoute}
           onClose={closeModal}
           isSubmitting={updateRouteMutation.isPending}
-        />
-      )}
-
-      {modalMode === "assign" && selectedRoute && (
-        <AssignEcoAideModal
-          route={selectedRoute}
-          assignedEcoAide={assignedEcoAide}
-          setAssignedEcoAide={setAssignedEcoAide}
-          onSave={handleSaveEcoAideAssignment}
-          onClose={closeModal}
-          isSubmitting={assignEcoAideMutation.isPending}
+          errorMessage={updateRouteMutation.error?.message ?? null}
         />
       )}
 

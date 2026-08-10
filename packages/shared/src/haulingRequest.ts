@@ -43,11 +43,13 @@ export interface HaulingRequest {
   updatedAt?: string;
 }
 
+/**
+ * Body accepted by POST /hauling-requests.
+ *
+ * The requester is taken from the access token, not the body, so userId and
+ * orgId are deliberately absent here and rejected by the route schema.
+ */
 export interface CreateHaulingRequestInput {
-  userId: string;
-
-  orgId?: string;
-
   requestAddress: string;
 
   senderType: SenderType;
