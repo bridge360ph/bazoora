@@ -31,7 +31,7 @@ export function HaulingRequestFiltersBar({
         <button
           type="button"
           onClick={() => setIsSenderOpen((open) => !open)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a3a2e] text-white text-sm font-medium"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium"
         >
           Filter by Sender: {activeLabel}
           <svg className="w-3 h-3" viewBox="0 0 10 6" fill="currentColor">
