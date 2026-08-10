@@ -7,7 +7,7 @@ export function Logo({
 }) {
   return (
     <img
-      src="/assets/logo.svg"
+      src="/logo.svg"
       alt={alt}
       className={className}
     />
