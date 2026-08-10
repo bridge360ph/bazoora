@@ -23,11 +23,27 @@ model User {
   name            String?
   password        String
   role            UserRole
+  authVersion     Int              @default(0)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   driverLocation  DriverLocation?  @relation("DriverLocations")
   assignedTruck   Truck?           @relation("AssignedDriver")
   assignedRoute   Route?           @relation("AssignedEcoAide")
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model ServiceRequest {
