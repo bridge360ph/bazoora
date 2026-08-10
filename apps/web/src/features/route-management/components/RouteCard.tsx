@@ -1,4 +1,4 @@
-import type { Route } from "../route.types";
+import type { Route } from "@bazoora/shared";
 import { RouteStatusPill } from "./RouteStatusPill";
 
 interface RouteCardProps {
@@ -15,7 +15,9 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <div>
           <h2 className="text-sm font-bold text-white">{route.name}</h2>
           <p className="mt-0.5 text-xs text-white/60">
-            Route {route.routeNumber} ({route.id}) - Eco-Aide: {route.ecoAide}
+            Route {route.routeDisplayNumber}
+            {" • "}
+            Eco-Aide: {route.assignedEcoAideId ?? "Unassigned"}
           </p>
         </div>
 
@@ -49,7 +51,9 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onAssign}
-          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
+          disabled
+          title="Eco-Aide Assignment is coming soon"
+          className="cursor-not-allowed rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand opacity-50"
         >
           Assign Eco-Aide
         </button>
