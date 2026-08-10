@@ -26,6 +26,7 @@ export type CollectionDay =
 export interface Route {
   id: string;
   routeNumber: number;
+  routeDisplayNumber: string;
   name: string;
   barangay: string;
   waypoints: string;
@@ -36,4 +37,5 @@ export interface Route {
   stops: number;
   routeType: string;
   assignedEcoAideId: string | null;
+  assignedTruckId: string | null;
 }

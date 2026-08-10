@@ -24,7 +24,7 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[260px] flex-col border-r border-[#0f2417] bg-[#072217] transition-transform duration-200 ease-out md:static md:z-auto md:w-[200px] md:min-w-[200px] md:translate-x-0 ${
+      className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[260px] flex-col border-r border-[#0f2417] bg-brand-dark transition-transform duration-200 ease-out md:static md:z-auto md:w-[200px] md:min-w-[200px] md:translate-x-0 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
@@ -60,23 +60,39 @@ export function AdminSidebar({
 
       <nav className="flex-1 overflow-y-auto py-3">
         {adminNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={onClose}
-            className={({ isActive }) =>
-              `
-                flex w-full items-center px-4 py-2.5 text-sm transition-colors
-                ${
-                  isActive
-                    ? "bg-[#2a5c38] text-white"
-                    : "text-green-200 hover:bg-[#224a2d] hover:text-white"
-                }
-              `
-            }
-          >
-            <span>{item.label}</span>
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              onClick={onClose}
+              className="block"
+            >
+            {({ isActive }) => (
+              <div
+                className={`
+                  relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors
+                  ${
+                    isActive
+                      ? "bg-accent-dark text-white"
+                      : "text-green-200 hover:bg-[#224a2d] hover:text-white"
+                  }
+                `}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 h-full w-1 bg-accent-light" />
+                )}
+
+                {item.icon && (
+                  <img
+                    src={item.icon}
+                    alt=""
+                    className="h-5 w-5 shrink-0"
+                  />
+                )}
+
+                <span>{item.label}</span>
+              </div>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -91,13 +107,13 @@ export function AdminSidebar({
           <p className="truncate text-[10px] text-white">{user.unitId}</p>
         </div>
 
-        <NavLink
-          to="/admin/settings"
-          onClick={onClose}
-          className="text-green-300 hover:text-white"
-          aria-label="Settings"
-        >
-          <span className="text-xs">⚙</span>
+          <NavLink
+            to="/admin/settings"
+            onClick={onClose}
+            aria-label="Settings"
+            className="transition-opacity hover:opacity-80"
+          >
+          <span className="text-lg text-white">⚙</span>
         </NavLink>
       </div>
     </aside>

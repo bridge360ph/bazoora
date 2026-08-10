@@ -1,4 +1,5 @@
 import React from "react";
+import { HamburgerMenuIcon } from "@bazoora/ui";
 
 interface NavbarProps {
   title: string;
@@ -19,25 +20,18 @@ const Navbar: React.FC<NavbarProps> = ({
   avatarInitials = "",
   onAvatarClick,
 }) => (
-  <header className="flex h-14 items-center border-b border-[#0f2417] bg-[#072217] px-4 sm:px-5">
+  <header className="flex h-14 items-center border-b border-[#0f2417] bg-brand-dark px-4 sm:px-5">
     <button
       type="button"
       onClick={onMenuToggle}
       className="mr-3 text-green-200 transition-colors hover:text-white md:hidden"
       aria-label="Toggle menu"
     >
-      <svg
+      <img
+        src={HamburgerMenuIcon}
+        alt=""
         className="h-5 w-5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-      >
-        <line x1="3" y1="6" x2="21" y2="6" />
-        <line x1="3" y1="12" x2="21" y2="12" />
-        <line x1="3" y1="18" x2="21" y2="18" />
-      </svg>
+      />
     </button>
 
     <h1 className="min-w-0 flex-1 truncate text-center text-sm font-semibold tracking-wide text-white">
