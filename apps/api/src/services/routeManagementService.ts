@@ -1,6 +1,7 @@
 import { prisma } from "@bazoora/db";
 import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
+import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 
 type CreateRouteInput = Pick<
@@ -142,20 +143,31 @@ export async function createRoute(
     return null;
   }
 
-  const routeCount = await prisma.route.count();
-
   const stopCount = getStopCount(
     data.waypoints,
   );
 
-  const route = await prisma.route.create({
-    data: {
-      ...data,
-      routeNumber: routeCount + 1,
-      status: "Not Started",
-      stops: stopCount,
+  // routeNumber is unique, so it is issued by the shared counter in the same
+  // transaction as the insert. Deriving it from a row count would hand the
+  // same number to two concurrent creates, and would reissue a used number
+  // once any route is deleted.
+  const route = await prisma.$transaction(
+    async (tx) => {
+      const routeNumber = await getNextSequence(
+        tx,
+        "route",
+      );
+
+      return tx.route.create({
+        data: {
+          ...data,
+          routeNumber,
+          status: "Not Started",
+          stops: stopCount,
+        },
+      });
     },
-  });
+  );
 
   return mapRouteToResponse(route);
 }
