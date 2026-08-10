@@ -19,7 +19,7 @@ export function DriverLayout() {
             className={({ isActive }) =>
               [
                 "flex-1 py-3 text-center text-xs",
-                isActive ? "font-semibold text-[#1a3a2e]" : "text-gray-500",
+                isActive ? "font-semibold text-brand" : "text-gray-500",
               ].join(" ")
             }
           >
