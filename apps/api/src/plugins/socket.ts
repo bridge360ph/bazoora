@@ -1,19 +1,65 @@
-/* eslint-disable */
-import { Server as HttpServer } from "node:http";
+import type { Server as HttpServer } from "node:http";
+
+import type { UserRole } from "@bazoora/db";
 import { Server as SocketIOServer } from "socket.io";
-import { verifyAccessToken } from "../lib/jwt.js";
 
-export let io: SocketIOServer;
+interface SocketAccessTokenPayload {
+  sub: string;
+  role: UserRole;
+}
 
-export function setupSocket(server: HttpServer): SocketIOServer {
-  // Never combine a wildcard origin with credentials. Restrict to an env-derived
-  // allowlist (comma-separated CORS_ORIGIN), defaulting to the local dev origin.
-  const allowedOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+interface ServerToClientEvents {
+  "truck:location": (payload: {
+    truckId: string;
+    lat: number;
+    lng: number;
+    timestamp: string;
+  }) => void;
+}
+
+interface ClientToServerEvents {
+  "truck:subscribe": (payload: { orgId?: unknown }) => void;
+  "truck:unsubscribe": (payload: { orgId?: unknown }) => void;
+}
+
+type InterServerEvents = Record<never, never>;
+
+interface SocketData {
+  userId: string;
+  role: UserRole;
+  organizationId: string;
+}
+
+type VerifySocketAccessToken = (
+  token: string,
+) => SocketAccessTokenPayload;
+
+type BazooraSocketServer = SocketIOServer<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>;
+
+export let io: BazooraSocketServer;
+
+export function setupSocket(
+  server: HttpServer,
+  verifyAccessToken: VerifySocketAccessToken,
+): BazooraSocketServer {
+  const allowedOrigins = (
+    process.env.CORS_ORIGIN ?? "http://localhost:5173"
+  )
     .split(",")
     .map((origin) => origin.replace(/['"]/g, "").trim())
     .filter(Boolean);
 
-  const socketIO = new SocketIOServer(server, {
+  const socketIO = new SocketIOServer<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >(server, {
     cors: {
       origin: allowedOrigins,
       credentials: true,
@@ -22,9 +68,13 @@ export function setupSocket(server: HttpServer): SocketIOServer {
 
   io = socketIO;
 
-  // Middleware for checking handshake tokens
   socketIO.use((socket, next) => {
-    const rawToken = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
+    const handshakeAuth = socket.handshake.auth as
+      | { token?: unknown }
+      | undefined;
+
+    const rawToken = handshakeAuth?.token;
+
     if (typeof rawToken !== "string" || rawToken.length === 0) {
       next(new Error("Missing auth token"));
       return;
@@ -32,9 +82,13 @@ export function setupSocket(server: HttpServer): SocketIOServer {
 
     try {
       const payload = verifyAccessToken(rawToken);
+
       socket.data.userId = payload.sub;
       socket.data.role = payload.role;
-      socket.data.organizationId = payload.organizationId;
+
+      // The database does not yet have an organization model.
+      socket.data.organizationId = "org-1";
+
       next();
     } catch {
       next(new Error("Invalid access token"));
@@ -42,18 +96,26 @@ export function setupSocket(server: HttpServer): SocketIOServer {
   });
 
   socketIO.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id}, User: ${socket.data.userId}`);
-
     socket.on("truck:subscribe", ({ orgId }) => {
+      if (
+        typeof orgId !== "string" ||
+        orgId !== socket.data.organizationId
+      ) {
+        return;
+      }
+
       void socket.join(`org:${orgId}`);
     });
 
     socket.on("truck:unsubscribe", ({ orgId }) => {
-      void socket.leave(`org:${orgId}`);
-    });
+      if (
+        typeof orgId !== "string" ||
+        orgId !== socket.data.organizationId
+      ) {
+        return;
+      }
 
-    socket.on("disconnect", (reason) => {
-      console.log(`Socket disconnected: ${socket.id}, Reason: ${reason}`);
+      void socket.leave(`org:${orgId}`);
     });
   });
 
@@ -67,7 +129,7 @@ export function emitTruckLocation(
     lat: number;
     lng: number;
     timestamp: string;
-  }
+  },
 ): void {
   if (io) {
     io.to(`org:${orgId}`).emit("truck:location", payload);
