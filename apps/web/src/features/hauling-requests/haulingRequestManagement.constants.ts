@@ -1,31 +1,50 @@
-import type { HaulingRequest } from "@bazoora/shared";
-import type { SenderFilterValue } from "./haulingRequestManagement.types.ts";
+import type {
+  HaulingRequestStatus,
+  SenderType,
+  HaulingWasteType,
+} from "@bazoora/shared";
+import type {
+  SenderFilterValue,
+  WasteTypeFilterValue,
+} from "./haulingRequestManagement.types.ts";
 
-// Maps the backend status enum to the label StatusBadge expects
-export const STATUS_DISPLAY: Record<HaulingRequest["status"], string> = {
+export const STATUS_DISPLAY = {
   PENDING: "Pending",
   APPROVED: "Approved",
   DENIED: "Denied",
-};
+} satisfies Record<HaulingRequestStatus, string>;
 
-export const WASTE_TYPE_DISPLAY: Record<
-  HaulingRequest["wasteType"],
-  string
-> = {
+export const SENDER_DISPLAY = {
+  RESIDENT: "Resident",
+  BUSINESS: "Business",
+} satisfies Record<SenderType, string>;
+
+export const WASTE_TYPE_DISPLAY = {
   RESIDUAL: "Residual",
   NON_BIODEGRADABLE: "Non-Biodegradable",
   HAZARDOUS: "Hazardous",
   BIODEGRADABLE: "Biodegradable",
-};
+} satisfies Record<HaulingWasteType, string>;
 
 export const SENDER_FILTER_OPTIONS: {
   label: string;
   value: SenderFilterValue;
 }[] = [
-  { label: "All", value: "All" },
+  { label: "All", value: "ALL" },
   { label: "Residents", value: "RESIDENT" },
   { label: "Business", value: "BUSINESS" },
 ];
 
-// Client-side pagination only; backend returns the full array
+export const WASTE_TYPE_FILTER_OPTIONS: {
+  label: string;
+  value: WasteTypeFilterValue;
+}[] = [
+  { label: "All", value: "ALL" },
+  { label: "Residual", value: "RESIDUAL" },
+  { label: "Non-Biodegradable", value: "NON_BIODEGRADABLE" },
+  { label: "Hazardous", value: "HAZARDOUS" },
+  { label: "Biodegradable", value: "BIODEGRADABLE" },
+];
+
+// Client-side pagination only; backend returns the full array.
 export const HAULING_REQUESTS_PAGE_SIZE = 7;
