@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { apiClient } from "@/lib/api-client";
 import {
   notificationSchema as pickupNotificationSchema,
@@ -6,86 +5,146 @@ import {
   type Notification as PickupNotification,
 } from "./schemas";
 
-const envelope = <T extends z.ZodType>(data: T) =>
-  z.object({
-    success: z.literal(true),
-    data,
-  });
+export interface AdminNotification {
+  id: string;
+  type: string;
+  audience: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  totalRecipients: number;
+  totalReads: number;
+  readRate: number;
+}
 
-/* ── Super Admin / System Notifications ───────────────────────────────────── */
+export interface NotificationPayload {
+  type: string;
+  audience: string;
+  title: string;
+  message: string;
+}
 
-const systemNotificationTypeSchema = z.enum(["Select Type", "Info", "Alert", "Announcement"]);
-const systemNotificationTargetAudienceSchema = z.enum([
-  "Select Type",
-  "All Users",
-  "Citizens",
-  "Drivers",
-  "Specific Role/Organization",
-]);
+interface AdminNotificationListResponse {
+  success: true;
+  data: AdminNotification[];
+}
 
-const systemNotificationSchema = z.object({
-  id: z.string(),
-  type: systemNotificationTypeSchema,
-  targetAudience: systemNotificationTargetAudienceSchema,
-  title: z.string().default(""),
-  message: z.string().default(""),
-});
+interface AdminNotificationCreateResponse {
+  success: true;
+  data: {
+    id: string;
+    type: string;
+    audience: string;
+    title: string;
+    message: string;
+    createdAt: string;
+    totalRecipients: number;
+  };
+}
 
-const systemNotificationListSchema = envelope(z.array(systemNotificationSchema));
-const systemNotificationResponseSchema = envelope(systemNotificationSchema);
+interface ResidentNotification {
+  receiptId: string;
+  notificationId: string;
+  type: string;
+  audience: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+}
 
-export type NotificationType = z.infer<typeof systemNotificationTypeSchema>;
-export type NotificationTargetAudience = z.infer<typeof systemNotificationTargetAudienceSchema>;
-export type Notification = z.infer<typeof systemNotificationSchema>;
-export type NotificationPayload = Omit<Notification, "id">;
+interface ResidentNotificationListResponse {
+  success: true;
+  data: ResidentNotification[];
+}
 
 export const notificationsApi = {
-  getNotifications: async (type?: string, search?: string): Promise<Notification[]> => {
-    const params = new URLSearchParams();
-    if (type) params.set("type", type);
-    if (search) params.set("search", search);
-    const query = params.toString();
+  async getNotifications(_type?: string, _search?: string) {
+    const response =
+      await apiClient.get<AdminNotificationListResponse>("/notifications");
 
-    const response = await apiClient.get<unknown>(`/notifications${query ? `?${query}` : ""}`);
-    return systemNotificationListSchema.parse(response.data).data;
+    return response.data.data;
   },
 
-  createNotification: async (payload: NotificationPayload): Promise<Notification> => {
-    const response = await apiClient.post<unknown>("/notifications/", payload);
-    return systemNotificationResponseSchema.parse(response.data).data;
+  async createNotification(payload: NotificationPayload) {
+    const response =
+      await apiClient.post<AdminNotificationCreateResponse>(
+        "/notifications",
+        payload,
+      );
+
+    return response.data.data;
   },
 };
 
-/* ── Resident / Driver / Eco-Aide Real-Time Pickup Notifications ─────────── */
+export async function listNotifications() {
+  const response =
+    await apiClient.get<ResidentNotificationListResponse>(
+      "/notifications/me",
+    );
 
-const pickupNotificationListSchema = envelope(z.array(pickupNotificationSchema));
-const pickupNotificationSingleSchema = envelope(pickupNotificationSchema);
-const pickupNotificationNullableSchema = envelope(pickupNotificationSchema.nullable());
-
-export async function listNotifications(): Promise<PickupNotification[]> {
-  const { data } = await apiClient.get<unknown>("/notifications");
-  return pickupNotificationListSchema.parse(data).data;
+  return response.data.data;
 }
 
 export async function getLatestNotification(
-  residentId: string,
+  _residentId: string,
 ): Promise<PickupNotification | null> {
-  const { data } = await apiClient.get<unknown>(`/notifications/${residentId}/latest`);
-  return pickupNotificationNullableSchema.parse(data).data;
+  return null;
 }
 
-export async function markNotificationRead(id: string): Promise<PickupNotification> {
-  const { data } = await apiClient.patch<unknown>(`/notifications/${id}/read`);
-  return pickupNotificationSingleSchema.parse(data).data;
+export async function markNotificationRead(receiptId: string) {
+  const response = await apiClient.patch(
+    `/notifications/me/${receiptId}/read`,
+  );
+
+  return response.data;
 }
 
-export async function markAllNotificationsRead(residentId: string): Promise<void> {
-  await apiClient.patch(`/notifications/resident/${residentId}/read-all`);
+export async function markAllNotificationsRead(_residentId: string) {
+  const notifications = await listNotifications();
+  const unread = notifications.filter(
+    (notification) => notification.readAt === null,
+  );
+
+  await Promise.all(
+    unread.map((notification) =>
+      markNotificationRead(notification.receiptId),
+    ),
+  );
 }
 
 export async function createPickupNotification(
   input: CreateNotificationInput,
 ): Promise<PickupNotification> {
-  const { data } = await apiClient.post<unknown>("/notifications", input);
-  return pickupNotificationSingleSchema.parse(data).data;
+  const parsedInput = input;
+
+  const response = await apiClient.post(
+    "/notifications",
+    {
+      type: "Collection Notice",
+      audience: "Residents",
+      title: "Pickup Completed",
+      message: parsedInput.message,
+    },
+  );
+
+  const now = new Date().toISOString();
+
+  return pickupNotificationSchema.parse({
+    id: response.data.data.id,
+    residentId: parsedInput.residentId,
+    driverType: parsedInput.driverType,
+    driverId: parsedInput.driverId,
+    pickupLocation: parsedInput.pickupLocation,
+    message: parsedInput.message,
+    status: "picked_up",
+    read: false,
+    createdAt: now,
+    updatedAt: now,
+  });
 }

@@ -8,6 +8,7 @@ import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
+import { notificationRoutes } from "./routes/notificationRoutes.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
@@ -45,6 +46,10 @@ const start = async () => {
   
   await app.register(trucksRoutes, {
     prefix: "/trucks",
+  });
+
+  await app.register(notificationRoutes, {
+    prefix: "/notifications",
   });
 
   app.get("/", (): HealthResponse => {
