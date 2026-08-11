@@ -23,10 +23,19 @@ export function getRefreshTokenExpiration(): Date {
 }
 
 export function getRefreshCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // The web app and API run on separate onrender.com subdomains, which are
+  // cross-site (onrender.com is a public suffix). A Lax cookie would not be
+  // sent on the cross-site fetch POSTs to /auth/refresh and /auth/logout, so
+  // in production we need SameSite=None (which requires Secure). Lax is kept
+  // for local dev where both run same-site on localhost.
+  const sameSite: "none" | "lax" = isProduction ? "none" : "lax";
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
+    secure: isProduction,
+    sameSite,
     path: "/auth",
     maxAge: config.refreshTokenDays * 24 * 60 * 60,
   };

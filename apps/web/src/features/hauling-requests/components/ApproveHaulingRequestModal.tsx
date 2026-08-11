@@ -10,6 +10,7 @@ interface ApproveHaulingRequestModalProps {
   onClose: () => void;
   onConfirm: (requestId: string) => void;
   isSubmitting: boolean;
+  errorMessage?: string;
 }
 
 /**
@@ -27,6 +28,7 @@ export function ApproveHaulingRequestModal({
   onClose,
   onConfirm,
   isSubmitting,
+  errorMessage,
 }: ApproveHaulingRequestModalProps) {
   // Static placeholder — TODO: replace once a GET /eco-aides endpoint exists.
   const [ecoAideStub] = useState("Ferdinan Ramos (RT-001)");
@@ -47,6 +49,12 @@ export function ApproveHaulingRequestModal({
             <option>{ecoAideStub}</option>
           </select>
         </div>
+
+        {errorMessage !== undefined && errorMessage !== "" && (
+          <p role="alert" className="text-sm text-red-600">
+            {errorMessage}
+          </p>
+        )}
 
         <div className="flex justify-center gap-3 pt-2">
           <Button

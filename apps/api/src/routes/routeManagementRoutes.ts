@@ -1,8 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
-import type {
-  UpdateRouteStatusRequest,
-} from "@bazoora/shared";
+import type { UpdateRouteStatusRequest } from "@bazoora/shared";
 
 import {
   authGuard,
@@ -65,12 +63,12 @@ export function routeManagementRoutes(
         requireRole(...routeReadRoles),
       ],
     },
-    (request, reply) => {
+    async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
 
-      const route = getRouteById(id);
+      const route = await getRouteById(id);
 
       if (!route) {
         return reply.status(404).send({
@@ -91,17 +89,24 @@ export function routeManagementRoutes(
         requireRole(...routeAdminRoles),
       ],
     },
-    (request, reply) => {
+    async (request, reply) => {
       const body = request.body as CreateRouteBody;
-      const route = createRoute(body);
 
-      if (!route) {
-        return reply.status(409).send({
-          message: "Route already exists",
+      try {
+        const route = await createRoute(body);
+
+        if (!route) {
+          return reply.status(409).send({
+            message: "Route already exists",
+          });
+        }
+
+        return reply.send(route);
+      } catch (error) {
+        return reply.status(400).send({
+          message: (error as Error).message,
         });
       }
-
-      return reply.send(route);
     },
   );
 
@@ -114,7 +119,7 @@ export function routeManagementRoutes(
         requireRole(...routeAdminRoles),
       ],
     },
-    (request, reply) => {
+    async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
@@ -122,7 +127,10 @@ export function routeManagementRoutes(
       const { status } =
         request.body as UpdateRouteStatusRequest;
 
-      const route = updateRouteStatus(id, status);
+      const route = await updateRouteStatus(
+        id,
+        status,
+      );
 
       if (!route) {
         return reply.status(404).send({
@@ -137,27 +145,40 @@ export function routeManagementRoutes(
   app.patch(
     "/:id",
     {
-      schema: updateRouteSchema,
+      schema: {
+        ...routeManagementParamsSchema,
+        ...updateRouteSchema,
+      },
       preHandler: [
         authGuard,
         requireRole(...routeAdminRoles),
       ],
     },
-    (request, reply) => {
+    async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
 
       const body = request.body as UpdateRouteBody;
-      const route = updateRoute(id, body);
 
-      if (!route) {
-        return reply.status(404).send({
-          message: "Route not found",
+      try {
+        const route = await updateRoute(
+          id,
+          body,
+        );
+
+        if (!route) {
+          return reply.status(404).send({
+            message: "Route not found",
+          });
+        }
+
+        return reply.send(route);
+      } catch (error) {
+        return reply.status(400).send({
+          message: (error as Error).message,
         });
       }
-
-      return reply.send(route);
     },
   );
 }
