@@ -1,23 +1,12 @@
-import type { Route } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { generateRouteNumber } from "../lib/displayId.js";
+import { routeEcoAideInclude } from "./routeIncludes.js";
 
-/*
- * Future mapper updates:
- *
- * - Format routeNumber for UI:
- *   RT-001, RT-002, etc.
- *
- * - Replace internal IDs with display values:
- *   assignedEcoAideId -> ecoAideName
- *   assignedTruckId -> truckPlateNumber
- *
- * - Map related data from Prisma includes:
- *   assignedEcoAide, assignedTruck
- */
+type RouteWithRelations = Prisma.RouteGetPayload<{
+  include: typeof routeEcoAideInclude;
+}>;
 
-export function mapRouteToResponse(
-  route: Route,
-) {
+export function mapRouteToResponse(route: RouteWithRelations) {
   return {
     ...route,
     routeDisplayNumber: generateRouteNumber(route.routeNumber),

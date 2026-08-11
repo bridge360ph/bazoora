@@ -1,5 +1,6 @@
 import type { Route } from "@bazoora/shared";
 import { RouteStatusPill } from "./RouteStatusPill";
+import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
 
 interface RouteCardProps {
   route: Route;
@@ -10,14 +11,14 @@ interface RouteCardProps {
 
 export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
   return (
-    <article className="mb-3 rounded-xl bg-brand p-4">
+    <article className="mb-3 rounded-xl bg-brand-dark p-4">
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-white">{route.name}</h2>
           <p className="mt-0.5 text-xs text-white/60">
             Route {route.routeDisplayNumber}
             {" • "}
-            Eco-Aide: {route.assignedEcoAideId ?? "Unassigned"}
+            Eco-Aide: {formatAssignedEcoAide(route.assignedEcoAide)}
           </p>
         </div>
 
@@ -51,9 +52,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onAssign}
-          disabled
-          title="Eco-Aide Assignment is coming soon"
-          className="cursor-not-allowed rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand opacity-50"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           Assign Eco-Aide
         </button>

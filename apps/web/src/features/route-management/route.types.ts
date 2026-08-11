@@ -18,4 +18,5 @@ export interface RouteFormValue {
   collectionDay: CollectionDay;
   startTime: string;
   routeType: string;
+  assignedEcoAideId: string | null;
 }

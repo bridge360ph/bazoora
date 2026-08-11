@@ -3,6 +3,7 @@ import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
+import { routeEcoAideInclude } from "../lib/routeIncludes.js";
 
 type CreateRouteInput = Pick<
   Route,
@@ -13,7 +14,8 @@ type CreateRouteInput = Pick<
   | "collectionDay"
   | "startTime"
   | "routeType"
->;
+> &
+  Partial<Pick<Route, "assignedEcoAideId">>;
 
 type UpdateRouteInput = Partial<
   Pick<
@@ -25,6 +27,7 @@ type UpdateRouteInput = Partial<
     | "collectionDay"
     | "startTime"
     | "routeType"
+    | "assignedEcoAideId"
   >
 >;
 
@@ -103,6 +106,7 @@ export async function getRoutes() {
         routeNumber: "desc",
       },
     ],
+    include: routeEcoAideInclude,
   });
 
   return routes.map(mapRouteToResponse);
@@ -113,6 +117,7 @@ export async function getRouteById(id: string) {
     where: {
       id,
     },
+    include: routeEcoAideInclude,
   });
 
   if (!route) {
@@ -165,6 +170,7 @@ export async function createRoute(
           status: "Not Started",
           stops: stopCount,
         },
+        include: routeEcoAideInclude,
       });
     },
   );
@@ -220,7 +226,11 @@ export async function updateRoute(
         ...(data.routeType !== undefined && {
           routeType: data.routeType,
         }),
+        ...(data.assignedEcoAideId !== undefined && {
+          assignedEcoAideId: data.assignedEcoAideId,
+        }),
       },
+      include: routeEcoAideInclude,
     });
 
   return mapRouteToResponse(route);
@@ -250,6 +260,7 @@ export async function updateRouteStatus(
       data: {
         status,
       },
+      include: routeEcoAideInclude,
     });
 
   return mapRouteToResponse(route);

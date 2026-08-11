@@ -9,6 +9,7 @@ type RouteFormMode = "create" | "edit";
 interface RouteFormModalProps {
   mode: RouteFormMode;
   route?: Route;
+  routes: Route[];
   formValue: RouteFormValue;
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
   onSave: () => void;
@@ -20,6 +21,7 @@ interface RouteFormModalProps {
 export function RouteFormModal({
   mode,
   route,
+  routes,
   formValue,
   setFormValue,
   onSave,
@@ -59,8 +61,16 @@ export function RouteFormModal({
     onSave();
   }
 
+  function handleClose() {
+    if (isSubmitting) {
+      return;
+    }
+
+    onClose();
+  }
+
   return (
-    <Modal title={title} onClose={onClose} width={560}>
+    <Modal title={title} onClose={handleClose} width={560}>
       {errorMessage && (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       )}
@@ -68,18 +78,20 @@ export function RouteFormModal({
       <RouteEntryForm
         formValue={formValue}
         setFormValue={setFormValue}
+        routes={routes}
+        editingRouteId={route?.id}
       />
 
       {!isFormValid && (
         <p className="mt-3 text-sm text-gray-500">
-          Please fill out all required fields.
+          {validationError}
         </p>
       )}
 
       <ModalFooter
         saveLabel={saveLabel}
         onSave={handleSave}
-        onClose={onClose}
+        onClose={handleClose}
         saveDisabled={!isFormValid || isSubmitting}
       />
     </Modal>

@@ -1,12 +1,16 @@
 import type { Dispatch, SetStateAction } from "react";
 import { FormField } from "@bazoora/ui";
-import type { WasteType, CollectionDay } from "@bazoora/shared";
+import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
 import type { RouteFormValue } from "../route.types.ts";
+import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
+import { getAvailableEcoAides } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteEntryFormProps {
   formValue: RouteFormValue;
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
+  routes: Route[];
+  editingRouteId?: string;
 }
 
 /**
@@ -62,7 +66,12 @@ export function getRouteFormValidationError(
  * NOTE: `FormField` is assumed to be added to @bazoora/ui - it is not
  * route-specific and has no reason to live in this feature folder.
  */
-export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps) {
+export function RouteEntryForm({
+  formValue,
+  setFormValue,
+  routes,
+  editingRouteId,
+}: RouteEntryFormProps) {
 
   function updateField<Key extends keyof RouteFormValue>(
     key: Key,
@@ -74,6 +83,17 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
     }));
   }
 
+  const {
+    ecoAides,
+    isLoading: ecoAidesLoading,
+    isError: ecoAidesErrored,
+  } = useEcoAideOptions();
+
+  const availableEcoAides = getAvailableEcoAides(
+    ecoAides,
+    routes,
+    editingRouteId,
+  );
   // Only flag a field once the user has put something in it — an empty,
   // untouched form shouldn't open with validation errors already showing.
   const showNameError =
@@ -181,6 +201,45 @@ export function RouteEntryForm({ formValue, setFormValue }: RouteEntryFormProps)
           />
         </FormField>
       </div>
+
+      <FormField label="Eco-Aide">
+        {ecoAidesErrored ? (
+          <p className="text-sm text-red-600">
+            Failed to load Eco-Aides. Please try again.
+          </p>
+        ) : ecoAidesLoading ? (
+          <p className="text-sm text-gray-500">Loading Eco-Aides…</p>
+        ) : ecoAides.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No Eco-Aides exist yet.
+          </p>
+        ) : availableEcoAides.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            All Eco-Aides are already assigned to other routes.
+          </p>
+        ) : (
+          <select
+            value={formValue.assignedEcoAideId ?? ""}
+            onChange={(event) => {
+              updateField("assignedEcoAideId", event.target.value || null);
+            }}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            <option value="">Unassigned</option>
+            {availableEcoAides.map((ecoAide) => (
+              <option key={ecoAide.id} value={ecoAide.id}>
+                {ecoAide.userNumber} - {ecoAide.name}
+              </option>
+            ))}
+          </select>
+        )}
+      </FormField>
+
+      <FormField label="Fleet Assignment">
+        <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+          Fleet assignment will be available in a follow-up PR.
+        </div>
+      </FormField>
     </div>
   );
 }

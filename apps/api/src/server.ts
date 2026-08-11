@@ -7,6 +7,7 @@ import type { HealthResponse } from "@bazoora/shared";
 import { setupSocket } from "./plugins/socket.js";
 import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
+import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
@@ -40,6 +41,10 @@ const start = async () => {
   });
 
   await app.register(routeManagementRoutes, {
+    prefix: "/routes",
+  });
+
+  await app.register(routeAssignmentRoutes, {
     prefix: "/routes",
   });
   

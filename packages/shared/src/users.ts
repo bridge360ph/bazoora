@@ -14,5 +14,7 @@
 
 export interface UserSummary {
   id: string;
+  /** Display ID such as EA-001. Normalized by the API, never null here. */
+  userNumber: string;
   name: string;
 }
