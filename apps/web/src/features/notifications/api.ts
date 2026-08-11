@@ -1,8 +1,7 @@
 import { apiClient } from "@/lib/api-client";
-import {
-  notificationSchema as pickupNotificationSchema,
-  type CreateNotificationInput,
-  type Notification as PickupNotification,
+import type {
+  CreateNotificationInput,
+  Notification as PickupNotification,
 } from "./schemas";
 
 export interface AdminNotification {
@@ -119,32 +118,7 @@ export async function markAllNotificationsRead(_residentId: string) {
 }
 
 export async function createPickupNotification(
-  input: CreateNotificationInput,
+  _input: CreateNotificationInput,
 ): Promise<PickupNotification> {
-  const parsedInput = input;
-
-  const response = await apiClient.post(
-    "/notifications",
-    {
-      type: "Collection Notice",
-      audience: "Residents",
-      title: "Pickup Completed",
-      message: parsedInput.message,
-    },
-  );
-
-  const now = new Date().toISOString();
-
-  return pickupNotificationSchema.parse({
-    id: response.data.data.id,
-    residentId: parsedInput.residentId,
-    driverType: parsedInput.driverType,
-    driverId: parsedInput.driverId,
-    pickupLocation: parsedInput.pickupLocation,
-    message: parsedInput.message,
-    status: "picked_up",
-    read: false,
-    createdAt: now,
-    updatedAt: now,
-  });
+  throw new Error("Pickup notification backend is not implemented.");
 }
