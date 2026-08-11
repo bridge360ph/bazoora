@@ -1,3 +1,14 @@
+import {
+  DashboardIcon,
+  EcoAideIcon,
+  FleetManagementIcon,
+  RouteManagementIcon,
+  HaulingRequestManagementIcon,
+  AnalyticsIcon,
+  NotificationsIcon,
+  SettingsIcon,
+} from "@bazoora/ui";
+
 // Central nav configs. Add a screen here + a matching <Route> in App.tsx.
 export interface NavItem {
   to: string;
@@ -5,17 +16,51 @@ export interface NavItem {
 
   /** true for the index route so it isn't marked active on every child path */
   end?: boolean;
+  icon?: string;
 }
 
 export const adminNavItems: NavItem[] = [
-  { to: "/admin", label: "Dashboard", end: true },
-  { to: "/admin/eco-aides", label: "Eco-Aide Management" },
-  { to: "/admin/fleet", label: "Fleet Management" },
-  { to: "/admin/routes", label: "Route Management" },
-  { to: "/admin/hauling", label: "Hauling Request Management" },
-  { to: "/admin/analytics", label: "Analytics" },
-  { to: "/admin/notifications", label: "Notifications" },
-  { to: "/admin/settings", label: "Settings" },
+  {
+    to: "/admin",
+    label: "Dashboard",
+    end: true,
+    icon: DashboardIcon,
+  },
+  {
+    to: "/admin/eco-aides",
+    label: "Eco-Aide Management",
+    icon: EcoAideIcon,
+  },
+  {
+    to: "/admin/fleet",
+    label: "Fleet Management",
+    icon: FleetManagementIcon,
+  },
+  {
+    to: "/admin/routes",
+    label: "Route Management",
+    icon: RouteManagementIcon,
+  },
+  {
+    to: "/admin/hauling",
+    label: "Hauling Request Management",
+    icon: HaulingRequestManagementIcon,
+  },
+  {
+    to: "/admin/analytics",
+    label: "Analytics",
+    icon: AnalyticsIcon,
+  },
+  {
+    to: "/admin/notifications",
+    label: "Notifications",
+    icon: NotificationsIcon,
+  },
+  {
+    to: "/admin/settings",
+    label: "Settings",
+    icon: SettingsIcon,
+  },
 ];
 
 export const driverNavItems: NavItem[] = [

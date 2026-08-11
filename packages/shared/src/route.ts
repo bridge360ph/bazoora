@@ -23,9 +23,16 @@ export type CollectionDay =
   | "Friday"
   | "Saturday";
 
+export interface AssignedEcoAide {
+  id: string;
+  name: string | null;
+  userNumber: string | null;
+}
+
 export interface Route {
   id: string;
   routeNumber: number;
+  routeDisplayNumber: string;
   name: string;
   barangay: string;
   waypoints: string;
@@ -34,6 +41,20 @@ export interface Route {
   startTime: string;
   status: RouteStatus;
   stops: number;
+  routeType: string;
+
+  assignedEcoAideId: string | null;
+  assignedEcoAide: AssignedEcoAide | null;
+  assignedTruckId: string | null;
+}
+
+export interface RouteFormValue {
+  name: string;
+  barangay: string;
+  waypoints: string;
+  wasteType: WasteType;
+  collectionDay: CollectionDay;
+  startTime: string;
   routeType: string;
   assignedEcoAideId: string | null;
 }

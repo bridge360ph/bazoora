@@ -1,17 +1,21 @@
 import type { HaulingRequest } from "@bazoora/shared";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+import { apiClient } from "@/lib/api-client";
+import { toHaulingRequestError } from "./haulingRequestError";
 
 // PATCH /hauling-requests/:id/approve
 export async function approveHaulingRequest(
   requestId: string,
 ): Promise<HaulingRequest> {
-  const res = await fetch(
-    `${API_URL}/hauling-requests/${requestId}/approve`,
-    { method: "PATCH" },
-  );
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
+  try {
+    const { data } = await apiClient.patch<HaulingRequest>(
+      `/hauling-requests/${requestId}/approve`,
+    );
+    return data;
+  } catch (error) {
+    throw toHaulingRequestError(
+      error,
+      "Failed to approve request",
+    );
   }
-  return (await res.json()) as HaulingRequest;
 }

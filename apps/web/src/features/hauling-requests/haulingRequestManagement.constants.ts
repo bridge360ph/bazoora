@@ -1,11 +1,21 @@
 import type { HaulingRequest } from "@bazoora/shared";
 import type { SenderFilterValue } from "./haulingRequestManagement.types.ts";
 
-// Maps the lowercase backend status to the label StatusBadge expects
+// Maps the backend status enum to the label StatusBadge expects
 export const STATUS_DISPLAY: Record<HaulingRequest["status"], string> = {
-  pending: "Pending",
-  approved: "Approved",
-  denied: "Denied",
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  DENIED: "Denied",
+};
+
+export const WASTE_TYPE_DISPLAY: Record<
+  HaulingRequest["wasteType"],
+  string
+> = {
+  RESIDUAL: "Residual",
+  NON_BIODEGRADABLE: "Non-Biodegradable",
+  HAZARDOUS: "Hazardous",
+  BIODEGRADABLE: "Biodegradable",
 };
 
 export const SENDER_FILTER_OPTIONS: {
@@ -13,8 +23,8 @@ export const SENDER_FILTER_OPTIONS: {
   value: SenderFilterValue;
 }[] = [
   { label: "All", value: "All" },
-  { label: "Residents", value: "Resident" },
-  { label: "Business", value: "Business" },
+  { label: "Residents", value: "RESIDENT" },
+  { label: "Business", value: "BUSINESS" },
 ];
 
 // Client-side pagination only; backend returns the full array

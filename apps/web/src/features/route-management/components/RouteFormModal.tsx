@@ -1,38 +1,40 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Modal, ModalFooter } from "@bazoora/ui";
-import type { Route, RouteFormValue } from "../route.types";
-import { RouteEntryForm } from "./RouteEntryForm";
+import type { Route } from "@bazoora/shared";
+import type { RouteFormValue } from "../route.types.ts";
+import { RouteEntryForm, getRouteFormValidationError } from "./RouteEntryForm";
 
 type RouteFormMode = "create" | "edit";
 
 interface RouteFormModalProps {
   mode: RouteFormMode;
   route?: Route;
+  routes: Route[];
   formValue: RouteFormValue;
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
   onSave: () => void;
   onClose: () => void;
   isSubmitting?: boolean;
+  errorMessage?: string | null;
 }
 
-/**
- * Handles both "Create Route" and "Edit Route" - the two only ever differed
- * by title and save-button label, so they share one modal instead of two
- * near-identical files.
- *
- * NOTE: `ModalFooter` is assumed to be added to @bazoora/ui - it is not
- * route-specific and has no reason to live in this feature folder.
- */
 export function RouteFormModal({
   mode,
   route,
+  routes,
   formValue,
   setFormValue,
   onSave,
   onClose,
   isSubmitting = false,
+  errorMessage = null,
 }: RouteFormModalProps) {
-  const title = mode === "create" ? "Create Route" : `Edit Route for ${route?.id}`;
+  const title =
+    mode === "create"
+      ? "Create Route"
+      : route
+        ? `Edit Route ${route.routeDisplayNumber}`
+        : "Edit Route";
 
   const saveLabel =
     mode === "create"
@@ -43,10 +45,55 @@ export function RouteFormModal({
         ? "Saving..."
         : "Save";
 
+  const validationError = getRouteFormValidationError(formValue);
+  const isFormValid = validationError === null;
+
+  function handleSave() {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (validationError) {
+      alert(validationError);
+      return;
+    }
+
+    onSave();
+  }
+
+  function handleClose() {
+    if (isSubmitting) {
+      return;
+    }
+
+    onClose();
+  }
+
   return (
-    <Modal title={title} onClose={onClose} width={560}>
-      <RouteEntryForm formValue={formValue} setFormValue={setFormValue} />
-      <ModalFooter saveLabel={saveLabel} onSave={onSave} onClose={onClose} />
+    <Modal title={title} onClose={handleClose} width={560}>
+      {errorMessage && (
+        <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
+      )}
+
+      <RouteEntryForm
+        formValue={formValue}
+        setFormValue={setFormValue}
+        routes={routes}
+        editingRouteId={route?.id}
+      />
+
+      {!isFormValid && (
+        <p className="mt-3 text-sm text-gray-500">
+          {validationError}
+        </p>
+      )}
+
+      <ModalFooter
+        saveLabel={saveLabel}
+        onSave={handleSave}
+        onClose={handleClose}
+        saveDisabled={!isFormValid || isSubmitting}
+      />
     </Modal>
   );
 }

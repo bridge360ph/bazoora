@@ -26,7 +26,7 @@ export function PaginationControls({
         ‹
       </button>
 
-      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[#1a3a2e] text-sm font-bold text-white">
+      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">
         {page}
       </span>
 

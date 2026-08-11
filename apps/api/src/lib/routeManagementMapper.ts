@@ -1,28 +1,14 @@
-interface RouteRecord {
-  id: string;
-  routeNumber: number;
-  name: string;
-  barangay: string;
-  waypoints: string;
-  wasteType: string;
-  collectionDay: string;
-  startTime: string;
-  status: string;
-}
+import type { Prisma } from "@prisma/client";
+import { generateRouteNumber } from "../lib/displayId.js";
+import { routeEcoAideInclude } from "./routeIncludes.js";
 
+type RouteWithRelations = Prisma.RouteGetPayload<{
+  include: typeof routeEcoAideInclude;
+}>;
 
-export function mapRouteToResponse(
-  route: RouteRecord,
-) {
+export function mapRouteToResponse(route: RouteWithRelations) {
   return {
-    id: route.id,
-    routeNumber: route.routeNumber,
-    name: route.name,
-    barangay: route.barangay,
-    waypoints: route.waypoints,
-    wasteType: route.wasteType,
-    collectionDay: route.collectionDay,
-    startTime: route.startTime,
-    status: route.status,
+    ...route,
+    routeDisplayNumber: generateRouteNumber(route.routeNumber),
   };
 }

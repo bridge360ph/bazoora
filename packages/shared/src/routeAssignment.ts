@@ -11,5 +11,6 @@
  */
 
 export interface AssignEcoAideRequest {
-  ecoAideId: string;
+  /** Null clears the current assignment. */
+  ecoAideId: string | null;
 }

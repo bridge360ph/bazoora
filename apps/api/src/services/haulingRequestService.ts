@@ -1,73 +1,151 @@
-import type {
-  CreateHaulingRequestInput,
-  HaulingRequest,
-} from "@bazoora/shared";
-
-// TODO: replace with @bazoora/db queries once the HaulingRequest model lands (#44)
-const haulingRequests: HaulingRequest[] = [];
+import { prisma } from "@bazoora/db";
+import { HaulingRequestStatus } from "@prisma/client";
+import type { CreateHaulingRequestInput } from "@bazoora/shared";
+import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
+import { generateHaulingRequestNumber } from "../lib/displayId.js";
+import { getNextSequence } from "../lib/counter.js";
 
 /**
- * Get all hauling requests (mock in-memory)
+ * Get all hauling requests
  */
-export function getHaulingRequests() {
-  return haulingRequests;
+export async function getHaulingRequests() {
+  const requests =
+    await prisma.haulingRequest.findMany({
+      where: {
+        archived: false,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+  return requests.map(mapHaulingRequest);
 }
 
 /**
- * Create a new hauling request (mock in-memory)
+ * Create a new hauling request on behalf of the authenticated requester.
  */
-export function createHaulingRequest(
+export async function createHaulingRequest(
   data: CreateHaulingRequestInput,
+  userId: string,
 ) {
-  const request: HaulingRequest = {
-    requestId: crypto.randomUUID(),
-    requestAddress: data.requestAddress,
-    senderType: data.senderType,
-    pickupDate: data.pickupDate,
-    status: "pending",
+  const request = await prisma.$transaction(async (tx) => {
+    const sequence = await getNextSequence(
+      tx,
+      "hauling_request",
+    );
 
-    ...(data.imageUrl !== undefined && {
-      imageUrl: data.imageUrl,
-    }),
+    const requestNumber = generateHaulingRequestNumber(sequence);
 
-    ...(data.note !== undefined && {
-      note: data.note,
-    }),
-  };
+    return tx.haulingRequest.create({
+      data: {
+        requestNumber: requestNumber,
 
-  haulingRequests.push(request);
+        userId,
 
-  return request;
+        orgId: null,
+
+        requestAddress: data.requestAddress,
+
+        senderType: data.senderType,
+
+        wasteType: data.wasteType,
+
+        pickupDate: new Date(data.pickupDate),
+
+        imageUrl: data.imageUrl ?? null,
+
+        note: data.note ?? null,
+
+        status: HaulingRequestStatus.PENDING,
+      },
+    });
+  });
+
+  return mapHaulingRequest(request);
 }
 
 /**
- * Approve a hauling request
+ * Approve a hauling request, recording which admin approved it.
  */
-export function approveHaulingRequest(id: string) {
-  const request = haulingRequests.find(
-    (item) => item.requestId === id,
-  );
+export async function approveHaulingRequest(
+  id: string,
+  approvedBy: string,
+) {
+  const existing =
+    await prisma.haulingRequest.findUnique({
+      where: {
+        requestId: id,
+      },
+    });
 
-  if (!request) {
+  if (!existing) {
     return null;
   }
 
-  request.status = "approved";
-  return request;
+  if (existing.status !== HaulingRequestStatus.PENDING) {
+    throw new Error(
+      "Only pending requests can be approved",
+    );
+  }
+
+  const request =
+    await prisma.haulingRequest.update({
+      where: {
+        requestId: id,
+      },
+      data: {
+        status: HaulingRequestStatus.APPROVED,
+        approvedBy,
+        approvedAt: new Date(),
+      },
+    });
+
+  return mapHaulingRequest(request);
 }
 
 /**
  * Deny a hauling request
  */
-export function denyHaulingRequest(id: string) {
-  const request = haulingRequests.find(
-    (item) => item.requestId === id,
-  );
+export async function denyHaulingRequest(
+  id: string,
+  denialReason: string,
+) {
+  const existing =
+    await prisma.haulingRequest.findUnique({
+      where: {
+        requestId: id,
+      },
+    });
 
-  if (!request) {
+  if (!existing) {
     return null;
   }
 
-  request.status = "denied";
-  return request;
+  if (existing.status !== HaulingRequestStatus.PENDING) {
+    throw new Error(
+      "Only pending requests can be denied",
+    );
+  }
+
+  const trimmedReason = denialReason.trim();
+
+  if (trimmedReason.length > 500) {
+    throw new Error(
+      "Denial reason must not exceed 500 characters",
+    );
+  }
+
+  const request =
+    await prisma.haulingRequest.update({
+      where: {
+        requestId: id,
+      },
+      data: {
+        status: HaulingRequestStatus.DENIED,
+        denialReason: trimmedReason,
+      },
+    });
+
+  return mapHaulingRequest(request);
 }
