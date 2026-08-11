@@ -1,5 +1,6 @@
 import type { Route } from "@bazoora/shared";
 import { RouteStatusPill } from "./RouteStatusPill";
+import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
 
 interface RouteCardProps {
   route: Route;
@@ -17,10 +18,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
           <p className="mt-0.5 text-xs text-white/60">
             Route {route.routeDisplayNumber}
             {" • "}
-            Eco-Aide:{" "}
-            {route.assignedEcoAide
-              ? `${route.assignedEcoAide.name} (${route.assignedEcoAide.userNumber})`
-              : "Unassigned"}
+            Eco-Aide: {formatAssignedEcoAide(route.assignedEcoAide)}
           </p>
         </div>
 
@@ -46,7 +44,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onEdit}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-brand"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           Edit Route
         </button>
@@ -54,7 +52,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onAssign}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-brand"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           Assign Eco-Aide
         </button>
@@ -62,7 +60,7 @@ export function RouteCard({ route, onEdit, onAssign, onView }: RouteCardProps) {
         <button
           type="button"
           onClick={onView}
-          className="rounded-md bg-[#4ade80] px-3.5 py-1.5 text-xs font-semibold text-brand"
+          className="rounded-md bg-brand-accent px-3.5 py-1.5 text-xs font-semibold text-brand"
         >
           View Details
         </button>

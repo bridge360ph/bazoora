@@ -1,10 +1,3 @@
-/*
-  Warnings:
-
-  - A unique constraint covering the columns `[truckNumber]` on the table `Truck` will be added. If there are existing duplicate values, this will fail.
-  - A unique constraint covering the columns `[userNumber]` on the table `User` will be added. If there are existing duplicate values, this will fail.
-
-*/
 -- AlterTable
 ALTER TABLE "Truck" ADD COLUMN     "truckNumber" TEXT;
 

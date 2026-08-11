@@ -45,6 +45,7 @@ export interface Route {
 
   assignedEcoAideId: string | null;
   assignedEcoAide: AssignedEcoAide | null;
+  assignedTruckId: string | null;
 }
 
 export interface RouteFormValue {

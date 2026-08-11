@@ -1,3 +1,5 @@
+import logo from "./icons/logo.svg";
+
 export function Logo({
   className,
   alt = "Logo",
@@ -7,7 +9,7 @@ export function Logo({
 }) {
   return (
     <img
-      src="/assets/logo.svg"
+      src={logo}
       alt={alt}
       className={className}
     />

@@ -2,6 +2,10 @@ import type { FastifyInstance } from "fastify";
 import type { AssignEcoAideRequest } from "@bazoora/shared";
 
 import {
+  authGuard,
+  requireRole,
+} from "../lib/auth.js";
+import {
   assignEcoAide,
   listEcoAideOptions,
   RouteAssignmentError,
@@ -10,6 +14,14 @@ import {
 import {
   assignEcoAideSchema
 } from "../schemas/routeAssignment.schema.js";
+
+// Assignment is an admin action, and the eco-aide option list exists only to
+// populate the admin assignment selector, so both share the same roles.
+const routeAdminRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+] as const;
 
 
 function statusCodeFor(error: unknown): number {
@@ -25,6 +37,12 @@ export function routeAssignmentRoutes(
 
   app.get(
     "/eco-aides",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...routeAdminRoles),
+      ],
+    },
     async (_request, reply) => {
       try {
         return await listEcoAideOptions();
@@ -41,6 +59,10 @@ export function routeAssignmentRoutes(
     "/:id/assign-eco-aide",
     {
       schema: assignEcoAideSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...routeAdminRoles),
+      ],
     },
     async (request, reply) => {
       const { id } = request.params as {

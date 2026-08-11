@@ -5,7 +5,7 @@ import type {
 import type {
   RouteFormValue,
 } from "../route.types.ts";
-import { updateRouteRequest } from "../routeManagementApi";
+import { updateRouteRequest } from "../routeService";
 
 interface UseUpdateRouteVariables {
   routeId: string;

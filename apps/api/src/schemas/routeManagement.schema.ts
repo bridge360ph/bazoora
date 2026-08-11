@@ -18,7 +18,8 @@ export interface CreateRouteBody {
   collectionDay: string;
   startTime: string;
   routeType: string;
-  assignedEcoAideId: string | null;
+  // Optional to match the schema, which does not list it as required.
+  assignedEcoAideId?: string | null;
 }
 
 export interface UpdateRouteBody {
@@ -29,7 +30,7 @@ export interface UpdateRouteBody {
   collectionDay?: string;
   startTime?: string;
   routeType?: string;
-  assignedEcoAideId: string | null;
+  assignedEcoAideId?: string | null;
 }
 
 export const createRouteSchema = {

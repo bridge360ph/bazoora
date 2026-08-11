@@ -1,11 +1,33 @@
+import axios from "axios";
 import type {
   Route,
   AssignEcoAideRequest,
   UserSummary
 } from "@bazoora/shared";
 
-const ROUTES_API_URL = "http://localhost:3000/routes";
+import { apiClient } from "@/lib/api-client";
 
+/**
+ * Route-assignment API calls.
+ *
+ * These go through `apiClient` so every request carries the access token and
+ * can silently refresh once on 401. The assignment endpoints are guarded by
+ * `authGuard` + `requireRole`, so a plain `fetch` would always be rejected.
+ */
+
+function toApiError(error: unknown, fallback: string): Error {
+  if (axios.isAxiosError(error)) {
+    const message = (
+      error.response?.data as { message?: string } | undefined
+    )?.message;
+
+    if (message !== undefined && message !== "") {
+      return new Error(message);
+    }
+  }
+
+  return new Error(fallback);
+}
 
 export async function assignRouteEcoAideRequest(
   routeId: string,
@@ -13,21 +35,16 @@ export async function assignRouteEcoAideRequest(
 ): Promise<Route> {
   const body: AssignEcoAideRequest = { ecoAideId };
 
-  const response = await fetch(`${ROUTES_API_URL}/${routeId}/assign-eco-aide`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to assign Eco-Aide");
+  try {
+    const { data } = await apiClient.patch<Route>(
+      `/routes/${routeId}/assign-eco-aide`,
+      body,
+    );
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Failed to assign Eco-Aide");
   }
-
-  return response.json();
 }
-
 
 /**
  * Fetches all Users with role ECO_AIDE, now absorbed into the Route
@@ -37,13 +54,14 @@ export async function assignRouteEcoAideRequest(
  * can still be shown as the selected value when editing.
  */
 export async function fetchEcoAideUsers(): Promise<UserSummary[]> {
-  const response = await fetch(`${ROUTES_API_URL}/eco-aides`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch Eco-Aides");
+  try {
+    const { data } = await apiClient.get<UserSummary[]>(
+      "/routes/eco-aides",
+    );
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Failed to fetch Eco-Aides");
   }
-
-  return response.json();
 }
 
 /**

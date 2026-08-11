@@ -10,9 +10,12 @@ import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { config } from "./plugins/config.js";
+import { authPlugin } from "./plugins/auth.js";
+import { authRoutes } from "./routes/authRoutes.js";
 
 const app = Fastify({
   logger: true,
+  ignoreTrailingSlash: true,
   ajv: {
     customOptions: {
       removeAdditional: false,
@@ -24,6 +27,13 @@ const start = async () => {
   await app.register(cors, {
     origin: config.corsOrigin,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  });
+
+  await app.register(authPlugin);
+
+  await app.register(authRoutes, {
+    prefix: "/auth",
   });
 
   await app.register(haulingRequestRoutes, {
@@ -46,7 +56,10 @@ const start = async () => {
     return { status: "ok" };
   });
 
-  setupSocket(app.server);
+  setupSocket(
+    app.server,
+    (token) => app.jwt.verify(token),
+  );
 
   await app.listen({
     port: config.port,

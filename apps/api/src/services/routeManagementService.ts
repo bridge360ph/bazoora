@@ -1,6 +1,7 @@
 import { prisma } from "@bazoora/db";
 import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
+import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeEcoAideInclude } from "../lib/routeIncludes.js";
 
@@ -13,7 +14,8 @@ type CreateRouteInput = Pick<
   | "collectionDay"
   | "startTime"
   | "routeType"
->;
+> &
+  Partial<Pick<Route, "assignedEcoAideId">>;
 
 type UpdateRouteInput = Partial<
   Pick<
@@ -28,6 +30,7 @@ type UpdateRouteInput = Partial<
     | "assignedEcoAideId"
   >
 >;
+
 
 function validateRouteFields(
   data: Partial<CreateRouteInput>,
@@ -77,6 +80,7 @@ function validateRouteFields(
   }
 }
 
+
 function getStopCount(waypoints: string): number {
   const stops = waypoints
     .split(",")
@@ -123,6 +127,7 @@ export async function getRouteById(id: string) {
   return mapRouteToResponse(route);
 }
 
+
 export async function createRoute(
   data: CreateRouteInput,
 ) {
@@ -143,24 +148,36 @@ export async function createRoute(
     return null;
   }
 
-  const routeCount = await prisma.route.count();
-
   const stopCount = getStopCount(
     data.waypoints,
   );
 
-  const route = await prisma.route.create({
-    data: {
-      ...data,
-      routeNumber: routeCount + 1,
-      status: "Not Started",
-      stops: stopCount,
+  // routeNumber is unique, so it is issued by the shared counter in the same
+  // transaction as the insert. Deriving it from a row count would hand the
+  // same number to two concurrent creates, and would reissue a used number
+  // once any route is deleted.
+  const route = await prisma.$transaction(
+    async (tx) => {
+      const routeNumber = await getNextSequence(
+        tx,
+        "route",
+      );
+
+      return tx.route.create({
+        data: {
+          ...data,
+          routeNumber,
+          status: "Not Started",
+          stops: stopCount,
+        },
+        include: routeEcoAideInclude,
+      });
     },
-    include: routeEcoAideInclude,
-  });
+  );
 
   return mapRouteToResponse(route);
 }
+
 
 export async function updateRoute(
   id: string,
@@ -193,7 +210,9 @@ export async function updateRoute(
         }),
         ...(data.waypoints !== undefined && {
           waypoints: data.waypoints,
-          stops: getStopCount(data.waypoints),
+          stops: getStopCount(
+            data.waypoints,
+          ),
         }),
         ...(data.wasteType !== undefined && {
           wasteType: data.wasteType,
@@ -216,6 +235,7 @@ export async function updateRoute(
 
   return mapRouteToResponse(route);
 }
+
 
 export async function updateRouteStatus(
   id: string,

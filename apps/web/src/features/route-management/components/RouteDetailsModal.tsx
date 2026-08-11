@@ -1,6 +1,8 @@
 import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 
+import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
+
 interface RouteDetailsModalProps {
   route: Route;
   onClose: () => void;
@@ -26,11 +28,7 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
           />
           <DetailItem
             label="Assigned Eco-Aide"
-            value={
-              route.assignedEcoAide
-                ? `${route.assignedEcoAide.name} (${route.assignedEcoAide.userNumber})`
-                : "Unassigned"
-            }
+            value={formatAssignedEcoAide(route.assignedEcoAide)}
           />
           <DetailItem
             label="Fleet Assignment"
