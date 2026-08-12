@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { readCookie, writeCookie } from "../lib/cookies";
+import { deleteCookie, readCookie, writeCookie } from "../lib/cookies";
 
 export type UserRole =
   | "super_admin"
@@ -60,17 +60,6 @@ interface AuthState {
 const AUTH_COOKIE_NAME = "bazoora-auth";
 const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 
-const DEFAULT_MOCK_USER: AuthUser = {
-  id: "usr-mock-resident-1",
-  email: "resident@bazoora.com",
-  firstName: "Jane",
-  lastName: "Smith",
-  role: "resident",
-  organizationId: "org-1",
-};
-
-const DEFAULT_MOCK_TOKEN = "mock-token-resident";
-
 function safeParseAuthCookie(): PersistedAuthState | null {
   const raw = readCookie(AUTH_COOKIE_NAME);
 
@@ -102,9 +91,9 @@ function persistAuthCookie(state: PersistedAuthState): void {
 const initialState = safeParseAuthCookie();
 
 export const useAuthStore = create<AuthState>()((set, get) => ({
-  user: initialState?.user ?? DEFAULT_MOCK_USER,
-  accessToken: initialState?.accessToken ?? DEFAULT_MOCK_TOKEN,
-  rememberMeLoggedIn: initialState?.rememberMeLoggedIn ?? true,
+  user: initialState?.user ?? null,
+  accessToken: initialState?.accessToken ?? null,
+  rememberMeLoggedIn: initialState?.rememberMeLoggedIn ?? false,
   setSession: (user, accessToken, rememberMeLoggedIn = true) => {
     const nextState = { user, accessToken, rememberMeLoggedIn };
     set(nextState);
@@ -122,13 +111,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
   clear: () => {
-    // For the demo simulator, when logging out we just reset to the default resident mock session
-    const resetState = {
-      user: DEFAULT_MOCK_USER,
-      accessToken: DEFAULT_MOCK_TOKEN,
-      rememberMeLoggedIn: true,
-    };
-    set(resetState);
-    persistAuthCookie(resetState);
+    set({ user: null, accessToken: null, rememberMeLoggedIn: false });
+    deleteCookie(AUTH_COOKIE_NAME);
   },
 }));

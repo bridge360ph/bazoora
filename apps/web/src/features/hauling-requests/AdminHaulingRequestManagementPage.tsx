@@ -15,11 +15,13 @@ import { ApproveHaulingRequestModal } from "./components/ApproveHaulingRequestMo
 import { DenyHaulingRequestModal } from "./components/DenyHaulingRequestModal";
 import type {
   ModalMode,
-  SenderFilterValue,
+  SenderTypeValue,
+  WasteTypeValue,
 } from "./haulingRequestManagement.types.ts";
 import {
   HAULING_REQUESTS_PAGE_SIZE,
   STATUS_DISPLAY,
+  WASTE_TYPE_DISPLAY,
 } from "./haulingRequestManagement.constants.ts";
 
 /**
@@ -40,7 +42,14 @@ export function AdminHaulingRequestManagementPage() {
   const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
 
-  const [senderFilter, setSenderFilter] = useState<SenderFilterValue>("All");
+  // Multi-select filters: an empty array means "no filter applied" (show
+  // everything). Selecting one or more values ORs them together within the
+  // same filter, and ANDs across the two filters - see filteredRequests.
+  const [selectedSenders, setSelectedSenders] = useState<SenderTypeValue[]>([]);
+  const [selectedWasteTypes, setSelectedWasteTypes] = useState<
+    WasteTypeValue[]
+  >([]);
+
   const [page, setPage] = useState(1);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedRequest, setSelectedRequest] = useState<HaulingRequest | null>(
@@ -49,9 +58,53 @@ export function AdminHaulingRequestManagementPage() {
 
   const filteredRequests = useMemo(() => {
     if (!requests) return [];
-    if (senderFilter === "All") return requests;
-    return requests.filter((request) => request.senderType === senderFilter);
-  }, [requests, senderFilter]);
+
+    return requests.filter((request) => {
+      const senderMatches =
+        selectedSenders.length === 0 ||
+        selectedSenders.includes(request.senderType);
+
+      const wasteTypeMatches =
+        selectedWasteTypes.length === 0 ||
+        selectedWasteTypes.includes(request.wasteType);
+
+      return senderMatches && wasteTypeMatches;
+    });
+  }, [requests, selectedSenders, selectedWasteTypes]);
+
+  function toggleSender(value: SenderTypeValue) {
+    setPage(1);
+    setSelectedSenders((current) =>
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value],
+    );
+  }
+
+  function toggleWasteType(value: WasteTypeValue) {
+    setPage(1);
+    setSelectedWasteTypes((current) =>
+      current.includes(value)
+        ? current.filter((entry) => entry !== value)
+        : [...current, value],
+    );
+  }
+
+  function clearSenders() {
+    setPage(1);
+    setSelectedSenders([]);
+  }
+
+  function clearWasteTypes() {
+    setPage(1);
+    setSelectedWasteTypes([]);
+  }
+
+  function clearAllFilters() {
+    setPage(1);
+    setSelectedSenders([]);
+    setSelectedWasteTypes([]);
+  }
 
   const totalPages = Math.max(
     1,
@@ -76,18 +129,20 @@ export function AdminHaulingRequestManagementPage() {
     approveMutation.mutate(requestId, { onSuccess: closeModal });
   }
 
-  function handleDeny(requestId: string) {
-    denyMutation.mutate(requestId, { onSuccess: closeModal });
+  function handleDeny(requestId: string, denialReason: string) {
+    denyMutation.mutate(
+      { requestId, denialReason },
+      { onSuccess: closeModal },
+    );
   }
 
   const columns: Column<HaulingRequest>[] = [
     { key: "requestId", header: "Request ID" },
     { key: "requestAddress", header: "Location" },
     {
-      // TODO: `wasteType` not yet on HaulingRequest — backend/Prisma pending.
       key: "wasteType",
       header: "Waste Type",
-      render: () => <span className="text-gray-400">N/A</span>,
+      render: (row) => <span>{WASTE_TYPE_DISPLAY[row.wasteType]}</span>,
     },
     { key: "senderType", header: "Sent By" },
     {
@@ -109,11 +164,13 @@ export function AdminHaulingRequestManagementPage() {
   return (
     <div className="p-6">
       <HaulingRequestFiltersBar
-        senderFilter={senderFilter}
-        onSenderFilterChange={(value) => {
-          setSenderFilter(value);
-          setPage(1);
-        }}
+        selectedSenders={selectedSenders}
+        selectedWasteTypes={selectedWasteTypes}
+        onToggleSender={toggleSender}
+        onClearSenders={clearSenders}
+        onToggleWasteType={toggleWasteType}
+        onClearWasteTypes={clearWasteTypes}
+        onClearAll={clearAllFilters}
       />
 
       {isLoading && (
@@ -152,7 +209,7 @@ export function AdminHaulingRequestManagementPage() {
             >
               ‹
             </button>
-            <span className="w-8 h-8 flex items-center justify-center rounded-full bg-[#1a3a2e] text-white text-sm font-semibold">
+            <span className="w-8 h-8 flex items-center justify-center rounded-full bg-brand text-white text-sm font-semibold">
               {page}
             </span>
             <button
@@ -183,6 +240,11 @@ export function AdminHaulingRequestManagementPage() {
           onClose={closeModal}
           onConfirm={handleApprove}
           isSubmitting={approveMutation.isPending}
+          errorMessage={
+            approveMutation.error instanceof Error
+              ? approveMutation.error.message
+              : undefined
+          }
         />
       )}
 
@@ -192,6 +254,11 @@ export function AdminHaulingRequestManagementPage() {
           onClose={closeModal}
           onConfirm={handleDeny}
           isSubmitting={denyMutation.isPending}
+          errorMessage={
+            denyMutation.error instanceof Error
+              ? denyMutation.error.message
+              : undefined
+          }
         />
       )}
     </div>

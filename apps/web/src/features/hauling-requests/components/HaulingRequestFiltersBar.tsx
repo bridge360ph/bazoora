@@ -1,83 +1,137 @@
-import { useState } from "react";
-import type { SenderFilterValue } from "../haulingRequestManagement.types.ts";
-import { SENDER_FILTER_OPTIONS } from "../haulingRequestManagement.constants.ts";
+import type {
+  SenderTypeValue,
+  WasteTypeValue,
+} from "../haulingRequestManagement.types.ts";
+
+import {
+  SENDER_FILTER_OPTIONS,
+  WASTE_TYPE_FILTER_OPTIONS,
+} from "../haulingRequestManagement.constants.ts";
+
+import { MultiSelectFilterDropdown } from "./MultiSelectFilterDropdown";
 
 interface HaulingRequestFiltersBarProps {
-  senderFilter: SenderFilterValue;
-  onSenderFilterChange: (value: SenderFilterValue) => void;
+  selectedSenders: SenderTypeValue[];
+  selectedWasteTypes: WasteTypeValue[];
+
+  onToggleSender: (value: SenderTypeValue) => void;
+  onClearSenders: () => void;
+
+  onToggleWasteType: (value: WasteTypeValue) => void;
+  onClearWasteTypes: () => void;
+
+  onClearAll: () => void;
+}
+
+function findLabel<T extends string>(
+  options: { label: string; value: T }[],
+  value: T,
+): string {
+  return options.find((option) => option.value === value)?.label ?? value;
 }
 
 /**
- * Filter bar above the Hauling Request table.
- *
- * "Filter by Sender" is fully functional (filters client-side by
- * `senderType`). "Filter by Waste Type" and the Eco-Aide search box are
- * disabled UI stubs matching the Figma layout
- * 
- * TODO: wire these up once the backend exposes `wasteType` and Eco-Aide assignment fields (Prismaschema not finalized yet).
+ * Sender and waste type are client-side multi-select filters.
  */
-
 export function HaulingRequestFiltersBar({
-  senderFilter,
-  onSenderFilterChange,
+  selectedSenders,
+  selectedWasteTypes,
+
+  onToggleSender,
+  onClearSenders,
+  onToggleWasteType,
+  onClearWasteTypes,
+  onClearAll,
 }: HaulingRequestFiltersBarProps) {
-  const [isSenderOpen, setIsSenderOpen] = useState(false);
-  const activeLabel =
-    SENDER_FILTER_OPTIONS.find((o) => o.value === senderFilter)?.label ?? "All";
+  const hasActiveFilters =
+    selectedSenders.length > 0 || selectedWasteTypes.length > 0;
 
   return (
-    <div className="flex items-center gap-3 mb-4">
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsSenderOpen((open) => !open)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a3a2e] text-white text-sm font-medium"
-        >
-          Filter by Sender: {activeLabel}
-          <svg className="w-3 h-3" viewBox="0 0 10 6" fill="currentColor">
-            <path d="M0 0l5 6 5-6H0z" />
-          </svg>
-        </button>
-        {isSenderOpen && (
-          <div className="absolute z-10 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
-            {SENDER_FILTER_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  onSenderFilterChange(option.value);
-                  setIsSenderOpen(false);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="mb-4">
+      <div className="flex items-center gap-3">
+        <MultiSelectFilterDropdown
+          label="Filter by Sender"
+          options={SENDER_FILTER_OPTIONS}
+          allValue="ALL"
+          selectedValues={selectedSenders}
+          onToggleValue={onToggleSender}
+          onClear={onClearSenders}
+        />
+
+        <MultiSelectFilterDropdown
+          label="Filter by Waste Type"
+          options={WASTE_TYPE_FILTER_OPTIONS}
+          allValue="ALL"
+          selectedValues={selectedWasteTypes}
+          onToggleValue={onToggleWasteType}
+          onClear={onClearWasteTypes}
+        />
+
+        {/* TODO: no Eco-Aide assignment field/endpoint yet; backend/Prisma pending */}
+        <input
+          type="text"
+          disabled
+          placeholder="Search Eco-Aide by name or ID..."
+          title="Coming soon — available once hauling requests are linked to assigned routes."
+          className="flex-1 cursor-not-allowed rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-400"
+        />
       </div>
 
-      {/* TODO: no `wasteType` field on HaulingRequest yet; backend/Prisma pending */}
-      <button
-        type="button"
-        disabled
-        title="Coming soon — waste type is not yet tracked by the backend"
-        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed"
-      >
-        Filter by Waste Type
-        <svg className="w-3 h-3" viewBox="0 0 10 6" fill="currentColor">
-          <path d="M0 0l5 6 5-6H0z" />
-        </svg>
-      </button>
+      {hasActiveFilters && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {selectedSenders.length > 0 && (
+            <>
+              <span className="text-sm text-black">Sender:</span>
+              {selectedSenders.map((value) => (
+                <span
+                  key={value}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-5 py-2 text-sm font-medium text-white"
+                >
+                  {findLabel(SENDER_FILTER_OPTIONS, value)}
+                  <button
+                    type="button"
+                    onClick={() => onToggleSender(value)}
+                    aria-label={`Remove ${value} filter`}
+                    className="text-white/80 hover:text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
 
-      {/* TODO: no Eco-Aide assignment field/endpoint yet; backend/Prisma pending */}
-      <input
-        type="text"
-        disabled
-        placeholder="Search Eco-Aide by name or ID..."
-        title="Coming soon — Eco-Aide assignment is not yet tracked by the backend"
-        className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-400 bg-gray-50 cursor-not-allowed"
-      />
+          {selectedWasteTypes.length > 0 && (
+            <>
+              <span className="ml-1 text-sm text-gray-900">Waste Type:</span>
+              {selectedWasteTypes.map((value) => (
+                <span
+                  key={value}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-secondary px-5 py-2 text-sm font-medium text-white"
+                >
+                  {findLabel(WASTE_TYPE_FILTER_OPTIONS, value)}
+                  <button
+                    type="button"
+                    onClick={() => onToggleWasteType(value)}
+                    aria-label={`Remove ${value} filter`}
+                    className="text-white/80 hover:text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={onClearAll}
+            className="rounded-lg bg-brand-dark px-5 py-2 text-sm font-medium text-white"
+          >
+            Clear All Filters
+          </button>
+        </div>
+      )}
     </div>
   );
 }

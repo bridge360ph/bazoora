@@ -29,17 +29,34 @@ enum EcoAideAvailability {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String?
-  password        String
-  role            UserRole
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  driverLocation  DriverLocation?  @relation("DriverLocations")
-  assignedTruck   Truck?           @relation("AssignedDriver")
-  assignedRoute   Route?           @relation("AssignedEcoAide")
-  ecoAideProfile  EcoAideProfile?
+  id             String          @id @default(cuid())
+  userNumber     String?         @unique // user-facing display id, temporarily optional
+  email          String          @unique
+  name           String?
+  password       String
+  role           UserRole
+  authVersion    Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  driverLocation DriverLocation? @relation("DriverLocations")
+  assignedTruck  Truck?          @relation("AssignedDriver")
+  assignedRoute  Route?          @relation("AssignedEcoAide")
+  refreshTokens  RefreshToken[]
+  ecoAideProfile EcoAideProfile?
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model ServiceRequest {
@@ -72,6 +89,7 @@ model DriverLocation {
 
 model Truck {
   id               String           @id @default(cuid())
+  truckNumber      String?          @unique // user-facing display id, temporarily optional
   plateNumber      String           @unique
   model            String?
   capacity         String?
@@ -85,35 +103,80 @@ model Truck {
 }
 
 model Route {
-  id                 String   @id @default(cuid())
-  routeNumber        Int      @unique
-  name               String
-  barangay           String
-  waypoints          String   // Comma separated list of stops/waypoints
-  wasteType          String   // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
-  collectionDay      String   // "Sunday" | "Monday" ...
-  startTime          String
-  status             String   @default("Not Started") // "In Progress" | "Completed" | "Not Started"
-  stops              Int      @default(0)
-  routeType          String
-  assignedEcoAideId  String?  @unique
-  assignedEcoAide    User?    @relation("AssignedEcoAide", fields: [assignedEcoAideId], references: [id])
-  assignedTruckId    String?  @unique
-  assignedTruck      Truck?   @relation("RouteTruck", fields: [assignedTruckId], references: [id])
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                String   @id @default(cuid())
+  routeNumber       Int      @unique
+  name              String
+  barangay          String
+  waypoints         String // Comma separated list of stops/waypoints
+  wasteType         String // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
+  collectionDay     String // "Sunday" | "Monday" ...
+  startTime         String
+  status            String   @default("Not Started") // "In Progress" | "Completed" | "Not Started"
+  stops             Int      @default(0)
+  routeType         String
+  assignedEcoAideId String?  @unique
+  assignedEcoAide   User?    @relation("AssignedEcoAide", fields: [assignedEcoAideId], references: [id])
+  assignedTruckId   String?  @unique
+  assignedTruck     Truck?   @relation("RouteTruck", fields: [assignedTruckId], references: [id])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Counter {
+  entity   String @id
+  sequence Int    @default(0)
+}
+
+// Hauling Request Management
+
+enum HaulingRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum WasteType {
+  RESIDUAL
+  NON_BIODEGRADABLE
+  HAZARDOUS
+  BIODEGRADABLE
+}
+
+enum SenderType {
+  RESIDENT
+  BUSINESS
+}
+
+model HaulingRequest {
+  requestId      String               @id @default(cuid())
+  requestNumber  String               @unique
+  userId         String
+  orgId          String?
+  requestAddress String
+  senderType     SenderType
+  wasteType      WasteType
+  imageUrl       String?
+  pickupDate     DateTime?
+  status         HaulingRequestStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  denialReason   String?
+  note           String?
+  archived       Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 }
 
 model EcoAideProfile {
-  id             String               @id @default(cuid())
-  sequenceNumber Int                  @unique @default(autoincrement())
-  userId         String               @unique
+  id             String              @id @default(cuid())
+  sequenceNumber Int                 @unique @default(autoincrement())
+  userId         String              @unique
   phone          String?
-  status         EcoAideStatus        @default(ACTIVE)
-  availability   EcoAideAvailability  @default(AVAILABLE)
+  status         EcoAideStatus       @default(ACTIVE)
+  availability   EcoAideAvailability @default(AVAILABLE)
   archivedAt     DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 }

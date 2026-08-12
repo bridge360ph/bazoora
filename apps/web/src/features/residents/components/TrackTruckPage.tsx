@@ -274,6 +274,25 @@ export default function TrackTruckPage(): React.ReactNode {
         ]
       : [];
 
+  /* ── Neighborhood Proximity Check ─────────────────────────────── */
+  const distanceFromTruckMeters =
+    gpsPos && activeTruck?.currentLocation
+      ? (() => {
+          const R = 6_371_000;
+          const dLat = ((gpsPos[0] - activeTruck.currentLocation.lat) * Math.PI) / 180;
+          const dLng = ((gpsPos[1] - activeTruck.currentLocation.lng) * Math.PI) / 180;
+          const a =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos((activeTruck.currentLocation.lat * Math.PI) / 180) *
+              Math.cos((gpsPos[0] * Math.PI) / 180) *
+              Math.sin(dLng / 2) ** 2;
+          return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        })()
+      : null;
+
+  const isTruckInNeighborhood =
+    distanceFromTruckMeters !== null && distanceFromTruckMeters <= 250;
+
   return (
     <div className="dark:bg-background flex h-[calc(100vh-4rem)] flex-col gap-4 overflow-hidden bg-[#F5F5F5] p-4 lg:flex-row lg:p-6">
       <LocationPermissionModal onAllow={detectGps} />
@@ -287,6 +306,23 @@ export default function TrackTruckPage(): React.ReactNode {
             routes={mapRoutes}
             className="h-full w-full"
           />
+
+          {isTruckInNeighborhood && (
+            <div className="animate-in fade-in slide-in-from-top-4 absolute top-4 left-1/2 z-[1000] -translate-x-1/2 transform duration-300">
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-slate-900/90 px-4 py-2.5 shadow-2xl backdrop-blur-md">
+                <span className="relative flex h-3 w-3">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+                </span>
+                <span className="text-xs font-black tracking-wide text-white">
+                  🚛 Collection Truck Nearby! ({distanceFromTruckMeters}m away)
+                </span>
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400 uppercase">
+                  Prepare Waste Bin
+                </span>
+              </div>
+            </div>
+          )}
 
           <button
             type="button"
