@@ -73,7 +73,7 @@ export function HaulingRequestDetailModal({
           <StatusBadge status={STATUS_DISPLAY[request.status]} />
         </div>
 
-        {request.status === "pending" && (
+        {request.status === "PENDING" && (
           <div className="flex justify-center gap-4 pt-2">
             <Button variant="primary" onClick={onApproveClick}>
               Approve

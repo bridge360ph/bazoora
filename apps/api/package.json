@@ -6,10 +6,12 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx src/server.ts",
+    "start": "tsx src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "seed:super-admin": "tsx src/scripts/seedSuperAdmin.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,10 +20,14 @@
     "@aws-sdk/client-s3": "^3.1072.0",
     "@bazoora/db": "workspace:*",
     "@bazoora/shared": "workspace:*",
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.2.0",
+    "@fastify/jwt": "^10.2.1",
     "@prisma/client": "^7.8.0",
+    "argon2": "^0.45.1",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.5",
+    "fastify-plugin": "^6.0.0",
     "pg": "^8.21.0",
     "socket.io": "^4.8.3"
   },

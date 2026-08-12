@@ -1,5 +1,15 @@
 import type { FastifyPluginCallback } from "fastify";
+import type { CreateHaulingRequestInput } from "@bazoora/shared";
 
+import {
+  authGuard,
+  requireRole,
+} from "../lib/auth.js";
+import {
+  createHaulingRequestSchema,
+  denyHaulingRequestSchema,
+  haulingRequestParamsSchema,
+} from "../schemas/haulingRequest.schema.js";
 import {
   approveHaulingRequest,
   createHaulingRequest,
@@ -7,63 +17,124 @@ import {
   getHaulingRequests,
 } from "../services/haulingRequestService.js";
 
-import {
-  createHaulingRequestSchema,
-  haulingRequestParamsSchema,
-} from "../schemas/haulingRequest.schema.js";
+const adminRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+] as const;
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
   app,
   _opts,
   done,
 ) => {
-  app.get("/", () => {
-    return getHaulingRequests();
-  });
+  app.get(
+    "/",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async () => {
+      return await getHaulingRequests();
+    },
+  );
 
   app.post(
     "/",
-    { schema: createHaulingRequestSchema },
-    (request) => {
-      return createHaulingRequest(
-        request.body as never,
+    {
+      schema: createHaulingRequestSchema,
+      preHandler: [
+        authGuard,
+        requireRole("RESIDENT", "BUSINESS"),
+      ],
+    },
+    async (request) => {
+      return await createHaulingRequest(
+        request.body as CreateHaulingRequestInput,
+        request.user.sub,
       );
     },
   );
 
   app.patch(
     "/:id/approve",
-    { schema: haulingRequestParamsSchema },
-    (request, reply) => {
-      const { id } = request.params as { id: string };
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as {
+          id: string;
+        };
 
-      const result = approveHaulingRequest(id);
+        const result = await approveHaulingRequest(
+          id,
+          request.user.sub,
+        );
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Unable to approve request",
         });
       }
-
-      return result;
     },
   );
 
   app.patch(
     "/:id/deny",
-    { schema: haulingRequestParamsSchema },
-    (request, reply) => {
-      const { id } = request.params as { id: string };
+    {
+      schema: denyHaulingRequestSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      try {
+        const { id } = request.params as {
+          id: string;
+        };
 
-      const result = denyHaulingRequest(id);
+        const { denialReason } = request.body as {
+          denialReason: string;
+        };
 
-      if (!result) {
-        return reply.status(404).send({
-          message: "Hauling request not found",
+        const result = await denyHaulingRequest(
+          id,
+          denialReason,
+        );
+
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        return reply.status(400).send({
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid denial reason",
         });
       }
-
-      return result;
     },
   );
 

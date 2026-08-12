@@ -1,15 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
-import { ECO_AIDE_OPTIONS, FLEET_OPTIONS } from "./route.mockData";
-import type {
-  Route,
-  RouteFormValue,
-  RouteStatusFilter,
-} from "./route.types";
+import type { Route } from "@bazoora/shared";
+import type { RouteFormValue, RouteStatusFilter } from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
-import { useAssignRouteEcoAide } from "./hooks/useAssignRouteEcoAide";
+import { useAssignRouteEcoAide } from "../route-assignment/hooks/useAssignRouteEcoAide";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
@@ -27,9 +23,8 @@ const emptyRouteForm: RouteFormValue = {
   wasteType: "Regular",
   collectionDay: "Sunday",
   startTime: "",
-  ecoAide: ECO_AIDE_OPTIONS[0],
-  fleetAssignment: FLEET_OPTIONS[0],
   routeType: "Free",
+  assignedEcoAideId: null,
 };
 
 export function AdminRouteManagementPage() {
@@ -44,7 +39,17 @@ export function AdminRouteManagementPage() {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
-  const [assignedEcoAide, setAssignedEcoAide] = useState(ECO_AIDE_OPTIONS[0]);
+  const [assignedEcoAide, setAssignedEcoAide] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setSuccessMessage(null), 4000);
+    return () => clearTimeout(timeout);
+  }, [successMessage]);
 
   const filteredRoutes = useMemo(() => {
     if (!routes) {
@@ -60,7 +65,6 @@ export function AdminRouteManagementPage() {
         normalizedSearch.length === 0 ||
         route.id.toLowerCase().includes(normalizedSearch) ||
         route.name.toLowerCase().includes(normalizedSearch) ||
-        route.ecoAide.toLowerCase().includes(normalizedSearch) ||
         route.barangay.toLowerCase().includes(normalizedSearch);
 
       return matchesStatus && matchesSearch;
@@ -111,19 +115,15 @@ export function AdminRouteManagementPage() {
       wasteType: route.wasteType,
       collectionDay: route.collectionDay,
       startTime: route.startTime,
-      ecoAide: route.ecoAide,
-      fleetAssignment: route.fleetAssignment,
       routeType: route.routeType,
+      assignedEcoAideId: route.assignedEcoAideId ?? null
     });
     setModalMode("edit");
   }
 
   function openAssignModal(route: Route) {
     setSelectedRoute(route);
-    setAssignedEcoAide(
-      ECO_AIDE_OPTIONS.find((option) => option.startsWith(route.ecoAide)) ??
-        ECO_AIDE_OPTIONS[0],
-    );
+    setAssignedEcoAide(route.assignedEcoAideId ?? null);
     setModalMode("assign");
   }
 
@@ -137,11 +137,39 @@ export function AdminRouteManagementPage() {
     setModalMode(null);
   }
 
-  function handleCreateRoute() {
-    createRouteMutation.mutate(routeForm, {
-      onSuccess: () => {
+  /**
+   * Applies whichever assignments were picked in the create/edit form, one
+   * at a time, using the existing /assign-eco-aide
+   * endpoint. The route list is refreshed and the modal closed only once
+   * the whole chain completes. If an assignment fails, its mutation's
+   * `error` is left set for the modal to display and the chain stops there
+   * (the modal stays open).
+   */
+
+    function applyEcoAideAssignment(routeId: string, successMessage: string) {
+      if (!routeForm.assignedEcoAideId) {
         refetch();
         closeModal();
+        setSuccessMessage(successMessage);
+        return;
+      }
+
+      assignEcoAideMutation.mutate(
+        { routeId, ecoAide: routeForm.assignedEcoAideId },
+        {
+          onSuccess: () => {
+            refetch();
+            closeModal();
+            setSuccessMessage(successMessage);
+          },
+        },
+      );
+    }
+
+  function handleCreateRoute() {
+    createRouteMutation.mutate(routeForm, {
+      onSuccess: (createdRoute) => {
+        applyEcoAideAssignment(createdRoute.id, "Route created successfully.");
       },
     });
   }
@@ -155,15 +183,14 @@ export function AdminRouteManagementPage() {
       { routeId: selectedRoute.id, formValue: routeForm },
       {
         onSuccess: () => {
-          refetch();
-          closeModal();
+          applyEcoAideAssignment(selectedRoute.id, "Route updated successfully.");
         },
       },
     );
   }
 
   function handleSaveEcoAideAssignment() {
-    if (!selectedRoute) {
+    if (!selectedRoute || !assignedEcoAide) {
       return;
     }
 
@@ -173,16 +200,36 @@ export function AdminRouteManagementPage() {
         onSuccess: () => {
           refetch();
           closeModal();
+          setSuccessMessage("Eco-Aide assigned successfully.");
         },
       },
     );
   }
+
+  const formMutationError =
+    createRouteMutation.error?.message ??
+    updateRouteMutation.error?.message ??
+    assignEcoAideMutation.error?.message ??
+    null;
+
+  const isFormSubmitting =
+    modalMode === "create"
+      ? createRouteMutation.isPending ||
+        assignEcoAideMutation.isPending
+      : updateRouteMutation.isPending ||
+        assignEcoAideMutation.isPending
 
   return (
     <div className="p-6">
       <div className="mb-6 flex justify-end">
         <Button onClick={openCreateModal}>+ Create Route</Button>
       </div>
+
+      {successMessage && (
+        <div className="mb-4 rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">
+          {successMessage}
+        </div>
+      )}
 
       <div className="mb-5 grid grid-cols-3 gap-4">
         <StatCard label="Completed" value={completedCount} />
@@ -222,7 +269,9 @@ export function AdminRouteManagementPage() {
               <div>
                 {paginatedRoutes.length === 0 ? (
                   <div className="py-10 text-center text-sm text-gray-400">
-                    No routes match the current filter.
+                    {routes && routes.length === 0
+                      ? "No routes have been created yet."
+                      : "No routes match the current filter."}
                   </div>
                 ) : (
                   paginatedRoutes.map((route) => (
@@ -263,11 +312,13 @@ export function AdminRouteManagementPage() {
       {modalMode === "create" && (
         <RouteFormModal
           mode="create"
+          routes={routes ?? []}
           formValue={routeForm}
           setFormValue={setRouteForm}
           onSave={handleCreateRoute}
           onClose={closeModal}
-          isSubmitting={createRouteMutation.isPending}
+          isSubmitting={isFormSubmitting}
+          errorMessage={formMutationError}
         />
       )}
 
@@ -275,22 +326,26 @@ export function AdminRouteManagementPage() {
         <RouteFormModal
           mode="edit"
           route={selectedRoute}
+          routes={routes ?? []}
           formValue={routeForm}
           setFormValue={setRouteForm}
           onSave={handleSaveEditedRoute}
           onClose={closeModal}
-          isSubmitting={updateRouteMutation.isPending}
+          isSubmitting={isFormSubmitting}
+          errorMessage={formMutationError}
         />
       )}
 
       {modalMode === "assign" && selectedRoute && (
         <AssignEcoAideModal
           route={selectedRoute}
+          routes={routes ?? []}
           assignedEcoAide={assignedEcoAide}
           setAssignedEcoAide={setAssignedEcoAide}
           onSave={handleSaveEcoAideAssignment}
           onClose={closeModal}
           isSubmitting={assignEcoAideMutation.isPending}
+          errorMessage={assignEcoAideMutation.error?.message ?? null}
         />
       )}
 
