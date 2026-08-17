@@ -58,6 +58,12 @@ export async function assignEcoAide(
       select: {
         id: true,
         role: true,
+        ecoAideProfile: {
+          select: {
+            status: true,
+            archivedAt: true,
+          },
+        },
         assignedRoute: {
           select: {
             id: true,
@@ -79,6 +85,17 @@ export async function assignEcoAide(
         400,
       );
     }
+    if (
+      !ecoAide.ecoAideProfile ||
+      ecoAide.ecoAideProfile.archivedAt ||
+      ecoAide.ecoAideProfile.status !== "ACTIVE"
+    ) {
+      throw new RouteAssignmentError(
+        "The selected Eco-Aide is not active and cannot be assigned.",
+        409,
+      );
+    }
+
 
     if (
       ecoAide.assignedRoute &&
@@ -129,6 +146,12 @@ export async function listEcoAideOptions(): Promise<UserSummary[]> {
       role: "ECO_AIDE",
       userNumber: {
         not: null,          // only show eco-aides with IDs
+      },
+      ecoAideProfile: {
+        is: {
+          status: "ACTIVE",
+          archivedAt: null,
+        },
       },
     },
     select: {

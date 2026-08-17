@@ -19,12 +19,17 @@ interface CreateEcoAideProfileBody {
   name?: string;
   password?: string;
   phone?: string | null;
+  birthdate?: string;
+  address?: string;
   status?: EcoAideStatusInput;
   availability?: EcoAideAvailabilityInput;
 }
 
 interface UpdateEcoAideProfileBody {
+  name?: string;
   phone?: string | null;
+  birthdate?: string;
+  address?: string;
   status?: EcoAideStatusInput;
   availability?: EcoAideAvailabilityInput;
 }
@@ -51,6 +56,11 @@ const ecoAideProfileInclude = {
         select: {
           routeNumber: true,
           name: true,
+          assignedTruck: {
+            select: {
+              truckNumber: true,
+            },
+          },
         },
       },
     },
@@ -94,6 +104,46 @@ function normalizePhone(
   return trimmedValue.length > 0 ? trimmedValue : null;
 }
 
+function normalizeAddress(
+  value: string | undefined,
+): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function parseBirthdate(
+  value: string | undefined,
+): Date | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!match) {
+    return undefined;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return undefined;
+  }
+
+  return date;
+}
+
 function formatEcoAideId(sequenceNumber: number): string {
   return `EA-${sequenceNumber.toString().padStart(3, "0")}`;
 }
@@ -125,6 +175,8 @@ function formatEcoAideProfile(
     name: profile.user.name ?? "Unnamed Eco-Aide",
     email: profile.user.email,
     phone: profile.phone,
+  birthdate: profile.birthdate ? profile.birthdate.toISOString().slice(0, 10) : null,
+  address: profile.address,
     status: profile.status,
     availability: profile.availability,
     assignedRoute: profile.user.assignedRoute,
@@ -230,6 +282,22 @@ app.get("/", async () => {
 
   const passwordHash = await hashPassword(password);
   const phone = normalizePhone(body.phone);
+const birthdate = parseBirthdate(body.birthdate);
+const address = normalizeAddress(body.address);
+
+if (!birthdate) {
+  return reply.code(400).send({
+    success: false,
+    message: "A valid birthdate is required.",
+  });
+}
+
+if (!address || address.length < 5 || address.length > 255) {
+  return reply.code(400).send({
+    success: false,
+    message: "A valid address is required.",
+  });
+}
 
   const profile = await prisma.$transaction(
     async (transaction) => {
@@ -242,21 +310,35 @@ app.get("/", async () => {
         },
       });
 
-      return transaction.ecoAideProfile.create({
+      const profile = await transaction.ecoAideProfile.create({
         data: {
           userId: user.id,
           ...(phone !== undefined
             ? { phone }
             : {}),
+      birthdate,
+      address,
           ...(body.status !== undefined
             ? { status: body.status }
             : {}),
           ...(body.availability !== undefined
             ? { availability: body.availability }
             : {}),
+        
         },
         include: ecoAideProfileInclude,
       });
+
+      await transaction.user.update({
+        where: {
+          id: user.id,
+        },
+        data: {
+          userNumber: formatEcoAideId(profile.sequenceNumber),
+        },
+      });
+
+      return profile;
     },
   );
 
@@ -341,11 +423,51 @@ app.patch("/:ecoAideId", async (request, reply) => {
     const data: Prisma.EcoAideProfileUncheckedUpdateInput =
       {};
 
-    const phone = normalizePhone(body.phone);
+        const updatedName =
+      body.name !== undefined
+        ? body.name.trim()
+        : undefined;
 
-    if (phone !== undefined) {
+    if (
+      body.name !== undefined &&
+      !updatedName
+    ) {
+      return reply.code(400).send({
+        success: false,
+        message: "Eco-Aide name is required.",
+      });
+    }
+
+const phone = normalizePhone(body.phone);
+if (phone !== undefined) {
       data.phone = phone;
     }
+
+  if (body.birthdate !== undefined) {
+    const birthdate = parseBirthdate(body.birthdate);
+
+    if (!birthdate) {
+      return reply.code(400).send({
+        success: false,
+        message: "Invalid birthdate.",
+      });
+    }
+
+    data.birthdate = birthdate;
+  }
+
+  if (body.address !== undefined) {
+    const address = normalizeAddress(body.address);
+
+    if (!address || address.length < 5 || address.length > 255) {
+      return reply.code(400).send({
+        success: false,
+        message: "Invalid address.",
+      });
+    }
+
+    data.address = address;
+  }
 
     if (body.status !== undefined) {
       data.status = body.status;
@@ -355,20 +477,38 @@ app.patch("/:ecoAideId", async (request, reply) => {
       data.availability = body.availability;
     }
 
-    if (Object.keys(data).length === 0) {
+    if (
+      Object.keys(data).length === 0 &&
+      updatedName === undefined
+    ) {
       return reply.code(400).send({
         success: false,
         message: "No profile fields were provided.",
       });
     }
 
-    const profile = await prisma.ecoAideProfile.update({
-      where: {
-        sequenceNumber,
+        const profile = await prisma.$transaction(
+      async (transaction) => {
+        if (updatedName !== undefined) {
+          await transaction.user.update({
+            where: {
+              id: existingProfile.userId,
+            },
+            data: {
+              name: updatedName,
+            },
+          });
+        }
+
+        return transaction.ecoAideProfile.update({
+          where: {
+            sequenceNumber,
+          },
+          data,
+          include: ecoAideProfileInclude,
+        });
       },
-      data,
-      include: ecoAideProfileInclude,
-    });
+    );
 
     return {
       success: true,
@@ -514,6 +654,7 @@ app.patch("/:ecoAideId", async (request, reply) => {
           },
           select: {
             archivedAt: true,
+            userId: true,
           },
         });
 
@@ -531,16 +672,26 @@ app.patch("/:ecoAideId", async (request, reply) => {
         });
       }
 
-      await prisma.ecoAideProfile.update({
-        where: {
-          sequenceNumber,
-        },
-        data: {
-          archivedAt: new Date(),
-          status: "DEACTIVATED",
-          availability: "OFF_DUTY",
-        },
-      });
+      await prisma.$transaction([
+        prisma.route.updateMany({
+          where: {
+            assignedEcoAideId: existingProfile.userId,
+          },
+          data: {
+            assignedEcoAideId: null,
+          },
+        }),
+        prisma.ecoAideProfile.update({
+          where: {
+            sequenceNumber,
+          },
+          data: {
+            archivedAt: new Date(),
+            status: "DEACTIVATED",
+            availability: "OFF_DUTY",
+          },
+        }),
+      ]);
 
       return {
         success: true,

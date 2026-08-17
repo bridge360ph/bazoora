@@ -1,7 +1,3 @@
--- Keep the shared User table aligned with the current Prisma schema.
-ALTER TABLE "User"
-ADD COLUMN IF NOT EXISTS "name" TEXT;
-
 -- These enum types may already exist locally because of the legacy EcoAide table.
 DO $$
 BEGIN

@@ -172,6 +172,8 @@ model EcoAideProfile {
   sequenceNumber Int                 @unique @default(autoincrement())
   userId         String              @unique
   phone          String?
+  birthdate      DateTime?
+  address        String?
   status         EcoAideStatus       @default(ACTIVE)
   availability   EcoAideAvailability @default(AVAILABLE)
   archivedAt     DateTime?
