@@ -45,7 +45,7 @@ export default function RouteMapSection({
 
   if (!locationPermissionGranted) {
     return (
-      <div className="h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+      <div className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[580px] lg:h-[740px]">
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
             <span className="text-2xl">📍</span>
@@ -65,15 +65,17 @@ export default function RouteMapSection({
   }
 
   return (
-    <div className="h-[500px] w-full overflow-hidden rounded-2xl">
-      <SmartMap
-        center={mapCenter}
-        markers={mapMarkers}
-        routes={mapRoutes}
-        isCollecting={isCollecting}
-        navigationSteps={navigationSteps}
-        routeSummary={routeSummary}
-      />
-    </div>
+    <section className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[580px] lg:h-[740px]">
+      <div className="absolute inset-0">
+        <SmartMap
+          center={mapCenter}
+          markers={mapMarkers}
+          routes={mapRoutes}
+          isCollecting={isCollecting}
+          navigationSteps={navigationSteps}
+          routeSummary={routeSummary}
+        />
+      </div>
+    </section>
   );
 }
