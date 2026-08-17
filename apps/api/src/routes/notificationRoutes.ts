@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import { prisma } from "@bazoora/db";
 import { authGuard, requireRole } from "../lib/auth.js";
+import { io } from "../plugins/socket.js";
 
 const AUDIENCE_ROLES: Record<string, string[]> = {
   "All Users": [
@@ -158,6 +159,12 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
 
         return created;
       });
+
+      for (const recipient of recipients) {
+        io?.to(`user:${recipient.id}`).emit("notification:new", {
+          notificationId: notification.id,
+        });
+      }
 
       return reply.code(201).send({
         success: true,
