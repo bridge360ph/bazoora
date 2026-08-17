@@ -67,6 +67,7 @@ function mapApiEcoAide(apiEcoAide: ApiEcoAide): EcoAide {
 const emptyEcoAideForm: EcoAideFormValue = {
   name: "",
   status: "Active",
+  availability: "Available",
   contactNumber: "",
   birthdate: "",
   address: "",
@@ -182,7 +183,18 @@ export function EcoAideManagementPage() {
     setSelectedEcoAide(ecoAide);
     setFormValue({
       name: ecoAide.name,
-      status: ecoAide.status,
+      status:
+        ecoAide.status === "Suspended"
+          ? "Suspended"
+          : ecoAide.status === "Deactivated"
+            ? "Deactivated"
+            : "Active",
+      availability:
+        ecoAide.status === "On Route"
+          ? "On Route"
+          : ecoAide.status === "Off Duty"
+            ? "Off Duty"
+            : "Available",
       contactNumber: ecoAide.contactNumber,
       birthdate: ecoAide.birthdate,
       address: ecoAide.address,
@@ -242,9 +254,9 @@ export function EcoAideManagementPage() {
             ? "DEACTIVATED"
             : "ACTIVE",
       availability:
-        validatedFormValue.status === "On Route"
+        validatedFormValue.availability === "On Route"
           ? "ON_ROUTE"
-          : validatedFormValue.status === "Off Duty"
+          : validatedFormValue.availability === "Off Duty"
             ? "OFF_DUTY"
             : "AVAILABLE",
     });
@@ -304,11 +316,16 @@ export function EcoAideManagementPage() {
       phone: validatedFormValue.contactNumber,
       birthdate: validatedFormValue.birthdate,
       address: validatedFormValue.address,
-      status: "ACTIVE",
+      status:
+        validatedFormValue.status === "Suspended"
+          ? "SUSPENDED"
+          : validatedFormValue.status === "Deactivated"
+            ? "DEACTIVATED"
+            : "ACTIVE",
       availability:
-        validatedFormValue.status === "On Route"
+        validatedFormValue.availability === "On Route"
           ? "ON_ROUTE"
-          : validatedFormValue.status === "Off Duty"
+          : validatedFormValue.availability === "Off Duty"
             ? "OFF_DUTY"
             : "AVAILABLE",
     });
@@ -555,21 +572,21 @@ function AllEcoAidesTable({
   onArchive,
 }: AllEcoAidesTableProps) {
   return (
-    <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+    <section className="rounded-b-[10px] border border-gray-200 bg-white">
       <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Eco-Aides</div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+      <div className="w-full overflow-visible">
+        <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="bg-brand">
               {[
-                "Eco-Aide ID â†“",
+                "Eco-Aide ID",
                 "Eco-Aide Name",
                 "Added",
                 "Status",
                 "Actions",
               ].map((heading) => (
-                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
+                <th key={heading} className="px-3 py-2.5 text-left text-xs font-bold text-white">
                   {heading}
                 </th>
               ))}
@@ -586,14 +603,14 @@ function AllEcoAidesTable({
             ) : (
               ecoAides.map((ecoAide) => (
                 <tr key={ecoAide.id} className="border-b border-gray-200">
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.id}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.name}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.addedDate}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.id}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.name}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.addedDate}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
                     <StatusPill status={ecoAide.status} />
                   </td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       <button
                         type="button"
                         className="cursor-pointer rounded-[10px] border-0 bg-gray-500 px-2.5 py-[3px] text-xs text-white hover:bg-gray-600"
@@ -619,9 +636,7 @@ function AllEcoAidesTable({
           </tbody>
         </table>
       </div>
-
-      <Pagination />
-    </section>
+</section>
   );
 }
 
@@ -643,7 +658,17 @@ function ActionMenu({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
+      <button
+        type="button"
+        className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[13px] font-medium text-gray-900 hover:underline"
+        onClick={() => {
+          onEdit(ecoAide);
+        }}
+      >
+        Edit
+      </button>
+
       <button
         type="button"
         onClick={() => {
@@ -654,33 +679,12 @@ function ActionMenu({
         ...
       </button>
 
-          <button
-            type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onArchive(ecoAide);
-            }}
-          >
-            Archive
-          </button>
-
       {isOpen && (
-        <div className="absolute right-0 top-full z-20 min-w-[100px] border border-gray-200 bg-white py-1.5 shadow-lg">
-          <button
-            type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onEdit(ecoAide);
-            }}
-          >
-            Edit
-          </button>
+        <div className="absolute right-0 top-full z-[100] mt-1 flex w-36 flex-col overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onSuspend(ecoAide);
@@ -691,13 +695,24 @@ function ActionMenu({
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onDeactivate(ecoAide);
             }}
           >
             Deactivate
+          </button>
+
+          <button
+            type="button"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
+            onClick={() => {
+              setIsOpen(false);
+              onArchive(ecoAide);
+            }}
+          >
+            Archive
           </button>
         </div>
       )}
@@ -755,7 +770,24 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   );
 }
 
-type EcoAideFormValue = Omit<EcoAide, "id" | "addedDate"> & { password: string };
+type EcoAideAccountStatus =
+  | "Active"
+  | "Suspended"
+  | "Deactivated";
+
+type EcoAideAvailability =
+  | "Available"
+  | "On Route"
+  | "Off Duty";
+
+type EcoAideFormValue = Omit<
+  EcoAide,
+  "id" | "addedDate" | "status"
+> & {
+  status: EcoAideAccountStatus;
+  availability: EcoAideAvailability;
+  password: string;
+};
 
 type EcoAideFormErrors = Partial<
   Record<keyof EcoAideFormValue, string>
@@ -765,16 +797,18 @@ const ECO_AIDE_NAME_PATTERN = /^[\p{L} .'-]+$/u;
 const PH_MOBILE_PATTERN = /^09\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const ALLOWED_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+const ALLOWED_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
   "Active",
-  "On Route",
-  "Off Duty",
   "Suspended",
   "Deactivated",
 ];
 
-const CREATE_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+const CREATE_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
   "Active",
+];
+
+const ALLOWED_ECO_AIDE_AVAILABILITIES: EcoAideAvailability[] = [
+  "Available",
   "On Route",
   "Off Duty",
 ];
@@ -923,10 +957,6 @@ function EditEcoAideModal({
       }
     }
 
-    if (key === "assignedTruck" && !stringValue) {
-      return "Select a truck assignment.";
-    }
-
     if (key === "assignedRoute" && !stringValue) {
       return "Select a route assignment.";
     }
@@ -936,9 +966,18 @@ function EditEcoAideModal({
       !(isCreateMode
         ? CREATE_ECO_AIDE_STATUSES
         : ALLOWED_ECO_AIDE_STATUSES
-      ).includes(value as EcoAideStatus)
+      ).includes(value as EcoAideAccountStatus)
     ) {
       return "Select a valid Eco-Aide status.";
+    }
+
+    if (
+      key === "availability" &&
+      !ALLOWED_ECO_AIDE_AVAILABILITIES.includes(
+        value as EcoAideAvailability,
+      )
+    ) {
+      return "Select a valid Eco-Aide availability.";
     }
 
     if (key === "password" && isCreateMode) {
@@ -1002,9 +1041,9 @@ function EditEcoAideModal({
       "contactNumber",
       "birthdate",
       "address",
-      "assignedTruck",
       "assignedRoute",
       "status",
+      "availability",
     ];
 
     if (isCreateMode) {
@@ -1203,7 +1242,7 @@ function EditEcoAideModal({
               type="text"
               value={formValue.assignedTruck}
               readOnly
-              placeholder="Derived from selected route"
+              placeholder="No truck assigned to selected route"
               className={getInputClassName("assignedTruck")}
             />
           </FormField>
@@ -1271,7 +1310,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField(
                   "status",
-                  event.target.value as EcoAideStatus,
+                  event.target.value as EcoAideAccountStatus,
                 );
               }}
               onBlur={() => {
@@ -1287,6 +1326,38 @@ function EditEcoAideModal({
                     {status}
                   </option>
                 ))}
+            </select>
+          </FormField>
+
+          <FormField
+            label="Availability"
+            required
+            error={errors.availability}
+          >
+            <select
+              value={formValue.availability}
+              aria-invalid={Boolean(errors.availability)}
+              onChange={(event) => {
+                updateField(
+                  "availability",
+                  event.target.value as EcoAideAvailability,
+                );
+              }}
+              onBlur={() => {
+                validateOneField("availability");
+              }}
+              className={getInputClassName("availability")}
+            >
+              {ALLOWED_ECO_AIDE_AVAILABILITIES.map(
+                (availability) => (
+                  <option
+                    key={availability}
+                    value={availability}
+                  >
+                    {availability}
+                  </option>
+                ),
+              )}
             </select>
           </FormField>
 
@@ -1476,30 +1547,6 @@ function StatusPill({ status }: { status: EcoAideStatus }) {
   );
 }
 
-function Pagination() {
-  return (
-    <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
-      <button
-        type="button"
-        className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500"
-      >
-        ?
-      </button>
-      <button
-        type="button"
-        className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white"
-      >
-        1
-      </button>
-      <button
-        type="button"
-        className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500"
-      >
-        ?
-      </button>
-    </div>
-  );
-}
 
 function getStatusClassName(status: EcoAideStatus) {
   if (status === "Active") {
