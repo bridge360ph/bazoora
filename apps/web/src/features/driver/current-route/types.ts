@@ -4,20 +4,17 @@ export type StopStatus =
   | "IN_PROGRESS"
   | "UPCOMING";
 
-
 export type Priority =
   | "Critical"
   | "High"
   | "Medium"
   | "Low";
 
-
 export type WasteType =
   | "Residual"
   | "Hazardous"
   | "Non-Bio"
   | "Biodegradable";
-
 
 export type Stop = {
   stopNumber: string;
@@ -48,6 +45,12 @@ export type Stop = {
    * "12 households • Residential Area"
    */
   address: string;
+
+  /**
+   * Collection point coordinates
+   */
+  lat: number;
+  lng: number;
 
   wasteType: WasteType;
 
