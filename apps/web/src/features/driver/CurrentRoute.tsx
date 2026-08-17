@@ -18,6 +18,8 @@ import RouteOverviewCard from "./current-route/components/RouteOverviewCard";
 
 import { useDriverGPS } from "./hooks/useDriverGPS";
 
+import { getDistanceInMeters } from "@/lib/location";
+
 function LogoutConfirmModal({
   onCancel,
   onConfirm,
@@ -262,8 +264,48 @@ const {
                 void navigate("/driver");
               }}
               onComplete={() => {
-                // TODO: Complete route action
-              }}
+  if (!gpsPos) {
+    console.warn("No GPS position available.");
+    return;
+  }
+
+  const activeStop = stops.find(
+    (stop) => stop.status === "active"
+  );
+
+  if (!activeStop) {
+    console.warn("No active stop found.");
+    return;
+  }
+
+  const distance = getDistanceInMeters(
+    gpsPos[0], // latitude ✅
+    gpsPos[1], // longitude ✅
+    activeStop.lat,
+    activeStop.lng
+  );
+
+  console.log("GPS position:", {
+    latitude: gpsPos[0],
+    longitude: gpsPos[1],
+  });
+
+  console.log("Active stop:", {
+    latitude: activeStop.lat,
+    longitude: activeStop.lng,
+  });
+
+  console.log("Distance to stop:", distance, "meters");
+
+  if (distance > 50) {
+    setDistanceRemaining(Math.round(distance));
+    setTooFarModalOpen(true);
+    return;
+  }
+
+  // Driver is close enough
+  console.log("Stop completed!");
+}}
               onReportIssue={() =>
                 void navigate("/driver/report")
               }
@@ -392,6 +434,31 @@ const {
           onConfirm={handleLogout}
         />
       )}
+
+      {tooFarModalOpen && (
+  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+      <h2 className="text-lg font-bold">
+        You're not at the collection point
+      </h2>
+
+      <p className="mt-3 text-sm text-slate-500">
+        Move closer before marking this stop as complete.
+      </p>
+
+      <p className="mt-2 text-sm font-medium">
+        Distance remaining: {distanceRemaining} m
+      </p>
+
+      <button
+        className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-white"
+        onClick={() => setTooFarModalOpen(false)}
+      >
+        OK
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }
