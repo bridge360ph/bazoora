@@ -10,7 +10,6 @@ export const navItems = [
   { key: "route", label: "Route", icon: icons.route },
   { key: "collections", label: "Collections", icon: icons.collections },
   { key: "report", label: "Report Issue", icon: icons.report },
-  { key: "messages", label: "Messages", icon: icons.messages },
 ];
 
 // Mobile bottom nav — capped at 4 primary buttons. Messages lives in the FAB

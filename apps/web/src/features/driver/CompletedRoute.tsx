@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Sidebar } from "./shared/Sidebar";
 import { Header } from "./shared/Header";
@@ -10,13 +10,30 @@ import { layout, mainWrap } from "./shared/layoutStyles";
 
 import CompletedRouteMap from "./completed-route/components/CompletedRouteMap";
 
+type CompletedStop = {
+  id: string;
+  name: string;
+  barangay: string;
+  wasteType: string;
+  volume: string | number;
+  priority: string;
+  lat: number;
+  lng: number;
+  status?: "pending" | "active" | "completed";
+};
+
+type CompletedRouteLocationState = {
+  stop?: CompletedStop;
+};
+
 export function CompletedRoute() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const isMobile = useIsMobile();
 
-  const selectedStop = location.state?.stop;
-
+  const state = location.state as CompletedRouteLocationState | null;
+  const selectedStop = state?.stop;
 
   if (!selectedStop) {
     return (
@@ -44,7 +61,6 @@ export function CompletedRoute() {
     );
   }
 
-
   const goTo = (key: string) => {
     switch (key) {
       case "dashboard":
@@ -68,15 +84,12 @@ export function CompletedRoute() {
     }
   };
 
-
   const goToSettingsTab = (tab: SettingsTab) => {
     void navigate(`/driver/settings?tab=${tab}`);
   };
 
-
   return (
     <div className={layout}>
-
       <Sidebar
         activeKey="route"
         isMobile={isMobile}
@@ -85,9 +98,7 @@ export function CompletedRoute() {
         onClose={() => {}}
       />
 
-
       <div className={mainWrap}>
-
         <Header
           isMobile={isMobile}
           title="Completed Route"
@@ -96,10 +107,8 @@ export function CompletedRoute() {
           onLogout={() => {}}
         />
 
-
         {/* Back Button */}
         <div className="px-6 pt-4">
-
           <button
             type="button"
             onClick={() => {
@@ -109,182 +118,118 @@ export function CompletedRoute() {
           >
             ← Back to Current Route
           </button>
-
         </div>
-
 
         <main
           className={
             isMobile
-              ? "p-4 pb-24 space-y-4"
-              : "p-6 space-y-5"
+              ? "space-y-4 p-4 pb-24"
+              : "space-y-5 p-6"
           }
         >
-
-
           {/* Route Summary */}
-
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
             <h2 className="mb-4 text-lg font-bold">
               ✅ Completed Collection
             </h2>
 
-
             <div className="grid grid-cols-2 gap-4 text-sm">
-
-
               <div>
-                <p className="text-slate-500">
-                  Location
-                </p>
-
+                <p className="text-slate-500">Location</p>
                 <p className="font-semibold">
                   {selectedStop.name}
                 </p>
               </div>
 
-
               <div>
-                <p className="text-slate-500">
-                  Barangay
-                </p>
-
+                <p className="text-slate-500">Barangay</p>
                 <p className="font-semibold">
                   {selectedStop.barangay}
                 </p>
               </div>
 
-
               <div>
-                <p className="text-slate-500">
-                  Waste Type
-                </p>
-
+                <p className="text-slate-500">Waste Type</p>
                 <p className="font-semibold">
                   {selectedStop.wasteType}
                 </p>
               </div>
 
-
               <div>
-                <p className="text-slate-500">
-                  Volume
-                </p>
-
+                <p className="text-slate-500">Volume</p>
                 <p className="font-semibold">
                   {selectedStop.volume}
                 </p>
               </div>
 
-
               <div>
-                <p className="text-slate-500">
-                  Status
-                </p>
-
+                <p className="text-slate-500">Status</p>
                 <p className="font-bold text-emerald-600">
                   Completed
                 </p>
               </div>
 
-
               <div>
-                <p className="text-slate-500">
-                  Priority
-                </p>
-
+                <p className="text-slate-500">Priority</p>
                 <p className="font-semibold">
                   {selectedStop.priority}
                 </p>
               </div>
-
-
             </div>
-
           </div>
 
-
-
           {/* Completed Route Map */}
-
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
             <h2 className="mb-4 text-lg font-bold">
               🗺️ Collection Point Map
             </h2>
 
-
-            <CompletedRouteMap
-              stop={selectedStop}
-            />
-
-
+            <CompletedRouteMap stop={selectedStop} />
           </div>
 
-
-
           {/* Timeline */}
-
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
             <h2 className="mb-4 text-lg font-bold">
               📍 Collection Timeline
             </h2>
 
-
             <div className="space-y-4">
-
               <div>
                 <p className="font-semibold">
                   ✔ Arrived at Collection Point
                 </p>
-
                 <p className="text-sm text-slate-500">
                   8:12 AM
                 </p>
               </div>
 
-
               <div>
                 <p className="font-semibold">
                   ✔ Waste Collected
                 </p>
-
                 <p className="text-sm text-slate-500">
                   8:20 AM
                 </p>
               </div>
 
-
               <div>
                 <p className="font-semibold">
                   ✔ Collection Completed
                 </p>
-
                 <p className="text-sm text-slate-500">
                   8:30 AM
                 </p>
               </div>
-
             </div>
-
           </div>
 
-
-
           {/* Driver Information */}
-
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
             <h2 className="mb-4 text-lg font-bold">
               👤 Driver Information
             </h2>
 
-
             <div className="space-y-3 text-sm">
-
-
               <div className="flex justify-between">
                 <span className="text-slate-500">
                   Driver
@@ -294,7 +239,6 @@ export function CompletedRoute() {
                   Juan Dela Cruz
                 </span>
               </div>
-
 
               <div className="flex justify-between">
                 <span className="text-slate-500">
@@ -306,7 +250,6 @@ export function CompletedRoute() {
                 </span>
               </div>
 
-
               <div className="flex justify-between">
                 <span className="text-slate-500">
                   Plate Number
@@ -316,18 +259,10 @@ export function CompletedRoute() {
                   ABC-1234
                 </span>
               </div>
-
-
             </div>
-
           </div>
-
-
         </main>
-
       </div>
-
-
 
       {isMobile && (
         <>
@@ -336,16 +271,11 @@ export function CompletedRoute() {
             onNavigate={goTo}
           />
 
-          <Fab
-            onNavigate={goTo}
-          />
+          <Fab onNavigate={goTo} />
         </>
       )}
-
-
     </div>
   );
 }
-
 
 export default CompletedRoute;

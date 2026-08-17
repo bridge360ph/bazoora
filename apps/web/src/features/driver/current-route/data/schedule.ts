@@ -1,6 +1,5 @@
 import type { Stop } from "../types";
 
-
 export const schedule: Stop[] = [
   {
     stopNumber: "01",
@@ -12,6 +11,8 @@ export const schedule: Stop[] = [
     wasteType: "Residual",
     volume: "2.0 cu.m",
     priority: "Medium",
+    lat: 14.3845,
+    lng: 120.8850,
   },
 
   {
@@ -24,6 +25,8 @@ export const schedule: Stop[] = [
     wasteType: "Hazardous",
     volume: "1.2 Tons",
     priority: "Critical",
+    lat: 14.3860,
+    lng: 120.8870,
   },
 
   {
@@ -36,6 +39,8 @@ export const schedule: Stop[] = [
     wasteType: "Non-Bio",
     volume: "3.0 cu.m",
     priority: "High",
+    lat: 14.3880,
+    lng: 120.8890,
   },
 
   {
@@ -47,5 +52,7 @@ export const schedule: Stop[] = [
     wasteType: "Biodegradable",
     volume: "5.5 cu.m",
     priority: "Low",
+    lat: 14.3900,
+    lng: 120.8910,
   },
 ];

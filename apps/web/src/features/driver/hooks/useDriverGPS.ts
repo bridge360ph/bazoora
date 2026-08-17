@@ -20,13 +20,17 @@ export function useDriverGPS(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  if (!navigator.geolocation) {
-    queueMicrotask(() => {
-      setError("Geolocation is not supported by this browser");
-    });
+    if (!enabled) {
+      return;
+    }
 
-    return;
-  }
+    if (!navigator.geolocation) {
+      queueMicrotask(() => {
+        setError("Geolocation is not supported by this browser");
+      });
+
+      return;
+    }
 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
@@ -37,28 +41,10 @@ export function useDriverGPS(
           heading,
         } = position.coords;
 
-       console.warn("LAT:", latitude);
-console.warn("LNG:", longitude);
+        setGpsPos([latitude, longitude]);
+        setAccuracy(accuracy ?? null);
 
-setGpsPos([
-  latitude,
-  longitude,
-]);
-
-        console.warn(
-        "LIVE GPS",
-        latitude,
-        longitude
-        );
-
-        setAccuracy(
-          accuracy ?? null
-        );
-
-        if (
-          heading !== null &&
-          !Number.isNaN(heading)
-        ) {
+        if (heading !== null && !Number.isNaN(heading)) {
           setHeading(heading);
         }
 

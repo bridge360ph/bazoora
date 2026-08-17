@@ -624,6 +624,7 @@ export default function SmartMap({
             ? "mapbox://styles/mapbox/streets-v12"
             : "mapbox://styles/mapbox/light-v11"
         }
+        
         mapboxAccessToken={env.VITE_MAPBOX_ACCESS_TOKEN || ""}
         style={{ width: "100%", height: "100%" }}
       >
@@ -732,14 +733,14 @@ export default function SmartMap({
   if (!isCollecting || !activeStep) return null;
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 absolute bottom-4 left-1/2 z-[1000] w-[340px] -translate-x-1/2 duration-300">
+    <div className="animate-in fade-in slide-in-from-bottom-4 absolute bottom-6 left-1/2 z-[1000] w-[340px] -translate-x-1/2 duration-300">
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/95 p-3 text-white shadow-2xl backdrop-blur-md">
+      <div className="rounded-2xl border border-emerald-700 bg-emerald-600/95 p-3 text-white shadow-2xl backdrop-blur-md">
 
         {/* Direction + distance */}
         <div className="flex items-center gap-4">
 
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
             <ManeuverIcon
               type={activeStep.maneuver?.type || ""}
               modifier={activeStep.maneuver?.modifier || ""}
@@ -753,7 +754,7 @@ export default function SmartMap({
               {formatDistance(activeStep.distance)}
             </div>
 
-            <p className="text-[11px] font-semibold text-slate-300">
+            <p className="text-[11px] font-semibold text-emerald-100">
               {activeStep.maneuver?.instruction ??
                 "Continue driving"}
             </p>
@@ -766,7 +767,7 @@ export default function SmartMap({
 
         {/* Divider */}
         {routeSummary && (
-          <div className="my-3 border-t border-slate-700" />
+          <div className="my-3 border-t border-white/20"/>
         )}
 
 
@@ -777,11 +778,11 @@ export default function SmartMap({
 
             <div>
 
-              <span className="text-[10px] font-bold tracking-widest text-slate-500">
+              <span className="text-[10px] font-bold tracking-widest text-emerald-100">
                 ARRIVAL
               </span>
 
-              <p className="text-lg font-black">
+              <p className="text-lg font-black text-white">
                 {formatEta(routeSummary.duration)}
               </p>
 
@@ -790,11 +791,11 @@ export default function SmartMap({
 
             <div className="text-right">
 
-              <span className="text-[10px] font-bold tracking-widest text-slate-500">
+              <span className="text-[10px] font-bold tracking-widest text-emerald-100">
                 REMAINING
               </span>
 
-              <p className="text-sm font-bold text-slate-300">
+              <p className="text-sm font-bold text-white">
                 {formatDuration(routeSummary.duration)}
                 {" · "}
                 {formatDistance(routeSummary.distance)}
@@ -812,7 +813,7 @@ export default function SmartMap({
         {routeSummary && (
           <div className="mt-3">
 
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
 
               <div
                 className="h-full rounded-full bg-emerald-500 transition-all"
@@ -824,7 +825,7 @@ export default function SmartMap({
             </div>
 
 
-            <div className="mt-1 flex justify-between text-[8px] font-extrabold tracking-widest text-slate-500">
+            <div className="mt-1 flex justify-between text-[8px] font-extrabold tracking-widest text-emerald-100">
 
               <span>START</span>
               <span>PROGRESS</span>

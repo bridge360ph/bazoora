@@ -21,6 +21,7 @@ import { Collections } from "./features/driver/Collections";
 import { ReportIssue } from "./features/driver/ReportIssue";
 import { Messages } from "./features/driver/Messages";
 import { Settings } from "./features/driver/Settings";
+import { CompletedRoute } from "./features/driver/CompletedRoute";
 
 // App.tsx is routing configuration only
 function App() {
@@ -113,6 +114,12 @@ function App() {
             path="settings"
             element={<Settings />}
           />
+
+          <Route
+            path="completed-route"
+            element={<CompletedRoute />}
+          />
+
         </Route>
 
         {/* Unknown routes */}

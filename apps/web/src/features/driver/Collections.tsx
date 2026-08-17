@@ -143,10 +143,6 @@ export function Collections() {
         void navigate("/driver/report");
         break;
 
-      case "messages":
-        void navigate("/driver/messages");
-        break;
-
       case "settings":
         void navigate("/driver/settings");
         break;

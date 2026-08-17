@@ -6,24 +6,16 @@ datasource db {
   provider = "postgresql"
 }
 
-enum UserRole {
-  SUPER_ADMIN
-  GOVERNMENT_ADMIN
-  HAULING_ADMIN
-  DRIVER
-  ECO_AIDE
-  BUSINESS
-  RESIDENT
-}
-
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  role           UserRole
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  name           String?
+  driverLocation DriverLocation?
+  assignedTruck  Truck?
 }
 
 model ServiceRequest {
@@ -40,4 +32,33 @@ model ServiceRequest {
   note            String?
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
+}
+
+model Truck {
+  id               String  @id @default(cuid())
+  plateNumber      String  @unique
+  model            String
+  capacity         String
+  status           String  @default("Idle")
+  assignedDriverId String? @unique
+  assignedDriver   User?   @relation(fields: [assignedDriverId], references: [id])
+}
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  driverId  String   @unique
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt
+  driver    User     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  GOVERNMENT_ADMIN
+  HAULING_ADMIN
+  DRIVER
+  ECO_AIDE
+  BUSINESS
+  RESIDENT
 }

@@ -9,21 +9,46 @@ const statusBadgeClass: Record<StopStatus, string> = {
   UPCOMING: "bg-gray-100 text-slate-600",
 };
 
+interface MiniTaskCardProps {
+  stop: Stop;
+  isClickable?: boolean;
+  onClick?: () => void;
+}
+
 export function MiniTaskCard({
   stop,
-}: {
-  stop: Stop;
-}) {
+  isClickable = false,
+  onClick,
+}: MiniTaskCardProps) {
   const isNow = stop.status === "NOW";
   const isCritical = stop.priority === "Critical";
   const isHazardous = stop.wasteType === "Hazardous";
 
+  const handleClick = () => {
+    if (isClickable && onClick) {
+      onClick();
+    }
+  };
+
   return (
     <div
-      className={`rounded-xl border p-3 flex flex-col gap-2 ${
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onClick={handleClick}
+      onKeyDown={(event) => {
+        if (isClickable && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          handleClick();
+        }
+      }}
+      className={`group rounded-xl border p-3 flex flex-col gap-2 transition-all ${
         isNow
           ? "bg-[#0f2a1f] border-[#0f2a1f] text-white"
           : "bg-white border-gray-100"
+      } ${
+        isClickable
+          ? "cursor-pointer hover:border-emerald-500 hover:shadow-md hover:-translate-y-0.5"
+          : ""
       }`}
     >
       {/* Header */}
@@ -69,23 +94,20 @@ export function MiniTaskCard({
         </div>
       </div>
 
-
       {/* Details */}
       <div className="flex items-center gap-1.5 pl-[34px]">
-
         {/* Waste Type */}
         <span
           className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
             isHazardous
               ? "bg-red-100 text-red-700"
               : isNow
-              ? "bg-white/10 text-white/80"
-              : "bg-gray-100 text-slate-600"
+                ? "bg-white/10 text-white/80"
+                : "bg-gray-100 text-slate-600"
           }`}
         >
           {stop.wasteType}
         </span>
-
 
         {/* Priority */}
         <span
@@ -93,15 +115,14 @@ export function MiniTaskCard({
             isCritical
               ? "bg-red-600 text-white"
               : stop.priority === "High"
-              ? "bg-orange-100 text-orange-800"
-              : isNow
-              ? "bg-white/10 text-white/80"
-              : "bg-gray-100 text-slate-600"
+                ? "bg-orange-100 text-orange-800"
+                : isNow
+                  ? "bg-white/10 text-white/80"
+                  : "bg-gray-100 text-slate-600"
           }`}
         >
           {stop.priority}
         </span>
-
 
         {/* Volume */}
         <span
@@ -111,8 +132,26 @@ export function MiniTaskCard({
         >
           {stop.volume}
         </span>
-
       </div>
+
+      {/* View Details */}
+      {isClickable && (
+        <div className="mt-2 flex items-center justify-between border-t border-emerald-100 pt-2">
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <Icon icon={icons.check} size={12} />
+            </div>
+
+            <span className="text-xs font-semibold text-emerald-700">
+              Collection Completed
+            </span>
+          </div>
+
+          <span className="text-xs font-bold text-emerald-600 transition-transform duration-200 group-hover:translate-x-1">
+            View Details →
+          </span>
+        </div>
+      )}
     </div>
   );
 }

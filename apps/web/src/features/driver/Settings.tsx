@@ -82,24 +82,27 @@ const tab = (searchParams.get("tab") as Tab | null) ?? "account";
     setNavOpen(false);
 
     switch (key) {
+      
       case "dashboard":
         void navigate("/driver");
         break;
+
       case "route":
         void navigate("/driver/route");
         break;
+
       case "collections":
         void navigate("/driver/collections");
         break;
+
       case "report":
         void navigate("/driver/report");
         break;
-      case "messages":
-        void navigate("/driver/messages");
-        break;
+
       case "settings":
         void navigate("/driver/settings");
         break;
+
       default:
         break;
     }

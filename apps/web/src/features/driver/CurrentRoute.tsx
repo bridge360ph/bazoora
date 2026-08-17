@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "@/stores/auth-store";
@@ -90,6 +90,41 @@ const [locationPermissionOpen, setLocationPermissionOpen] =
 const [locationPermissionGranted, setLocationPermissionGranted] =
   useState(false);
 
+const [tooFarModalOpen, setTooFarModalOpen] = useState(false);
+const [distanceRemaining, setDistanceRemaining] = useState(0);
+
+  useEffect(() => {
+  const checkLocationPermission = async () => {
+    if (!("permissions" in navigator)) return;
+
+    try {
+      const permission = await navigator.permissions.query({
+        name: "geolocation",
+      });
+
+      if (permission.state === "granted") {
+        setLocationPermissionGranted(true);
+        setLocationExplanationOpen(false);
+        setLocationPermissionOpen(false);
+      }
+
+      permission.onchange = () => {
+        if (permission.state === "granted") {
+          setLocationPermissionGranted(true);
+          setLocationExplanationOpen(false);
+          setLocationPermissionOpen(false);
+        } else {
+          setLocationPermissionGranted(false);
+        }
+      };
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  void checkLocationPermission();
+}, []);
+
   const [stops] = useState<Stop[]>([
     {
       id: "1",
@@ -108,7 +143,10 @@ const [locationPermissionGranted, setLocationPermissionGranted] =
   ]);
 
 const [isPlanning] = useState(false);
-const [isCollecting, setIsCollecting] = useState(false);
+
+const [isCollecting, setIsCollecting] = useState(
+  () => localStorage.getItem("driverRouteStarted") === "true"
+);
 
 const {
   gpsPos,
@@ -161,26 +199,56 @@ const {
   };
 
     const confirmStartRoute = () => {
-      setStartRouteConfirmOpen(false);
-      setIsCollecting(true);
-    };
+     setStartRouteConfirmOpen(false);
+     setIsCollecting(true);
 
-  const requestLocationPermission = () => {
+     localStorage.setItem("driverRouteStarted", "true");
+};
+
+ const requestLocationPermission = () => {
   if (!navigator.geolocation) {
+    alert("Geolocation is not supported by this browser.");
     return;
   }
 
   navigator.geolocation.getCurrentPosition(
     () => {
+     
       setLocationPermissionGranted(true);
       setLocationPermissionOpen(false);
+      setLocationExplanationOpen(false);
     },
-    () => {
+    (error) => {
+      console.error("Location error:", error);
+
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          alert(
+            "Location permission was denied. Please enable it in your browser settings."
+          );
+          break;
+
+        case error.POSITION_UNAVAILABLE:
+          alert(
+            "Unable to get your location. Check your GPS/network."
+          );
+          break;
+
+        case error.TIMEOUT:
+          alert(
+            "Location request timed out. Try again."
+          );
+          break;
+
+        default:
+          alert("Unknown location error.");
+      }
+
       setLocationPermissionGranted(false);
     },
     {
       enableHighAccuracy: true,
-      timeout: 10000,
+      timeout: 15000,
       maximumAge: 0,
     }
   );
@@ -285,18 +353,6 @@ const {
     activeStop.lng
   );
 
-  console.log("GPS position:", {
-    latitude: gpsPos[0],
-    longitude: gpsPos[1],
-  });
-
-  console.log("Active stop:", {
-    latitude: activeStop.lat,
-    longitude: activeStop.lng,
-  });
-
-  console.log("Distance to stop:", distance, "meters");
-
   if (distance > 50) {
     setDistanceRemaining(Math.round(distance));
     setTooFarModalOpen(true);
@@ -304,7 +360,7 @@ const {
   }
 
   // Driver is close enough
-  console.log("Stop completed!");
+
 }}
               onReportIssue={() =>
                 void navigate("/driver/report")

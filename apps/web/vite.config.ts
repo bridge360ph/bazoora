@@ -4,8 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
-
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -43,5 +41,17 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+
+    allowedHosts: [
+      "localhost",
+      "127.0.0.1",
+      "192.168.100.22",
+      "providing-dyslexia-ergonomic.ngrok-free.dev",
+    ],
   },
 });
