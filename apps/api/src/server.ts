@@ -9,11 +9,14 @@ import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
+import { notificationRoutes } from "./routes/notificationRoutes.js";
 import { analyticsRoutes } from "./routes/analyticsRoutes.js";
 import { ecoAideRoutes } from "./routes/ecoAides.js";
+import { locationRoutes } from "./routes/locationRoutes.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
+import { settingsRoutes } from "./routes/settingsRoutes.js";
 
 const app = Fastify({
   logger: true,
@@ -38,6 +41,10 @@ const start = async () => {
     prefix: "/auth",
   });
 
+  await app.register(settingsRoutes, {
+    prefix: "/settings",
+  });
+
   await app.register(haulingRequestRoutes, {
     prefix: "/hauling-requests",
   });
@@ -54,6 +61,10 @@ const start = async () => {
     prefix: "/trucks",
   });
 
+  await app.register(notificationRoutes, {
+    prefix: "/notifications",
+  });
+
   await app.register(analyticsRoutes, {
     prefix: "/analytics",
   });
@@ -61,6 +72,9 @@ const start = async () => {
 await app.register(ecoAideRoutes, {
   prefix: "/eco-aides",
 });
+  await app.register(locationRoutes, {
+    prefix: "/locations",
+  });
 
   app.get("/", (): HealthResponse => {
     return { status: "ok" };

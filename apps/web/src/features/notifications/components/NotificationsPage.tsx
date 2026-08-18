@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNotifications, useCreateNotification } from "../hooks";
 import type { ReactNode } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 
@@ -13,53 +14,6 @@ interface AdminNotification {
 }
 
 type Tab = "compose" | "history";
-
-const initialHistory: AdminNotification[] = [
-  {
-    id: "NTF-20260413-001",
-    title: "Holiday Schedule Reminder",
-    preview:
-      "The collection schedule will be adjusted for the upcoming holiday. Please prepare...",
-    fullMessage:
-      "The collection schedule will be adjusted for the upcoming holiday. Please prepare your bins ahead of time and wait for further updates from the hauling team.",
-    timeAgo: "1 hour ago",
-    date: "Monday, March 23, 2026",
-    hasGreenBorder: false,
-  },
-  {
-    id: "NTF-20260413-002",
-    title: "Road Issue Alert",
-    preview:
-      "Due to road construction along Route B, the truck may arrive 20–30 minutes later...",
-    fullMessage:
-      "Due to road construction along Route B, the truck assigned to your area may arrive 20–30 minutes later than the scheduled time. We apologize for the inconvenience and appreciate your patience.",
-    timeAgo: "2 hours ago",
-    date: "Monday, March 23, 2026",
-    hasGreenBorder: true,
-  },
-  {
-    id: "NTF-20260413-003",
-    title: "Truck Delay Notice",
-    preview:
-      "Truck #BT-02 is delayed due to a road issue near Purok 4. Expected resumption of...",
-    fullMessage:
-      "Truck #BT-02 is delayed due to a road issue near Purok 4. Expected resumption of operations is at 2:00 PM. Please be advised that collection in affected areas will be rescheduled accordingly.",
-    timeAgo: "3 hours ago",
-    date: "Monday, March 23, 2026",
-    hasGreenBorder: true,
-  },
-  {
-    id: "NTF-20260413-004",
-    title: "Collection Reminder",
-    preview:
-      "Your next biodegradable waste collection is scheduled for tomorrow, June 18 at 7...",
-    fullMessage:
-      "Your next biodegradable waste collection is scheduled for tomorrow, June 18 at 7:00 AM. Please ensure your bins are placed outside by 6:45 AM.",
-    timeAgo: "5 hours ago",
-    date: "Sunday, March 22, 2026",
-    hasGreenBorder: true,
-  },
-];
 
 const notificationTypes = [
   "Select Type",
@@ -83,7 +37,38 @@ const inputClassName =
 
 export function NotificationsPage() {
   const [tab, setTab] = useState<Tab>("compose");
-  const [history, setHistory] = useState<AdminNotification[]>(initialHistory);
+  const { data: backendHistory = [] } = useNotifications();
+  const createNotificationMutation = useCreateNotification();
+
+  const history = useMemo<AdminNotification[]>(
+    () =>
+      backendHistory.map((notification) => {
+        const createdAt = new Date(notification.createdAt);
+        const trimmedMessage = notification.message.trim();
+
+        return {
+          id: notification.id,
+          title: notification.title,
+          preview:
+            trimmedMessage.length > 70
+              ? `${trimmedMessage.slice(0, 70)}...`
+              : trimmedMessage,
+          fullMessage: trimmedMessage,
+          timeAgo: createdAt.toLocaleTimeString("en-PH", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          date: createdAt.toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          hasGreenBorder: notification.totalReads < notification.totalRecipients,
+        };
+      }),
+    [backendHistory],
+  );
   const [selected, setSelected] = useState<AdminNotification | null>(null);
   const [notificationType, setNotificationType] = useState("Select Type");
   const [audience, setAudience] = useState("Select type...");
@@ -123,33 +108,29 @@ export function NotificationsPage() {
       return;
     }
 
-    const trimmedMessage = message.trim();
+    createNotificationMutation.mutate(
+      {
+        type: notificationType,
+        audience,
+        title: title.trim(),
+        message: message.trim(),
+      },
+      {
+        onSuccess: () => {
+          const sentTitle = title.trim();
 
-    const newNotification: AdminNotification = {
-      id: nextNotificationId,
-      title: title.trim(),
-      preview:
-        trimmedMessage.length > 70
-          ? `${trimmedMessage.slice(0, 70)}...`
-          : trimmedMessage,
-      fullMessage: trimmedMessage,
-      timeAgo: "just now",
-      date: new Date().toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      hasGreenBorder: true,
-    };
-
-    setHistory((previousHistory) => [newNotification, ...previousHistory]);
-    setTitle("");
-    setMessage("");
-    setNotificationType("Select Type");
-    setAudience("Select type...");
-    showToast(`Notification "${newNotification.title}" sent successfully.`);
-    setTab("history");
+          setTitle("");
+          setMessage("");
+          setNotificationType("Select Type");
+          setAudience("Select type...");
+          showToast(`Notification "${sentTitle}" sent successfully.`);
+          setTab("history");
+        },
+        onError: () => {
+          showToast("Failed to send notification. Please try again.");
+        },
+      },
+    );
   }
 
   return (
@@ -314,7 +295,7 @@ export function NotificationsPage() {
                       </p>
 
                       <div className="flex items-center gap-1.5 pl-[26px] text-xs text-gray-400">
-                        <span aria-hidden="true">◷</span>
+                        <span aria-hidden="true">Ã¢â€”Â·</span>
                         <span>{notification.timeAgo}</span>
                       </div>
                     </div>
@@ -323,7 +304,7 @@ export function NotificationsPage() {
                       aria-hidden="true"
                       className="text-2xl leading-none text-gray-400"
                     >
-                      ›
+                      Ã¢â‚¬Âº
                     </span>
                   </div>
                 </button>
@@ -344,7 +325,7 @@ export function NotificationsPage() {
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
-          ✓ {toast}
+          Ã¢Å“â€œ {toast}
         </div>
       )}
     </main>

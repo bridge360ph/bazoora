@@ -36,6 +36,7 @@ export const plannedStopSchema = z.object({
 
 export const truckSchema = z.object({
   id: z.string(),
+  truckNumber: z.string(),
   plateNumber: z.string(),
   status: truckStatusSchema,
   currentLocation: truckLocationSchema.nullable().optional(),
