@@ -17,20 +17,22 @@ enum UserRole {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  userNumber      String?          @unique             // user-facing display id, temporarily optional
-  email           String           @unique
-  name            String?
-  password        String
-  role            UserRole
-  authVersion     Int                  @default(0)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  driverLocation  DriverLocation?      @relation("DriverLocations")
-  assignedTruck   Truck?               @relation("AssignedDriver")
-  assignedRoute   Route?               @relation("AssignedEcoAide")
-  refreshTokens   RefreshToken[]
-  settingsProfile UserSettingsProfile?
+  id                   String                @id @default(cuid())
+  userNumber           String?               @unique // user-facing display id, temporarily optional
+  email                String                @unique
+  name                 String?
+  password             String
+  role                 UserRole
+  authVersion          Int                   @default(0)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  driverLocation       DriverLocation?       @relation("DriverLocations")
+  assignedTruck        Truck?                @relation("AssignedDriver")
+  assignedRoute        Route?                @relation("AssignedEcoAide")
+  refreshTokens        RefreshToken[]
+  settingsProfile      UserSettingsProfile?
+  createdNotifications Notification[]        @relation("CreatedNotifications")
+  notificationReceipts NotificationReceipt[]
 }
 
 model RefreshToken {
@@ -77,7 +79,7 @@ model DriverLocation {
 
 model Truck {
   id               String           @id @default(cuid())
-  truckNumber     String?          @unique             // user-facing display id, temporarily optional
+  truckNumber      String?          @unique // user-facing display id, temporarily optional
   plateNumber      String           @unique
   model            String?
   capacity         String?
@@ -178,4 +180,33 @@ model HaulingRequest {
   archived       Boolean              @default(false)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  type        String
+  audience    String
+  title       String
+  message     String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy User                  @relation("CreatedNotifications", fields: [createdById], references: [id])
+  receipts  NotificationReceipt[]
+
+  @@index([createdAt])
+}
+
+model NotificationReceipt {
+  id             String    @id @default(cuid())
+  notificationId String
+  userId         String
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
 }

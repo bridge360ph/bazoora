@@ -15,6 +15,9 @@ interface ServerToClientEvents {
     lng: number;
     timestamp: string;
   }) => void;
+  "notification:new": (payload: {
+    notificationId: string;
+  }) => void;
 }
 
 interface ClientToServerEvents {
@@ -96,6 +99,8 @@ export function setupSocket(
   });
 
   socketIO.on("connection", (socket) => {
+    void socket.join(`user:${socket.data.userId}`);
+
     socket.on("truck:subscribe", ({ orgId }) => {
       if (
         typeof orgId !== "string" ||
