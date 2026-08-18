@@ -37,7 +37,8 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       const location = t.assignedDriver?.driverLocation;
       return {
         id: t.id,
-        plateNumber: t.plateNumber,
+    truckNumber: t.truckNumber,
+    plateNumber: t.plateNumber,
         status: t.status === "Active" ? "active" : "idle",
         currentLocation: location
           ? {

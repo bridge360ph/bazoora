@@ -11,6 +11,7 @@ import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { notificationRoutes } from "./routes/notificationRoutes.js";
 import { analyticsRoutes } from "./routes/analyticsRoutes.js";
+import { ecoAideRoutes } from "./routes/ecoAides.js";
 import { locationRoutes } from "./routes/locationRoutes.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
@@ -68,6 +69,9 @@ const start = async () => {
     prefix: "/analytics",
   });
 
+await app.register(ecoAideRoutes, {
+  prefix: "/eco-aides",
+});
   await app.register(locationRoutes, {
     prefix: "/locations",
   });
