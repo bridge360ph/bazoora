@@ -24,6 +24,7 @@ import { AdminRouteManagementPage } from "./features/route-management/AdminRoute
 import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
 import { SettingsPage } from "./features/settings/components/SettingsPage";
 import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
+import { NotificationListener } from "./features/notifications/components/NotificationListener";
 
 // Driver Pages
 import DriverDashboard from "./features/driver/DriverDashboard";
@@ -105,7 +106,9 @@ function AppContent() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gray-50 dark:bg-slate-950">
+    <>
+      <NotificationListener />
+      <div className="flex h-screen flex-col overflow-hidden bg-gray-50 dark:bg-slate-950">
       {/* Role Simulator banner - development builds only, never shipped to production */}
       {import.meta.env.DEV && (
         <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
@@ -213,7 +216,8 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -13,6 +13,9 @@ export interface ServerToClientEvents {
     lng: number;
     timestamp: string;
   }) => void;
+  "notification:new": (payload: {
+    notificationId: string;
+  }) => void;
   connect_error: (error: Error) => void;
 }
 
