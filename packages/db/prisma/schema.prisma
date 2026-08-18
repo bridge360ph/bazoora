@@ -117,6 +117,7 @@ model UserSettingsProfile {
   lastName           String?
   phoneNumber        String?
   streetAddress      String?
+  region             String?
   barangay           String?
   cityMunicipality   String?
   province           String?

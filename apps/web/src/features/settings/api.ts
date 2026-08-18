@@ -16,6 +16,7 @@ export interface SettingsProfile {
   lastName: string | null;
   phoneNumber: string | null;
   streetAddress: string | null;
+  region: string | null;
   barangay: string | null;
   cityMunicipality: string | null;
   province: string | null;
@@ -42,6 +43,7 @@ export interface UpdateProfileInput {
   email: string;
   phoneNumber: string;
   streetAddress: string;
+  region: string;
   barangay: string;
   cityMunicipality: string;
   province: string;

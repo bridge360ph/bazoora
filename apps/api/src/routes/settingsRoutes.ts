@@ -9,6 +9,7 @@ interface UpdateProfileBody {
   email?: string;
   phoneNumber?: string;
   streetAddress?: string;
+  region?: string;
   barangay?: string;
   cityMunicipality?: string;
   province?: string;
@@ -163,6 +164,7 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
             lastName,
             phoneNumber: normalizeOptionalText(body.phoneNumber),
             streetAddress: normalizeOptionalText(body.streetAddress),
+            region: normalizeOptionalText(body.region),
             barangay: normalizeOptionalText(body.barangay),
             cityMunicipality: normalizeOptionalText(body.cityMunicipality),
             province: normalizeOptionalText(body.province),
@@ -173,6 +175,7 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
             lastName,
             phoneNumber: normalizeOptionalText(body.phoneNumber),
             streetAddress: normalizeOptionalText(body.streetAddress),
+            region: normalizeOptionalText(body.region),
             barangay: normalizeOptionalText(body.barangay),
             cityMunicipality: normalizeOptionalText(body.cityMunicipality),
             province: normalizeOptionalText(body.province),

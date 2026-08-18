@@ -10,6 +10,7 @@ import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
 import { analyticsRoutes } from "./routes/analyticsRoutes.js";
+import { locationRoutes } from "./routes/locationRoutes.js";
 import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
@@ -60,6 +61,10 @@ const start = async () => {
 
   await app.register(analyticsRoutes, {
     prefix: "/analytics",
+  });
+
+  await app.register(locationRoutes, {
+    prefix: "/locations",
   });
 
   app.get("/", (): HealthResponse => {

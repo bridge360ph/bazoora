@@ -21,6 +21,7 @@ import {
 } from "@/features/settings/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { Button } from "@bazoora/ui";
+import { PhilippineAddressFields } from "./PhilippineAddressFields";
 
 type Tab = "Account" | "Notifications" | "System";
 
@@ -30,6 +31,7 @@ interface ProfileErrors {
   email?: string;
   phone?: string;
   streetAddress?: string;
+  region?: string;
   barangay?: string;
   cityMunicipality?: string;
   province?: string;
@@ -105,6 +107,7 @@ export function SettingsPage() {
   const [email, setEmail] = useState(authUser?.email ?? "");
   const [phone, setPhone] = useState(authUser?.phoneNumber ?? authUser?.contactNo ?? "");
   const [streetAddress, setStreetAddress] = useState(authUser?.address?.line1 ?? "");
+  const [region, setRegion] = useState("");
   const [barangay, setBarangay] = useState(authUser?.address?.barangay ?? "");
   const [cityMunicipality, setCityMunicipality] = useState(authUser?.address?.city ?? "");
   const [province, setProvince] = useState(authUser?.address?.province ?? "");
@@ -202,6 +205,7 @@ export function SettingsPage() {
         setEmail(user.email);
         setPhone(profile.phoneNumber ?? "");
         setStreetAddress(profile.streetAddress ?? "");
+        setRegion(profile.region ?? "");
         setBarangay(profile.barangay ?? "");
         setCityMunicipality(profile.cityMunicipality ?? "");
         setProvince(profile.province ?? "");
@@ -291,6 +295,9 @@ export function SettingsPage() {
           5,
         );
         break;
+      case "region":
+        error = validateRequiredAddress(region, "Region");
+        break;
       case "barangay":
         error = validateRequiredAddress(barangay, "Barangay");
         break;
@@ -341,6 +348,7 @@ export function SettingsPage() {
         "House/unit number and street",
         5,
       ),
+      region: validateRequiredAddress(region, "Region"),
       barangay: validateRequiredAddress(barangay, "Barangay"),
       cityMunicipality: validateRequiredAddress(
         cityMunicipality,
@@ -367,6 +375,7 @@ export function SettingsPage() {
       email: email.trim().toLowerCase(),
       phoneNumber: phone,
       streetAddress: streetAddress.trim().replace(/\s+/g, " "),
+      region: region.trim().replace(/\s+/g, " "),
       barangay: barangay.trim().replace(/\s+/g, " "),
       cityMunicipality: cityMunicipality.trim().replace(/\s+/g, " "),
       province: province.trim().replace(/\s+/g, " "),
@@ -384,6 +393,7 @@ export function SettingsPage() {
       setEmail(savedData.user.email);
       setPhone(savedProfile.phoneNumber ?? "");
       setStreetAddress(savedProfile.streetAddress ?? "");
+      setRegion(savedProfile.region ?? "");
       setBarangay(savedProfile.barangay ?? "");
       setCityMunicipality(savedProfile.cityMunicipality ?? "");
       setProvince(savedProfile.province ?? "");
@@ -719,71 +729,48 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <div className="mb-3.5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <Field
-                    label="Barangay"
-                    value={barangay}
-                    onChange={(value) => {
-                      setBarangay(value);
+                <div className="mb-3.5">
+                  <PhilippineAddressFields
+                    value={{
+                      region,
+                      province,
+                      cityMunicipality,
+                      barangay,
+                      postalCode,
+                    }}
+                    errors={{
+                      region: profileErrors.region,
+                      province: profileErrors.province,
+                      cityMunicipality: profileErrors.cityMunicipality,
+                      barangay: profileErrors.barangay,
+                    }}
+                    onChange={(address) => {
+                      setRegion(address.region);
+                      setProvince(address.province);
+                      setCityMunicipality(address.cityMunicipality);
+                      setBarangay(address.barangay);
+                      setPostalCode(address.postalCode);
+
                       setProfileErrors((errors) => ({
                         ...errors,
-                        barangay: undefined,
-                      }));
-                    }}
-                    onBlur={() => {
-                      validateProfileField("barangay");
-                    }}
-                    error={profileErrors.barangay}
-                    required
-                    maxLength={120}
-                    placeholder="Barangay San Antonio"
-                  />
-                  <Field
-                    label="City/Municipality"
-                    value={cityMunicipality}
-                    onChange={(value) => {
-                      setCityMunicipality(value);
-                      setProfileErrors((errors) => ({
-                        ...errors,
+                        region: undefined,
+                        province: undefined,
                         cityMunicipality: undefined,
+                        barangay: undefined,
+                        postalCode: undefined,
                       }));
                     }}
-                    onBlur={() => {
-                      validateProfileField("cityMunicipality");
-                    }}
-                    error={profileErrors.cityMunicipality}
-                    required
-                    maxLength={120}
-                    autoComplete="address-level2"
-                    placeholder="Quezon City"
                   />
                 </div>
 
-                <div className="mb-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  <Field
-                    label="Province"
-                    value={province}
-                    onChange={(value) => {
-                      setProvince(value);
-                      setProfileErrors((errors) => ({
-                        ...errors,
-                        province: undefined,
-                      }));
-                    }}
-                    onBlur={() => {
-                      validateProfileField("province");
-                    }}
-                    error={profileErrors.province}
-                    required
-                    maxLength={120}
-                    autoComplete="address-level1"
-                    placeholder="Metro Manila"
-                  />
+                <div className="mb-5">
                   <Field
                     label="ZIP/Postal Code"
                     value={postalCode}
                     onChange={(value) => {
-                      setPostalCode(value.replace(/\D/g, "").slice(0, 4));
+                      setPostalCode(
+                        value.replace(/\D/g, "").slice(0, 4),
+                      );
                       setProfileErrors((errors) => ({
                         ...errors,
                         postalCode: undefined,
@@ -799,6 +786,10 @@ export function SettingsPage() {
                     autoComplete="postal-code"
                     placeholder="1100"
                   />
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    ZIP is filled automatically when available and can
+                    be entered manually when needed.
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={isSavingProfile}>
