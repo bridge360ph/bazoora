@@ -1,19 +1,31 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Route } from "@bazoora/shared";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import {
-  INITIAL_APPROVAL_REQUESTS,
-  INITIAL_ECO_AIDES,
-} from "../ecoAides.data";
+  archiveEcoAide,
+  createEcoAide,
+  deactivateEcoAide,
+  getEcoAides,
+  suspendEcoAide,
+  updateEcoAide,
+  type ApiEcoAide,
+} from "../api";
+import { fetchRoutes } from "../../route-management/routeService";
+import {
+  assignRouteEcoAideRequest,
+  fetchEcoAideUsers,
+} from "../../route-assignment/routeAssignmentApi";
+import { listTrucks } from "../../trucks/api";
+import type { Truck } from "../../trucks/schemas";
 import type {
   EcoAide,
-  EcoAideApprovalRequest,
   EcoAideManagementTab,
   EcoAideStatus,
   EcoAideStatusFilter,
 } from "../ecoAides.types";
 
-type ModalMode = "view" | "edit" | "create" | "suspend" | "deactivate" | null;
+type ModalMode = "view" | "edit" | "create" | "suspend" | "deactivate" | "archive" | null;
 
 const statusFilters: EcoAideStatusFilter[] = [
   "All",
@@ -22,40 +34,123 @@ const statusFilters: EcoAideStatusFilter[] = [
   "Off Duty",
 ];
 
-const emptyEcoAideForm: Omit<EcoAide, "id" | "addedDate"> = {
+function mapApiEcoAide(apiEcoAide: ApiEcoAide): EcoAide {
+  const status: EcoAideStatus =
+    apiEcoAide.status === "SUSPENDED"
+      ? "Suspended"
+      : apiEcoAide.status === "DEACTIVATED"
+        ? "Deactivated"
+        : apiEcoAide.availability === "ON_ROUTE"
+          ? "On Route"
+          : apiEcoAide.availability === "OFF_DUTY"
+            ? "Off Duty"
+            : "Active";
+
+  return {
+    id: apiEcoAide.ecoAideId,
+    name: apiEcoAide.name,
+    addedDate: new Date(apiEcoAide.createdAt).toLocaleDateString("en-PH"),
+    status,
+    contactNumber: apiEcoAide.phone ?? "",
+    birthdate: apiEcoAide.birthdate ?? "",
+    address: apiEcoAide.address ?? "",
+    assignedRoute: apiEcoAide.assignedRoute
+      ? `RT-${String(apiEcoAide.assignedRoute.routeNumber).padStart(3, "0")}`
+      : "",
+    assignedTruck:
+      apiEcoAide.assignedRoute?.assignedTruck?.truckNumber ?? "",
+    email: apiEcoAide.email,
+  };
+}
+
+
+const emptyEcoAideForm: EcoAideFormValue = {
   name: "",
   status: "Active",
+  availability: "Available",
   contactNumber: "",
   birthdate: "",
   address: "",
   assignedRoute: "",
   assignedTruck: "",
-  totalRoutes: 0,
-  completionRate: "0%",
-  missedAssignment: 0,
   email: "",
+  password: "",
 };
 
 export function EcoAideManagementPage() {
   const [activeTab, setActiveTab] = useState<EcoAideManagementTab>("all");
-  const [ecoAides, setEcoAides] = useState<EcoAide[]>(INITIAL_ECO_AIDES);
-  const [approvalRequests, setApprovalRequests] = useState<
-    EcoAideApprovalRequest[]
-  >(INITIAL_APPROVAL_REQUESTS);
+  const [ecoAides, setEcoAides] = useState<EcoAide[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<EcoAideStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
   const [selectedEcoAide, setSelectedEcoAide] = useState<EcoAide | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [formValue, setFormValue] =
-    useState<Omit<EcoAide, "id" | "addedDate">>(emptyEcoAideForm);
+    useState<EcoAideFormValue>(emptyEcoAideForm);
   const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEcoAides() {
+      try {
+        const records = await getEcoAides();
+
+        if (!cancelled) {
+          setEcoAides(records.map(mapApiEcoAide));
+        }
+      } catch {
+        if (!cancelled) {
+          setEcoAides([]);
+        }
+      }
+    }
+
+    async function loadRoutes() {
+      try {
+        const records = await fetchRoutes();
+
+        if (!cancelled) {
+          setRoutes(records);
+        }
+      } catch {
+        if (!cancelled) {
+          setRoutes([]);
+        }
+      }
+    }
+
+    async function loadTrucks() {
+      try {
+        const records = await listTrucks();
+
+        if (!cancelled) {
+          setTrucks(records);
+        }
+      } catch {
+        if (!cancelled) {
+          setTrucks([]);
+        }
+      }
+    }
+
+    void loadEcoAides();
+    void loadRoutes();
+    void loadTrucks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const filteredEcoAides = useMemo(() => {
     return ecoAides.filter((ecoAide) => {
       const matchesStatus =
         statusFilter === "All" ||
         ecoAide.status === statusFilter ||
-        (statusFilter === "Active" && ecoAide.status === "On Duty");
+        false;
 
       const normalizedSearch = searchValue.trim().toLowerCase();
       const matchesSearch =
@@ -67,21 +162,8 @@ export function EcoAideManagementPage() {
     });
   }, [ecoAides, searchValue, statusFilter]);
 
-  const filteredApprovalRequests = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLowerCase();
-
-    return approvalRequests.filter((request) => {
-      return (
-        normalizedSearch.length === 0 ||
-        request.name.toLowerCase().includes(normalizedSearch) ||
-        request.date.toLowerCase().includes(normalizedSearch) ||
-        request.time.toLowerCase().includes(normalizedSearch)
-      );
-    });
-  }, [approvalRequests, searchValue]);
-
   const activeCount = ecoAides.filter(
-    (ecoAide) => ecoAide.status === "Active" || ecoAide.status === "On Duty",
+    (ecoAide) => ecoAide.status === "Active",
   ).length;
 
   const suspendedCount = ecoAides.filter(
@@ -101,16 +183,25 @@ export function EcoAideManagementPage() {
     setSelectedEcoAide(ecoAide);
     setFormValue({
       name: ecoAide.name,
-      status: ecoAide.status,
+      status:
+        ecoAide.status === "Suspended"
+          ? "Suspended"
+          : ecoAide.status === "Deactivated"
+            ? "Deactivated"
+            : "Active",
+      availability:
+        ecoAide.status === "On Route"
+          ? "On Route"
+          : ecoAide.status === "Off Duty"
+            ? "Off Duty"
+            : "Available",
       contactNumber: ecoAide.contactNumber,
       birthdate: ecoAide.birthdate,
       address: ecoAide.address,
       assignedRoute: ecoAide.assignedRoute,
       assignedTruck: ecoAide.assignedTruck,
-      totalRoutes: ecoAide.totalRoutes,
-      completionRate: ecoAide.completionRate,
-      missedAssignment: ecoAide.missedAssignment,
       email: ecoAide.email,
+          password: "",
     });
     setModalMode("edit");
   }
@@ -133,73 +224,174 @@ export function EcoAideManagementPage() {
     setModalMode("deactivate");
   }
 
+  function openArchiveModal(ecoAide: EcoAide) {
+    setSelectedEcoAide(ecoAide);
+    setModalMode("archive");
+  }
+
   function closeModal() {
     setSelectedEcoAide(null);
     setModalMode(null);
     setReason("");
   }
 
-  function saveEditedEcoAide() {
+  async function saveEditedEcoAide(
+    validatedFormValue: EcoAideFormValue,
+  ) {
     if (!selectedEcoAide) {
       return;
     }
 
-    setEcoAides((currentEcoAides) =>
-      currentEcoAides.map((ecoAide) =>
-        ecoAide.id === selectedEcoAide.id
-          ? {
-              ...ecoAide,
-              ...formValue,
-            }
-          : ecoAide,
-      ),
+    await updateEcoAide(selectedEcoAide.id, {
+      name: validatedFormValue.name,
+      phone: validatedFormValue.contactNumber,
+      birthdate: validatedFormValue.birthdate,
+      address: validatedFormValue.address,
+      status:
+        validatedFormValue.status === "Suspended"
+          ? "SUSPENDED"
+          : validatedFormValue.status === "Deactivated"
+            ? "DEACTIVATED"
+            : "ACTIVE",
+      availability:
+        validatedFormValue.availability === "On Route"
+          ? "ON_ROUTE"
+          : validatedFormValue.availability === "Off Duty"
+            ? "OFF_DUTY"
+            : "AVAILABLE",
+    });
+
+    const ecoAideUsers = await fetchEcoAideUsers();
+    const currentUser = ecoAideUsers.find(
+      (ecoAide) =>
+        ecoAide.userNumber === selectedEcoAide.id,
     );
 
+    const oldRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber === selectedEcoAide.assignedRoute,
+    );
+
+    const newRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber ===
+        validatedFormValue.assignedRoute,
+    );
+
+    if (currentUser) {
+      if (
+        oldRoute &&
+        oldRoute.id !== newRoute?.id
+      ) {
+        await assignRouteEcoAideRequest(
+          oldRoute.id,
+          null,
+        );
+      }
+
+      if (
+        newRoute &&
+        newRoute.id !== oldRoute?.id
+      ) {
+        await assignRouteEcoAideRequest(
+          newRoute.id,
+          currentUser.id,
+        );
+      }
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
+
     closeModal();
   }
 
-  function createEcoAideAccount() {
-    const nextIdNumber = ecoAides.length + 1;
-    const nextEcoAide: EcoAide = {
-      id: `EA-${String(nextIdNumber).padStart(3, "0")}`,
-      addedDate: "26/03/2026",
-      ...formValue,
-      name: formValue.name.trim() || "New Eco-Aide",
-    };
+  async function createEcoAideAccount(
+    validatedFormValue: EcoAideFormValue,
+  ) {
+    const created = await createEcoAide({
+      name: validatedFormValue.name,
+      email: validatedFormValue.email,
+      password: validatedFormValue.password,
+      phone: validatedFormValue.contactNumber,
+      birthdate: validatedFormValue.birthdate,
+      address: validatedFormValue.address,
+      status:
+        validatedFormValue.status === "Suspended"
+          ? "SUSPENDED"
+          : validatedFormValue.status === "Deactivated"
+            ? "DEACTIVATED"
+            : "ACTIVE",
+      availability:
+        validatedFormValue.availability === "On Route"
+          ? "ON_ROUTE"
+          : validatedFormValue.availability === "Off Duty"
+            ? "OFF_DUTY"
+            : "AVAILABLE",
+    });
 
-    setEcoAides((currentEcoAides) => [nextEcoAide, ...currentEcoAides]);
+    const selectedRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber ===
+        validatedFormValue.assignedRoute,
+    );
+
+    if (selectedRoute) {
+      const ecoAideUsers = await fetchEcoAideUsers();
+
+      const createdUser = ecoAideUsers.find(
+        (ecoAide) =>
+          ecoAide.userNumber === created.ecoAideId,
+      );
+
+      if (!createdUser) {
+        throw new Error(
+          "Created Eco-Aide could not be resolved for route assignment.",
+        );
+      }
+
+      await assignRouteEcoAideRequest(
+        selectedRoute.id,
+        createdUser.id,
+      );
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
+
     closeModal();
   }
 
-  function confirmStatusChange(status: "Suspended" | "Deactivated") {
+  async function confirmArchive() {
     if (!selectedEcoAide) {
       return;
     }
 
-    setEcoAides((currentEcoAides) =>
-      currentEcoAides.map((ecoAide) =>
-        ecoAide.id === selectedEcoAide.id
-          ? {
-              ...ecoAide,
-              status,
-            }
-          : ecoAide,
-      ),
-    );
+    await archiveEcoAide(selectedEcoAide.id);
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
 
     closeModal();
   }
 
-  function approveRequest(id: string) {
-    setApprovalRequests((currentRequests) =>
-      currentRequests.filter((request) => request.id !== id),
-    );
-  }
+  async function confirmStatusChange(
+    status: "Suspended" | "Deactivated",
+  ) {
+    if (!selectedEcoAide) {
+      return;
+    }
 
-  function rejectRequest(id: string) {
-    setApprovalRequests((currentRequests) =>
-      currentRequests.filter((request) => request.id !== id),
-    );
+    if (status === "Suspended") {
+      await suspendEcoAide(selectedEcoAide.id);
+    } else {
+      await deactivateEcoAide(selectedEcoAide.id);
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
+
+    closeModal();
   }
 
   return (
@@ -217,16 +409,7 @@ export function EcoAideManagementPage() {
             All Eco-Aides ({ecoAides.length})
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("approval");
-              setSearchValue("");
-            }}
-            className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-[13px] text-gray-900 ${activeTab === "approval" ? "border-b-2 border-gray-900 font-bold" : "font-medium"}`}
-          >
-            Approval queue ({approvalRequests.length})
-          </button>
+
         </div>
 
         <Button onClick={openCreateAccount}>+ Add Eco-Aide</Button>
@@ -274,21 +457,14 @@ export function EcoAideManagementPage() {
         />
       </section>
 
-      {activeTab === "all" ? (
-        <AllEcoAidesTable
+      <AllEcoAidesTable
           ecoAides={filteredEcoAides}
           onViewProfile={openViewProfile}
           onEdit={openEditProfile}
           onSuspend={openSuspendModal}
           onDeactivate={openDeactivateModal}
+          onArchive={openArchiveModal}
         />
-      ) : (
-        <ApprovalQueueTable
-          approvalRequests={filteredApprovalRequests}
-          onApprove={approveRequest}
-          onReject={rejectRequest}
-        />
-      )}
 
       {modalMode === "view" && selectedEcoAide && (
         <ViewProfileModal
@@ -302,9 +478,12 @@ export function EcoAideManagementPage() {
 
       {modalMode === "edit" && (
         <EditEcoAideModal
+          mode="edit"
           title="Edit Eco-Aide Profile"
           formValue={formValue}
           setFormValue={setFormValue}
+          routes={routes}
+          trucks={trucks}
           onSave={saveEditedEcoAide}
           onClose={closeModal}
         />
@@ -312,9 +491,12 @@ export function EcoAideManagementPage() {
 
       {modalMode === "create" && (
         <EditEcoAideModal
+          mode="create"
           title="Create Eco-Aide Account"
           formValue={formValue}
           setFormValue={setFormValue}
+          routes={routes}
+          trucks={trucks}
           onSave={createEcoAideAccount}
           onClose={closeModal}
           saveLabel="Create"
@@ -352,6 +534,22 @@ export function EcoAideManagementPage() {
           onClose={closeModal}
         />
       )}
+      {modalMode === "archive" && selectedEcoAide && (
+        <ConfirmActionModal
+          title="Archive Eco-Aide"
+          warning="This will remove the Eco-Aide from the active management list."
+          message={`Are you sure you want to archive ${selectedEcoAide.name}?`}
+          reasonLabel="Reason for archiving"
+          reason={reason}
+          setReason={setReason}
+          confirmLabel="Archive"
+          onConfirm={() => {
+            void confirmArchive();
+          }}
+          onClose={closeModal}
+        />
+      )}
+
     </main>
   );
 }
@@ -362,6 +560,7 @@ interface AllEcoAidesTableProps {
   onEdit: (ecoAide: EcoAide) => void;
   onSuspend: (ecoAide: EcoAide) => void;
   onDeactivate: (ecoAide: EcoAide) => void;
+  onArchive: (ecoAide: EcoAide) => void;
 }
 
 function AllEcoAidesTable({
@@ -370,23 +569,24 @@ function AllEcoAidesTable({
   onEdit,
   onSuspend,
   onDeactivate,
+  onArchive,
 }: AllEcoAidesTableProps) {
   return (
-    <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+    <section className="rounded-b-[10px] border border-gray-200 bg-white">
       <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Eco-Aides</div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+      <div className="w-full overflow-visible">
+        <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="bg-brand">
               {[
-                "Eco-Aide ID ↓",
+                "Eco-Aide ID",
                 "Eco-Aide Name",
                 "Added",
                 "Status",
                 "Actions",
               ].map((heading) => (
-                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
+                <th key={heading} className="px-3 py-2.5 text-left text-xs font-bold text-white">
                   {heading}
                 </th>
               ))}
@@ -403,14 +603,14 @@ function AllEcoAidesTable({
             ) : (
               ecoAides.map((ecoAide) => (
                 <tr key={ecoAide.id} className="border-b border-gray-200">
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.id}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.name}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.addedDate}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.id}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.name}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.addedDate}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
                     <StatusPill status={ecoAide.status} />
                   </td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       <button
                         type="button"
                         className="cursor-pointer rounded-[10px] border-0 bg-gray-500 px-2.5 py-[3px] text-xs text-white hover:bg-gray-600"
@@ -426,6 +626,7 @@ function AllEcoAidesTable({
                         onEdit={onEdit}
                         onSuspend={onSuspend}
                         onDeactivate={onDeactivate}
+                        onArchive={onArchive}
                       />
                     </div>
                   </td>
@@ -435,9 +636,7 @@ function AllEcoAidesTable({
           </tbody>
         </table>
       </div>
-
-      <Pagination />
-    </section>
+</section>
   );
 }
 
@@ -446,6 +645,7 @@ interface ActionMenuProps {
   onEdit: (ecoAide: EcoAide) => void;
   onSuspend: (ecoAide: EcoAide) => void;
   onDeactivate: (ecoAide: EcoAide) => void;
+  onArchive: (ecoAide: EcoAide) => void;
 }
 
 function ActionMenu({
@@ -453,11 +653,22 @@ function ActionMenu({
   onEdit,
   onSuspend,
   onDeactivate,
+  onArchive,
 }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
+      <button
+        type="button"
+        className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[13px] font-medium text-gray-900 hover:underline"
+        onClick={() => {
+          onEdit(ecoAide);
+        }}
+      >
+        Edit
+      </button>
+
       <button
         type="button"
         onClick={() => {
@@ -465,25 +676,15 @@ function ActionMenu({
         }}
         className="cursor-pointer border-0 bg-transparent text-sm font-extrabold text-gray-900"
       >
-        •••
+        ...
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-20 min-w-[100px] border border-gray-200 bg-white py-1.5 shadow-lg">
-          <button
-            type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onEdit(ecoAide);
-            }}
-          >
-            Edit
-          </button>
+        <div className="absolute right-0 top-full z-[100] mt-1 flex w-36 flex-col overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onSuspend(ecoAide);
@@ -494,7 +695,7 @@ function ActionMenu({
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onDeactivate(ecoAide);
@@ -502,84 +703,20 @@ function ActionMenu({
           >
             Deactivate
           </button>
+
+          <button
+            type="button"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
+            onClick={() => {
+              setIsOpen(false);
+              onArchive(ecoAide);
+            }}
+          >
+            Archive
+          </button>
         </div>
       )}
     </div>
-  );
-}
-
-interface ApprovalQueueTableProps {
-  approvalRequests: EcoAideApprovalRequest[];
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-}
-
-function ApprovalQueueTable({
-  approvalRequests,
-  onApprove,
-  onReject,
-}: ApprovalQueueTableProps) {
-  return (
-    <section className="min-h-[395px] overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
-      <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Approval Queue</div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
-          <thead>
-            <tr className="bg-brand">
-              {["Eco-Aide Name", "Date", "Time", "Actions"].map((heading) => (
-                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
-                  {heading}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {approvalRequests.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="p-7 text-center text-[13px] text-gray-400">
-                  No approval requests found.
-                </td>
-              </tr>
-            ) : (
-              approvalRequests.map((request) => (
-                <tr key={request.id} className="border-b border-gray-200">
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.name}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.date}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.time}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onApprove(request.id);
-                        }}
-                        className="cursor-pointer rounded-xl border-0 bg-black px-3 py-1 text-xs text-white hover:bg-gray-800"
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onReject(request.id);
-                        }}
-                        className="cursor-pointer rounded-xl border-0 bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination />
-    </section>
   );
 }
 
@@ -596,7 +733,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
         <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">View profile - {ecoAide.name}</h2>
 
         <div className="flex items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">♙</div>
+          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">EA</div>
 
           <div className="flex-1">
             <div className="text-base font-extrabold">{ecoAide.name}</div>
@@ -620,16 +757,12 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
           Assignment history
         </div>
 
-        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
-          <HistoryCard label="Total Routes" value={ecoAide.totalRoutes} />
-          <HistoryCard label="Completion Rate" value={ecoAide.completionRate} />
-          <HistoryCard label="Missed Assignment" value={ecoAide.missedAssignment} />
-        </div>
+
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onEdit}>Edit Profile</Button>
           <Button variant="secondary" onClick={onClose}>
-            × Close
+            Close
           </Button>
         </div>
       </div>
@@ -637,143 +770,655 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   );
 }
 
+type EcoAideAccountStatus =
+  | "Active"
+  | "Suspended"
+  | "Deactivated";
+
+type EcoAideAvailability =
+  | "Available"
+  | "On Route"
+  | "Off Duty";
+
+type EcoAideFormValue = Omit<
+  EcoAide,
+  "id" | "addedDate" | "status"
+> & {
+  status: EcoAideAccountStatus;
+  availability: EcoAideAvailability;
+  password: string;
+};
+
+type EcoAideFormErrors = Partial<
+  Record<keyof EcoAideFormValue, string>
+>;
+
+const ECO_AIDE_NAME_PATTERN = /^[\p{L} .'-]+$/u;
+const PH_MOBILE_PATTERN = /^09\d{9}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const ALLOWED_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
+  "Active",
+  "Suspended",
+  "Deactivated",
+];
+
+const CREATE_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
+  "Active",
+];
+
+const ALLOWED_ECO_AIDE_AVAILABILITIES: EcoAideAvailability[] = [
+  "Available",
+  "On Route",
+  "Off Duty",
+];
+
 interface EditEcoAideModalProps {
+  mode: "create" | "edit";
   title: string;
-  formValue: Omit<EcoAide, "id" | "addedDate">;
-  setFormValue: Dispatch<SetStateAction<Omit<EcoAide, "id" | "addedDate">>>;
-  onSave: () => void;
+  formValue: EcoAideFormValue;
+  setFormValue: Dispatch<
+    SetStateAction<EcoAideFormValue>
+  >;
+  routes: Route[];
+  trucks: Truck[];
+  onSave: (validatedValue: EcoAideFormValue) => void;
   onClose: () => void;
   saveLabel?: string;
 }
 
 function EditEcoAideModal({
+  mode,
   title,
   formValue,
   setFormValue,
+  routes,
+  trucks,
   onSave,
   onClose,
   saveLabel = "Save",
 }: EditEcoAideModalProps) {
-  function updateField<Key extends keyof typeof formValue>(
+  const [errors, setErrors] =
+    useState<EcoAideFormErrors>({});
+
+  const isCreateMode = mode === "create";
+
+  function updateField<Key extends keyof EcoAideFormValue>(
     key: Key,
-    value: (typeof formValue)[Key],
+    value: EcoAideFormValue[Key],
   ) {
     setFormValue((currentValue) => ({
       ...currentValue,
       [key]: value,
     }));
+
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [key]: undefined,
+    }));
+  }
+
+  function validateFieldValue(
+    key: keyof EcoAideFormValue,
+    value: EcoAideFormValue[keyof EcoAideFormValue],
+  ): string | undefined {
+    const stringValue =
+      typeof value === "string" ? value.trim() : "";
+
+    if (key === "name") {
+      if (!stringValue) {
+        return "Eco-Aide name is required.";
+      }
+
+      if (stringValue.length < 2) {
+        return "Name must contain at least 2 characters.";
+      }
+
+      if (stringValue.length > 100) {
+        return "Name must not exceed 100 characters.";
+      }
+
+      if (!ECO_AIDE_NAME_PATTERN.test(stringValue)) {
+        return "Use letters, spaces, periods, hyphens, or apostrophes only.";
+      }
+    }
+
+    if (key === "contactNumber") {
+      if (!stringValue) {
+        return "Contact number is required.";
+      }
+
+      if (!PH_MOBILE_PATTERN.test(stringValue)) {
+        return "Enter exactly 11 digits starting with 09.";
+      }
+    }
+
+    if (key === "birthdate") {
+      if (!stringValue) {
+        return "Birthdate is required.";
+      }
+
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+        stringValue,
+      );
+
+      if (!match) {
+        return "Enter a valid birthdate.";
+      }
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+
+      const birthdate = new Date(year, month - 1, day);
+
+      const isValidDate =
+        birthdate.getFullYear() === year &&
+        birthdate.getMonth() === month - 1 &&
+        birthdate.getDate() === day;
+
+      if (!isValidDate) {
+        return "Enter a valid birthdate.";
+      }
+
+      const today = new Date();
+
+      if (birthdate > today) {
+        return "Birthdate cannot be in the future.";
+      }
+
+      let age = today.getFullYear() - year;
+
+      const birthdayHasNotOccurred =
+        today.getMonth() < month - 1 ||
+        (today.getMonth() === month - 1 &&
+          today.getDate() < day);
+
+      if (birthdayHasNotOccurred) {
+        age -= 1;
+      }
+
+      if (age < 18) {
+        return "Eco-Aide must be at least 18 years old.";
+      }
+    }
+
+    if (key === "address") {
+      if (!stringValue) {
+        return "Address is required.";
+      }
+
+      if (stringValue.length < 5) {
+        return "Address must contain at least 5 characters.";
+      }
+
+      if (stringValue.length > 255) {
+        return "Address must not exceed 255 characters.";
+      }
+    }
+
+    if (key === "assignedRoute" && !stringValue) {
+      return "Select a route assignment.";
+    }
+
+    if (
+      key === "status" &&
+      !(isCreateMode
+        ? CREATE_ECO_AIDE_STATUSES
+        : ALLOWED_ECO_AIDE_STATUSES
+      ).includes(value as EcoAideAccountStatus)
+    ) {
+      return "Select a valid Eco-Aide status.";
+    }
+
+    if (
+      key === "availability" &&
+      !ALLOWED_ECO_AIDE_AVAILABILITIES.includes(
+        value as EcoAideAvailability,
+      )
+    ) {
+      return "Select a valid Eco-Aide availability.";
+    }
+
+    if (key === "password" && isCreateMode) {
+      if (!stringValue) {
+        return "Initial password is required.";
+      }
+
+      if (!/[a-z]/.test(stringValue)) {
+        return "Password must contain at least one lowercase letter.";
+      }
+
+      if (!/[A-Z]/.test(stringValue)) {
+        return "Password must contain at least one uppercase letter.";
+      }
+
+      if (!/\d/.test(stringValue)) {
+        return "Password must contain at least one number.";
+      }
+
+      if (!/[^A-Za-z0-9]/.test(stringValue)) {
+        return "Password must contain at least one special character.";
+      }
+    }
+
+    if (key === "email" && isCreateMode) {
+      if (!stringValue) {
+        return "Email address is required.";
+      }
+
+      if (stringValue.length > 254) {
+        return "Email address is too long.";
+      }
+
+      if (!EMAIL_PATTERN.test(stringValue)) {
+        return "Enter a valid email address.";
+      }
+    }
+
+    return undefined;
+  }
+
+  function validateOneField(
+    key: keyof EcoAideFormValue,
+  ) {
+    const error = validateFieldValue(
+      key,
+      formValue[key],
+    );
+
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [key]: error,
+    }));
+  }
+
+  function validateForm(
+    value: EcoAideFormValue,
+  ): EcoAideFormErrors {
+    const fields: Array<keyof EcoAideFormValue> = [
+      "name",
+      "contactNumber",
+      "birthdate",
+      "address",
+      "assignedRoute",
+      "status",
+      "availability",
+    ];
+
+    if (isCreateMode) {
+      fields.push("email", "password");
+    }
+
+    const validationErrors: EcoAideFormErrors = {};
+
+    for (const field of fields) {
+      const error = validateFieldValue(
+        field,
+        value[field],
+      );
+
+      if (error) {
+        validationErrors[field] = error;
+      }
+    }
+
+    return validationErrors;
+  }
+
+  function handleSubmit() {
+    const normalizedValue: EcoAideFormValue = {
+      ...formValue,
+      name: formValue.name
+        .trim()
+        .replace(/\s+/g, " "),
+      contactNumber: formValue.contactNumber.trim(),
+      birthdate: formValue.birthdate.trim(),
+      address: formValue.address
+        .trim()
+        .replace(/\s+/g, " "),
+      assignedTruck: formValue.assignedTruck.trim(),
+      assignedRoute: formValue.assignedRoute.trim(),
+      email: formValue.email.trim().toLowerCase(),
+    };
+
+    const validationErrors =
+      validateForm(normalizedValue);
+
+    setErrors(validationErrors);
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    setFormValue(normalizedValue);
+    onSave(normalizedValue);
+  }
+
+  const today = new Date();
+
+  const latestAllowedBirthdate = new Date(
+    today.getFullYear() - 18,
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  const birthdateMax = [
+    latestAllowedBirthdate.getFullYear(),
+    String(
+      latestAllowedBirthdate.getMonth() + 1,
+    ).padStart(2, "0"),
+    String(latestAllowedBirthdate.getDate()).padStart(
+      2,
+      "0",
+    ),
+  ].join("-");
+
+  function getInputClassName(
+    field: keyof EcoAideFormValue,
+  ) {
+    return `box-border w-full rounded-md border px-2.5 py-2 text-[13px] outline-none placeholder:text-gray-400 ${
+      errors[field]
+        ? "border-red-500 focus:border-red-600"
+        : "border-gray-300 focus:border-brand"
+    }`;
   }
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-[720px] rounded-[10px] bg-white p-7">
-        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
+      <div className="max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[10px] bg-white p-7">
+        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">
+          {title}
+        </h2>
 
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
-          <FormField label="Eco-Aide Name">
+          <FormField
+            label="Eco-Aide Name"
+            required
+            error={errors.name}
+          >
             <input
               value={formValue.name}
+              maxLength={100}
+              placeholder="Juan Dela Cruz"
+              autoComplete="name"
+              aria-invalid={Boolean(errors.name)}
               onChange={(event) => {
                 updateField("name", event.target.value);
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("name");
+              }}
+              className={getInputClassName("name")}
             />
           </FormField>
 
-          <FormField label="Contact Number">
+          <FormField
+            label="Contact Number"
+            required
+            error={errors.contactNumber}
+          >
             <input
+              type="tel"
               value={formValue.contactNumber}
+              inputMode="numeric"
+              maxLength={11}
+              pattern="09[0-9]{9}"
+              autoComplete="tel"
+              placeholder="09123456789"
+              aria-invalid={Boolean(
+                errors.contactNumber,
+              )}
               onChange={(event) => {
-                updateField("contactNumber", event.target.value);
+                const digitsOnly = event.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 11);
+
+                updateField(
+                  "contactNumber",
+                  digitsOnly,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("contactNumber");
+              }}
+              className={getInputClassName(
+                "contactNumber",
+              )}
             />
           </FormField>
 
-          <FormField label="Birthdate">
+          <FormField
+            label="Birthdate"
+            required
+            error={errors.birthdate}
+          >
             <input
+              type="date"
+              max={birthdateMax}
               value={formValue.birthdate}
+              aria-invalid={Boolean(errors.birthdate)}
               onChange={(event) => {
-                updateField("birthdate", event.target.value);
+                updateField(
+                  "birthdate",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("birthdate");
+              }}
+              className={getInputClassName("birthdate")}
             />
           </FormField>
 
-          <FormField label="Address">
+          <FormField
+            label="Address"
+            required
+            error={errors.address}
+          >
             <input
               value={formValue.address}
+              maxLength={255}
+              placeholder="123 Mabini St., Quezon City"
+              autoComplete="street-address"
+              aria-invalid={Boolean(errors.address)}
               onChange={(event) => {
-                updateField("address", event.target.value);
+                updateField(
+                  "address",
+                  event.target.value,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("address");
+              }}
+              className={getInputClassName("address")}
             />
           </FormField>
 
-          <FormField label="Truck Assignment">
-            <select
+          <FormField
+            label="Truck Assignment"
+          >
+            <input
+              type="text"
               value={formValue.assignedTruck}
-              onChange={(event) => {
-                updateField("assignedTruck", event.target.value);
-              }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
-            >
-              <option value="">Select truck</option>
-              <option value="FL-001">FL-001</option>
-              <option value="FL-002">FL-002</option>
-              <option value="FL-003">FL-003</option>
-            </select>
+              readOnly
+              placeholder="No truck assigned to selected route"
+              className={getInputClassName("assignedTruck")}
+            />
           </FormField>
 
-          <FormField label="Route Assignment">
+          <FormField
+            label="Route Assignment"
+            required
+            error={errors.assignedRoute}
+          >
             <select
               value={formValue.assignedRoute}
+              aria-invalid={Boolean(
+                errors.assignedRoute,
+              )}
               onChange={(event) => {
-                updateField("assignedRoute", event.target.value);
+                const selectedRoute = routes.find(
+                  (route) =>
+                    route.routeDisplayNumber === event.target.value,
+                );
+
+                const selectedTruck = selectedRoute?.assignedTruckId
+                  ? trucks.find(
+                      (truck) =>
+                        truck.id === selectedRoute.assignedTruckId,
+                    )
+                  : undefined;
+
+                updateField(
+                  "assignedRoute",
+                  event.target.value,
+                );
+
+                updateField(
+                  "assignedTruck",
+                  selectedTruck?.truckNumber ?? "",
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("assignedRoute");
+              }}
+              className={getInputClassName(
+                "assignedRoute",
+              )}
             >
               <option value="">Select route</option>
-              <option value="RT-001">RT-001</option>
-              <option value="RT-002">RT-002</option>
-              <option value="RT-003">RT-003</option>
+              {routes.map((route) => (
+                <option
+                  key={route.id}
+                  value={route.routeDisplayNumber}
+                >
+                  {route.routeDisplayNumber} - {route.name}
+                </option>
+              ))}
             </select>
           </FormField>
 
-          <FormField label="Status">
+          <FormField
+            label="Status"
+            required
+            error={errors.status}
+          >
             <select
               value={formValue.status}
+              aria-invalid={Boolean(errors.status)}
               onChange={(event) => {
-                updateField("status", event.target.value as EcoAideStatus);
+                updateField(
+                  "status",
+                  event.target.value as EcoAideAccountStatus,
+                );
               }}
-              className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+              onBlur={() => {
+                validateOneField("status");
+              }}
+              className={getInputClassName("status")}
             >
-              <option value="Active">Active</option>
-              <option value="On Duty">On Duty</option>
-              <option value="On Route">On Route</option>
-              <option value="Off Duty">Off Duty</option>
-              <option value="Suspended">Suspended</option>
-              <option value="Deactivated">Deactivated</option>
+              {(isCreateMode
+                ? CREATE_ECO_AIDE_STATUSES
+                : ALLOWED_ECO_AIDE_STATUSES
+              ).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
             </select>
           </FormField>
 
-          {title.includes("Create") && (
-            <FormField label="Email Address">
+          <FormField
+            label="Availability"
+            required
+            error={errors.availability}
+          >
+            <select
+              value={formValue.availability}
+              aria-invalid={Boolean(errors.availability)}
+              onChange={(event) => {
+                updateField(
+                  "availability",
+                  event.target.value as EcoAideAvailability,
+                );
+              }}
+              onBlur={() => {
+                validateOneField("availability");
+              }}
+              className={getInputClassName("availability")}
+            >
+              {ALLOWED_ECO_AIDE_AVAILABILITIES.map(
+                (availability) => (
+                  <option
+                    key={availability}
+                    value={availability}
+                  >
+                    {availability}
+                  </option>
+                ),
+              )}
+            </select>
+          </FormField>
+
+          {isCreateMode && (
+            <FormField
+              label="Email Address"
+              required
+              error={errors.email}
+            >
               <input
+                type="email"
                 value={formValue.email}
+                maxLength={254}
+                placeholder="juan.delacruz@example.com"
+                autoComplete="email"
+                aria-invalid={Boolean(errors.email)}
                 onChange={(event) => {
-                  updateField("email", event.target.value);
+                  updateField(
+                    "email",
+                    event.target.value,
+                  );
                 }}
-                className="w-full rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
+                onBlur={() => {
+                  validateOneField("email");
+                }}
+                className={getInputClassName("email")}
+              />
+            </FormField>
+          )}
+
+          {isCreateMode && (
+            <FormField
+              label="Initial Password"
+              required
+              error={errors.password}
+            >
+              <input
+                type="password"
+                value={formValue.password}
+                autoComplete="new-password"
+                placeholder="Enter initial password"
+                aria-invalid={Boolean(errors.password)}
+                onChange={(event) => {
+                  updateField("password", event.target.value);
+                }}
+                onBlur={() => {
+                  validateOneField("password");
+                }}
+                className={getInputClassName("password")}
               />
             </FormField>
           )}
         </div>
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onSave}>{saveLabel}</Button>
+          <Button onClick={handleSubmit}>
+            {saveLabel}
+          </Button>
+
           <Button variant="secondary" onClick={onClose}>
-            × Close
+            Close
           </Button>
         </div>
       </div>
@@ -809,7 +1454,7 @@ function ConfirmActionModal({
       <div className="w-full max-w-[390px] rounded-[10px] bg-white p-6">
         <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
 
-        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">ⓘ {warning}</div>
+        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">Info: {warning}</div>
 
         <p className="mt-[18px] text-sm">{message}</p>
 
@@ -826,9 +1471,9 @@ function ConfirmActionModal({
         </label>
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onConfirm}>▣ {confirmLabel}</Button>
+          <Button onClick={onConfirm}> {confirmLabel}</Button>
           <Button variant="secondary" onClick={onClose}>
-            × Cancel
+            Cancel
           </Button>
         </div>
       </div>
@@ -839,13 +1484,41 @@ function ConfirmActionModal({
 interface FormFieldProps {
   label: string;
   children: ReactNode;
+  required?: boolean;
+  error?: string;
 }
 
-function FormField({ label, children }: FormFieldProps) {
+function FormField({
+  label,
+  children,
+  required = false,
+  error,
+}: FormFieldProps) {
   return (
     <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-      {label}
+      <span>
+        {label}
+
+        {required && (
+          <span
+            aria-hidden="true"
+            className="ml-1 text-red-600"
+          >
+            *
+          </span>
+        )}
+      </span>
+
       {children}
+
+      {error && (
+        <span
+          role="alert"
+          className="text-xs font-normal text-red-600"
+        >
+          {error}
+        </span>
+      )}
     </label>
   );
 }
@@ -864,20 +1537,6 @@ function InfoBlock({ label, value }: InfoBlockProps) {
   );
 }
 
-interface HistoryCardProps {
-  label: string;
-  value: string | number;
-}
-
-function HistoryCard({ label, value }: HistoryCardProps) {
-  return (
-    <div className="rounded-lg border border-gray-300 p-3">
-      <div className="text-[13px] font-bold">{label}</div>
-      <div className="text-[26px] font-extrabold">{value}</div>
-    </div>
-  );
-}
-
 function StatusPill({ status }: { status: EcoAideStatus }) {
   return (
     <span
@@ -888,24 +1547,9 @@ function StatusPill({ status }: { status: EcoAideStatus }) {
   );
 }
 
-function Pagination() {
-  return (
-    <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
-      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ‹
-      </button>
-      <button type="button" className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white">
-        1
-      </button>
-      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        ›
-      </button>
-    </div>
-  );
-}
 
 function getStatusClassName(status: EcoAideStatus) {
-  if (status === "Active" || status === "On Duty") {
+  if (status === "Active") {
     return "bg-green-100 text-green-800";
   }
 
