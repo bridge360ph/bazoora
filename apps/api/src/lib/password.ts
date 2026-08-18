@@ -1,7 +1,12 @@
 import argon2 from "argon2";
 
 export interface PasswordRequirement {
-  key: "lowercase" | "uppercase" | "number" | "specialCharacter";
+  key:
+    | "length"
+    | "lowercase"
+    | "uppercase"
+    | "number"
+    | "specialCharacter";
   message: string;
   isValid: boolean;
 }
@@ -15,6 +20,11 @@ export function getPasswordRequirements(
   password: string,
 ): PasswordRequirement[] {
   return [
+    {
+      key: "length",
+      message: "Password must be between 8 and 128 characters.",
+      isValid: password.length >= 8 && password.length <= 128,
+    },
     {
       key: "lowercase",
       message: "Password must contain at least one lowercase letter.",
