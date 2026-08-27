@@ -7,14 +7,11 @@ import {
   LogOut,
   MonitorCog,
   Palette,
-  ShieldCheck,
-  Trash2,
-  UserCog,
+  ShieldCheck,  UserCog,
   UserRound,
 } from "lucide-react";
 import {
-  changeMyPassword,
-  getApiErrorMessage,
+  changeMyPassword,  getApiErrorMessage,
   getMySettings,
   updateMyProfile,
   updateMyPreferences,
@@ -173,7 +170,6 @@ export function SettingsPage() {
     realTimeTracking !== savedSystemPreferences.realTimeTracking ||
     automaticReports !== savedSystemPreferences.automaticReports;
 
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingPreferences, setIsSavingPreferences] = useState(false);
@@ -907,28 +903,6 @@ export function SettingsPage() {
                     Log Out
                   </button>
                 </div>
-
-                <div className="flex flex-col gap-4 py-4 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-red-600 dark:text-red-400">
-                      Delete account
-                    </h3>
-                    <p className="mt-1 text-[12.5px] text-gray-500 dark:text-gray-400">
-                      Permanently remove your account and associated information.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowDeleteModal(true);
-                    }}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-950/60"
-                  >
-                    <Trash2 size={17} aria-hidden="true" />
-                    Delete Account
-                  </button>
-                </div>
               </div>
             </SectionCard>
           </>
@@ -1053,18 +1027,6 @@ export function SettingsPage() {
           </>
         )}
       </div>
-
-      {showDeleteModal && (
-        <DeleteConfirmModal
-          onConfirm={() => {
-            setShowDeleteModal(false);
-            showToast("Account deleted.");
-          }}
-          onClose={() => {
-            setShowDeleteModal(false);
-          }}
-        />
-      )}
 
       {toast && (
         <div
@@ -1441,128 +1403,3 @@ function Toggle({ value, onChange }: ToggleProps) {
   );
 }
 
-interface DeleteConfirmModalProps {
-  onConfirm: () => void;
-  onClose: () => void;
-}
-
-function DeleteConfirmModal({ onConfirm, onClose }: DeleteConfirmModalProps) {
-  const [confirmationText, setConfirmationText] = useState("");
-  const canDelete = confirmationText === "DELETE";
-  const hasInvalidConfirmation =
-    confirmationText.length > 0 && !canDelete;
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!canDelete) {
-      return;
-    }
-
-    onConfirm();
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 p-6"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div
-        className="w-full max-w-[420px] rounded-xl bg-white p-7 shadow-[0_20px_60px_rgba(0,0,0,0.2)] dark:bg-gray-900"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="delete-account-title"
-        aria-describedby="delete-account-description"
-      >
-        <h3
-          id="delete-account-title"
-          className="mb-2.5 text-lg font-bold text-red-600"
-        >
-          Delete Account
-        </h3>
-
-        <p
-          id="delete-account-description"
-          className="mb-5 text-[13.5px] leading-relaxed text-gray-600 dark:text-gray-300"
-        >
-          This action is permanent and cannot be undone. Type{" "}
-          <strong className="font-bold text-gray-900 dark:text-white">DELETE</strong> in all
-          capital letters to confirm.
-        </p>
-
-        <form onSubmit={handleSubmit} noValidate>
-          <label className="mb-6 block">
-            <span className="mb-1.5 block text-[12.5px] font-medium text-gray-700 dark:text-gray-200">
-              Confirmation
-              <span className="ml-1 text-red-600" aria-hidden="true">
-                *
-              </span>
-            </span>
-
-            <input
-              type="text"
-              value={confirmationText}
-              onChange={(event) => {
-                setConfirmationText(event.target.value);
-              }}
-              placeholder="DELETE"
-              autoComplete="off"
-              spellCheck={false}
-              aria-invalid={hasInvalidConfirmation}
-              aria-describedby={
-                hasInvalidConfirmation
-                  ? "delete-confirmation-error"
-                  : "delete-confirmation-help"
-              }
-              className={`w-full rounded-lg border bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 ${
-                hasInvalidConfirmation
-                  ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
-                  : "border-gray-300 focus:border-brand focus:ring-brand/15"
-              }`}
-            />
-
-            {hasInvalidConfirmation ? (
-              <span
-                id="delete-confirmation-error"
-                role="alert"
-                className="mt-1.5 block text-xs text-red-600"
-              >
-                Enter DELETE exactly as shown.
-              </span>
-            ) : (
-              <span
-                id="delete-confirmation-help"
-                className="mt-1.5 block text-xs text-gray-500 dark:text-gray-400"
-              >
-                The Delete Account button will activate after you enter DELETE.
-              </span>
-            )}
-          </label>
-
-          <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-gray-300 bg-white px-[18px] py-2 text-[13px] font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400/30"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={!canDelete}
-              className="rounded-lg bg-red-600 px-[18px] py-2 text-[13px] font-semibold text-white transition hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:cursor-not-allowed disabled:bg-red-300 disabled:hover:bg-red-300"
-            >
-              Delete Account
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}

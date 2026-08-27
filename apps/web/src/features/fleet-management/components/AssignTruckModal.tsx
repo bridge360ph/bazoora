@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
-import type { Truck } from "../fleet.types";
+import type { FleetAssignmentOption, Truck } from "../fleet.types";
 
 interface AssignTruckModalProps {
   truck: Truck;
@@ -8,8 +8,8 @@ interface AssignTruckModalProps {
   setAssignedRoute: (route: string) => void;
   assignedEcoAide: string;
   setAssignedEcoAide: (ecoAide: string) => void;
-  routeOptions: string[];
-  ecoAideOptions: string[];
+  routeOptions: FleetAssignmentOption[];
+  ecoAideOptions: FleetAssignmentOption[];
   onSave: () => void;
   onClose: () => void;
 }
@@ -112,13 +112,11 @@ export function AssignTruckModal({
         >
           <option value="">Select route</option>
 
-          {routeOptions
-            .filter((route) => route.trim().length > 0)
-            .map((route) => (
-              <option key={route} value={route}>
-                {route}
-              </option>
-            ))}
+          {routeOptions.map((route) => (
+            <option key={route.id} value={route.id}>
+              {route.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -144,16 +142,11 @@ export function AssignTruckModal({
         >
           <option value="">Select Eco-Aide</option>
 
-          {ecoAideOptions
-            .filter(
-              (ecoAide) =>
-                ecoAide.trim().length > 0,
-            )
-            .map((ecoAide) => (
-              <option key={ecoAide} value={ecoAide}>
-                {ecoAide}
-              </option>
-            ))}
+          {ecoAideOptions.map((ecoAide) => (
+            <option key={ecoAide.id} value={ecoAide.id}>
+              {ecoAide.label}
+            </option>
+          ))}
         </select>
       </FormField>
 
@@ -165,3 +158,6 @@ export function AssignTruckModal({
     </Modal>
   );
 }
+
+
+

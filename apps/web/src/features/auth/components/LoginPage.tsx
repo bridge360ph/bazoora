@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button, FormField, Logo } from "@bazoora/ui";
@@ -21,6 +22,7 @@ export function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -83,17 +85,29 @@ export function LoginPage() {
           </FormField>
 
           <FormField label="Password" required>
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              disabled={submitting}
-              placeholder="Enter your password"
-              className={inputClasses}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                disabled={submitting}
+                placeholder="Enter your password"
+                className={`${inputClasses} pr-11`}
+              />
+
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                disabled={submitting}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 transition hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </FormField>
 
           <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-gray-600 dark:text-gray-300">

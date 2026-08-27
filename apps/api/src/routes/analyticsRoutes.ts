@@ -24,6 +24,12 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
         activeTrucks,
         idleTrucks,
         maintenanceTrucks,
+        activeEcoAides,
+        suspendedEcoAides,
+        deactivatedEcoAides,
+        availableEcoAides,
+        onRouteEcoAides,
+        offDutyEcoAides,
       ] = await prisma.$transaction([
         prisma.user.count({
           where: {
@@ -53,6 +59,30 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
             status: "Under Maintenance",
           },
         }),
+
+        prisma.ecoAideProfile.count({
+          where: { status: "ACTIVE", archivedAt: null },
+        }),
+
+        prisma.ecoAideProfile.count({
+          where: { status: "SUSPENDED", archivedAt: null },
+        }),
+
+        prisma.ecoAideProfile.count({
+          where: { status: "DEACTIVATED", archivedAt: null },
+        }),
+
+        prisma.ecoAideProfile.count({
+          where: { availability: "AVAILABLE", archivedAt: null },
+        }),
+
+        prisma.ecoAideProfile.count({
+          where: { availability: "ON_ROUTE", archivedAt: null },
+        }),
+
+        prisma.ecoAideProfile.count({
+          where: { availability: "OFF_DUTY", archivedAt: null },
+        }),
       ]);
 
       return {
@@ -63,6 +93,36 @@ export const analyticsRoutes: FastifyPluginAsync = async (app) => {
             trucks: totalTrucks,
             assignedTrucks,
           },
+          ecoAideStatus: [
+            {
+              name: "Active",
+              value: activeEcoAides,
+            },
+            {
+              name: "Suspended",
+              value: suspendedEcoAides,
+            },
+            {
+              name: "Deactivated",
+              value: deactivatedEcoAides,
+            },
+          ],
+
+          ecoAideAvailability: [
+            {
+              name: "Available",
+              value: availableEcoAides,
+            },
+            {
+              name: "On Route",
+              value: onRouteEcoAides,
+            },
+            {
+              name: "Off Duty",
+              value: offDutyEcoAides,
+            },
+          ],
+
           truckStatus: [
             {
               name: "Active",

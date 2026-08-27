@@ -6,6 +6,16 @@ export interface AnalyticsOverview {
     trucks: number;
     assignedTrucks: number;
   };
+  ecoAideStatus: Array<{
+    name: string;
+    value: number;
+  }>;
+
+  ecoAideAvailability: Array<{
+    name: string;
+    value: number;
+  }>;
+
   truckStatus: Array<{
     name: string;
     value: number;
