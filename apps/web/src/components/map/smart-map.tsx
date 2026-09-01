@@ -297,7 +297,7 @@ function DirectionsRoute({
         const wp0 = parsedWaypoints[0];
         const pr0 = prev[0];
         if (wp0 && pr0) {
-          const d = haversineMeters(wp0[0], wp0[1], pr0[0], pr0[1]);
+          const d = haversineMeters(wp0[1], wp0[0], pr0[1], pr0[0]);
           if (d < 25) {
             return;
           }
@@ -656,7 +656,6 @@ export default function SmartMap({
               <Marker
                 longitude={marker.position[1]}
                 latitude={marker.position[0]}
-                style={{ transition: "transform 1000ms ease-out" }}
                 onClick={(e: any) => {
                   e.originalEvent.stopPropagation();
                   setActivePopupId(mId);
