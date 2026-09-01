@@ -209,6 +209,7 @@ function AppContent() {
             <Route path="/eco-aide" element={<EcoAideLayout />}>
               <Route index element={<Navigate to="/eco-aide/route" replace />} />
               <Route path="route" element={<EcoAideRoute />} />
+	      <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
 

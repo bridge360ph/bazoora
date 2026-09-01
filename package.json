@@ -18,6 +18,13 @@
     "turbo": "^2.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "@prisma/engines",
+      "argon2",
+      "esbuild",
+      "prisma",
+      "protobufjs"
+    ]
   }
 }
