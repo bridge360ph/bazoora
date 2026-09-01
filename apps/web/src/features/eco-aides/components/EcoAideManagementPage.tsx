@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Route } from "@bazoora/shared";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
+import { PhilippineAddressFields } from "../../settings/components/PhilippineAddressFields";
 import {
   archiveEcoAide,
   createEcoAide,
@@ -793,6 +794,24 @@ type EcoAideFormErrors = Partial<
   Record<keyof EcoAideFormValue, string>
 >;
 
+interface EcoAideAddressValue {
+  streetAddress: string;
+  region: string;
+  province: string;
+  cityMunicipality: string;
+  barangay: string;
+  postalCode: string;
+}
+
+interface EcoAideAddressErrors {
+  streetAddress?: string;
+  region?: string;
+  province?: string;
+  cityMunicipality?: string;
+  barangay?: string;
+  postalCode?: string;
+}
+
 const ECO_AIDE_NAME_PATTERN = /^[\p{L} .'-]+$/u;
 const PH_MOBILE_PATTERN = /^09\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -841,7 +860,29 @@ function EditEcoAideModal({
   const [errors, setErrors] =
     useState<EcoAideFormErrors>({});
 
+  const [addressValue, setAddressValue] =
+    useState<EcoAideAddressValue>({
+      streetAddress: formValue.address,
+      region: "",
+      province: "",
+      cityMunicipality: "",
+      barangay: "",
+      postalCode: "",
+    });
+
+  const [addressErrors, setAddressErrors] =
+    useState<EcoAideAddressErrors>({});
+
   const isCreateMode = mode === "create";
+
+  // Records created before the structured address fields existed store the
+  // whole address as one string, so region/province/city/barangay/ZIP start
+  // empty here with nothing to prefill them from. Requiring them anyway would
+  // force a full address re-entry just to change an unrelated field, so they
+  // stay optional until the editor actually starts filling them in.
+  const [startedWithLegacyAddress] = useState(
+    () => !isCreateMode && Boolean(formValue.address),
+  );
 
   function updateField<Key extends keyof EcoAideFormValue>(
     key: Key,
@@ -1067,6 +1108,85 @@ function EditEcoAideModal({
   }
 
   function handleSubmit() {
+    const normalizedAddress: EcoAideAddressValue = {
+      streetAddress: addressValue.streetAddress
+        .trim()
+        .replace(/\s+/g, " "),
+      region: addressValue.region.trim().replace(/\s+/g, " "),
+      province: addressValue.province
+        .trim()
+        .replace(/\s+/g, " "),
+      cityMunicipality: addressValue.cityMunicipality
+        .trim()
+        .replace(/\s+/g, " "),
+      barangay: addressValue.barangay
+        .trim()
+        .replace(/\s+/g, " "),
+      postalCode: addressValue.postalCode.trim(),
+    };
+
+    // Untouched means the editor has not begun replacing the legacy address,
+    // so the record keeps the address it already had. Filling in any one of
+    // the structured fields opts back into validating all of them.
+    const structuredAddressUntouched =
+      startedWithLegacyAddress &&
+      !normalizedAddress.region &&
+      !normalizedAddress.province &&
+      !normalizedAddress.cityMunicipality &&
+      !normalizedAddress.barangay &&
+      !normalizedAddress.postalCode;
+
+    const nextAddressErrors: EcoAideAddressErrors =
+      structuredAddressUntouched
+        ? {
+            streetAddress: normalizedAddress.streetAddress
+              ? undefined
+              : "House/unit number and street are required.",
+          }
+        : {
+            streetAddress: normalizedAddress.streetAddress
+              ? undefined
+              : "House/unit number and street are required.",
+            region: normalizedAddress.region
+              ? undefined
+              : "Region is required.",
+            province: normalizedAddress.province
+              ? undefined
+              : "Province is required.",
+            cityMunicipality: normalizedAddress.cityMunicipality
+              ? undefined
+              : "City/Municipality is required.",
+            barangay: normalizedAddress.barangay
+              ? undefined
+              : "Barangay is required.",
+            postalCode: !normalizedAddress.postalCode
+              ? "ZIP/postal code is required."
+              : /^\d{4}$/.test(normalizedAddress.postalCode)
+                ? undefined
+                : "Enter a valid 4-digit Philippine ZIP/postal code.",
+          };
+
+    const hasAddressErrors = Object.values(
+      nextAddressErrors,
+    ).some(Boolean);
+
+    setAddressErrors(nextAddressErrors);
+
+    const combinedAddress = [
+      normalizedAddress.streetAddress,
+      normalizedAddress.barangay,
+      normalizedAddress.cityMunicipality,
+      normalizedAddress.province,
+      normalizedAddress.region,
+      normalizedAddress.postalCode,
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    const addressToSave = structuredAddressUntouched
+      ? formValue.address
+      : combinedAddress;
+
     const normalizedValue: EcoAideFormValue = {
       ...formValue,
       name: formValue.name
@@ -1074,9 +1194,7 @@ function EditEcoAideModal({
         .replace(/\s+/g, " "),
       contactNumber: formValue.contactNumber.trim(),
       birthdate: formValue.birthdate.trim(),
-      address: formValue.address
-        .trim()
-        .replace(/\s+/g, " "),
+      address: addressToSave,
       assignedTruck: formValue.assignedTruck.trim(),
       assignedRoute: formValue.assignedRoute.trim(),
       email: formValue.email.trim().toLowerCase(),
@@ -1087,14 +1205,17 @@ function EditEcoAideModal({
 
     setErrors(validationErrors);
 
-    if (Object.keys(validationErrors).length > 0) {
+    if (
+      hasAddressErrors ||
+      Object.keys(validationErrors).length > 0
+    ) {
       return;
     }
 
+    setAddressValue(normalizedAddress);
     setFormValue(normalizedValue);
     onSave(normalizedValue);
   }
-
   const today = new Date();
 
   const latestAllowedBirthdate = new Date(
@@ -1140,7 +1261,7 @@ function EditEcoAideModal({
             <input
               value={formValue.name}
               maxLength={100}
-              placeholder="Juan Dela Cruz"
+              placeholder="Enter the Eco-Aide's full name"
               autoComplete="name"
               aria-invalid={Boolean(errors.name)}
               onChange={(event) => {
@@ -1165,7 +1286,7 @@ function EditEcoAideModal({
               maxLength={11}
               pattern="09[0-9]{9}"
               autoComplete="tel"
-              placeholder="09123456789"
+              placeholder="Enter an 11-digit mobile number"
               aria-invalid={Boolean(
                 errors.contactNumber,
               )}
@@ -1212,27 +1333,117 @@ function EditEcoAideModal({
           </FormField>
 
           <FormField
-            label="Address"
+            label="House/Unit Number and Street"
             required
-            error={errors.address}
+            error={
+              addressErrors.streetAddress ??
+              errors.address
+            }
           >
             <input
-              value={formValue.address}
+              value={addressValue.streetAddress}
               maxLength={255}
-              placeholder="123 Mabini St., Quezon City"
+              placeholder="Enter house/unit number and street"
               autoComplete="street-address"
-              aria-invalid={Boolean(errors.address)}
+              aria-invalid={Boolean(
+                addressErrors.streetAddress ??
+                  errors.address,
+              )}
               onChange={(event) => {
-                updateField(
-                  "address",
-                  event.target.value,
-                );
-              }}
-              onBlur={() => {
-                validateOneField("address");
+                setAddressValue((currentValue) => ({
+                  ...currentValue,
+                  streetAddress: event.target.value,
+                }));
+
+                setAddressErrors((currentErrors) => ({
+                  ...currentErrors,
+                  streetAddress: undefined,
+                }));
+
+                setErrors((currentErrors) => ({
+                  ...currentErrors,
+                  address: undefined,
+                }));
               }}
               className={getInputClassName("address")}
             />
+          </FormField>
+
+          <div className="col-span-full">
+            <PhilippineAddressFields
+              value={{
+                region: addressValue.region,
+                province: addressValue.province,
+                cityMunicipality:
+                  addressValue.cityMunicipality,
+                barangay: addressValue.barangay,
+                postalCode: addressValue.postalCode,
+              }}
+              errors={{
+                region: addressErrors.region,
+                province: addressErrors.province,
+                cityMunicipality:
+                  addressErrors.cityMunicipality,
+                barangay: addressErrors.barangay,
+              }}
+              onChange={(address) => {
+                setAddressValue((currentValue) => ({
+                  ...currentValue,
+                  region: address.region,
+                  province: address.province,
+                  cityMunicipality:
+                    address.cityMunicipality,
+                  barangay: address.barangay,
+                  postalCode: address.postalCode,
+                }));
+
+                setAddressErrors((currentErrors) => ({
+                  ...currentErrors,
+                  region: undefined,
+                  province: undefined,
+                  cityMunicipality: undefined,
+                  barangay: undefined,
+                  postalCode: undefined,
+                }));
+              }}
+            />
+          </div>
+
+          <FormField
+            label="ZIP/Postal Code"
+            required
+            error={addressErrors.postalCode}
+          >
+            <input
+              value={addressValue.postalCode}
+              maxLength={4}
+              inputMode="numeric"
+              autoComplete="postal-code"
+              placeholder="Enter a 4-digit ZIP code"
+              aria-invalid={Boolean(
+                addressErrors.postalCode,
+              )}
+              onChange={(event) => {
+                const digitsOnly = event.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, 4);
+
+                setAddressValue((currentValue) => ({
+                  ...currentValue,
+                  postalCode: digitsOnly,
+                }));
+
+                setAddressErrors((currentErrors) => ({
+                  ...currentErrors,
+                  postalCode: undefined,
+                }));
+              }}
+              className={getInputClassName("address")}
+            />
+            <span className="text-xs font-normal text-gray-500">
+              Auto-filled when available. Otherwise,
+              enter the correct 4-digit ZIP code.
+            </span>
           </FormField>
 
           <FormField
@@ -1371,7 +1582,7 @@ function EditEcoAideModal({
                 type="email"
                 value={formValue.email}
                 maxLength={254}
-                placeholder="juan.delacruz@example.com"
+                placeholder="Enter the Eco-Aide's email address"
                 autoComplete="email"
                 aria-invalid={Boolean(errors.email)}
                 onChange={(event) => {
