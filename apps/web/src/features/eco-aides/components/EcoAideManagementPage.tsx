@@ -1,20 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { Route } from "@bazoora/shared";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import { PhilippineAddressFields } from "../../settings/components/PhilippineAddressFields";
 import {
-  INITIAL_APPROVAL_REQUESTS,
-  INITIAL_ECO_AIDES,
-} from "../ecoAides.data";
+  archiveEcoAide,
+  createEcoAide,
+  deactivateEcoAide,
+  getEcoAides,
+  suspendEcoAide,
+  updateEcoAide,
+  type ApiEcoAide,
+} from "../api";
+import { fetchRoutes } from "../../route-management/routeService";
+import {
+  assignRouteEcoAideRequest,
+  fetchEcoAideUsers,
+} from "../../route-assignment/routeAssignmentApi";
+import { listTrucks } from "../../trucks/api";
+import type { Truck } from "../../trucks/schemas";
 import type {
   EcoAide,
-  EcoAideApprovalRequest,
   EcoAideManagementTab,
   EcoAideStatus,
   EcoAideStatusFilter,
 } from "../ecoAides.types";
 
-type ModalMode = "view" | "edit" | "create" | "suspend" | "deactivate" | null;
+type ModalMode = "view" | "edit" | "create" | "suspend" | "deactivate" | "archive" | null;
 
 const statusFilters: EcoAideStatusFilter[] = [
   "All",
@@ -23,40 +35,123 @@ const statusFilters: EcoAideStatusFilter[] = [
   "Off Duty",
 ];
 
-const emptyEcoAideForm: Omit<EcoAide, "id" | "addedDate"> = {
+function mapApiEcoAide(apiEcoAide: ApiEcoAide): EcoAide {
+  const status: EcoAideStatus =
+    apiEcoAide.status === "SUSPENDED"
+      ? "Suspended"
+      : apiEcoAide.status === "DEACTIVATED"
+        ? "Deactivated"
+        : apiEcoAide.availability === "ON_ROUTE"
+          ? "On Route"
+          : apiEcoAide.availability === "OFF_DUTY"
+            ? "Off Duty"
+            : "Active";
+
+  return {
+    id: apiEcoAide.ecoAideId,
+    name: apiEcoAide.name,
+    addedDate: new Date(apiEcoAide.createdAt).toLocaleDateString("en-PH"),
+    status,
+    contactNumber: apiEcoAide.phone ?? "",
+    birthdate: apiEcoAide.birthdate ?? "",
+    address: apiEcoAide.address ?? "",
+    assignedRoute: apiEcoAide.assignedRoute
+      ? `RT-${String(apiEcoAide.assignedRoute.routeNumber).padStart(3, "0")}`
+      : "",
+    assignedTruck:
+      apiEcoAide.assignedRoute?.assignedTruck?.truckNumber ?? "",
+    email: apiEcoAide.email,
+  };
+}
+
+
+const emptyEcoAideForm: EcoAideFormValue = {
   name: "",
   status: "Active",
+  availability: "Available",
   contactNumber: "",
   birthdate: "",
   address: "",
   assignedRoute: "",
   assignedTruck: "",
-  totalRoutes: 0,
-  completionRate: "0%",
-  missedAssignment: 0,
   email: "",
+  password: "",
 };
 
 export function EcoAideManagementPage() {
   const [activeTab, setActiveTab] = useState<EcoAideManagementTab>("all");
-  const [ecoAides, setEcoAides] = useState<EcoAide[]>(INITIAL_ECO_AIDES);
-  const [approvalRequests, setApprovalRequests] = useState<
-    EcoAideApprovalRequest[]
-  >(INITIAL_APPROVAL_REQUESTS);
+  const [ecoAides, setEcoAides] = useState<EcoAide[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<EcoAideStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
   const [selectedEcoAide, setSelectedEcoAide] = useState<EcoAide | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [formValue, setFormValue] =
-    useState<Omit<EcoAide, "id" | "addedDate">>(emptyEcoAideForm);
+    useState<EcoAideFormValue>(emptyEcoAideForm);
   const [reason, setReason] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEcoAides() {
+      try {
+        const records = await getEcoAides();
+
+        if (!cancelled) {
+          setEcoAides(records.map(mapApiEcoAide));
+        }
+      } catch {
+        if (!cancelled) {
+          setEcoAides([]);
+        }
+      }
+    }
+
+    async function loadRoutes() {
+      try {
+        const records = await fetchRoutes();
+
+        if (!cancelled) {
+          setRoutes(records);
+        }
+      } catch {
+        if (!cancelled) {
+          setRoutes([]);
+        }
+      }
+    }
+
+    async function loadTrucks() {
+      try {
+        const records = await listTrucks();
+
+        if (!cancelled) {
+          setTrucks(records);
+        }
+      } catch {
+        if (!cancelled) {
+          setTrucks([]);
+        }
+      }
+    }
+
+    void loadEcoAides();
+    void loadRoutes();
+    void loadTrucks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const filteredEcoAides = useMemo(() => {
     return ecoAides.filter((ecoAide) => {
       const matchesStatus =
         statusFilter === "All" ||
         ecoAide.status === statusFilter ||
-        (statusFilter === "Active" && ecoAide.status === "On Duty");
+        false;
 
       const normalizedSearch = searchValue.trim().toLowerCase();
       const matchesSearch =
@@ -68,21 +163,8 @@ export function EcoAideManagementPage() {
     });
   }, [ecoAides, searchValue, statusFilter]);
 
-  const filteredApprovalRequests = useMemo(() => {
-    const normalizedSearch = searchValue.trim().toLowerCase();
-
-    return approvalRequests.filter((request) => {
-      return (
-        normalizedSearch.length === 0 ||
-        request.name.toLowerCase().includes(normalizedSearch) ||
-        request.date.toLowerCase().includes(normalizedSearch) ||
-        request.time.toLowerCase().includes(normalizedSearch)
-      );
-    });
-  }, [approvalRequests, searchValue]);
-
   const activeCount = ecoAides.filter(
-    (ecoAide) => ecoAide.status === "Active" || ecoAide.status === "On Duty",
+    (ecoAide) => ecoAide.status === "Active",
   ).length;
 
   const suspendedCount = ecoAides.filter(
@@ -102,16 +184,25 @@ export function EcoAideManagementPage() {
     setSelectedEcoAide(ecoAide);
     setFormValue({
       name: ecoAide.name,
-      status: ecoAide.status,
+      status:
+        ecoAide.status === "Suspended"
+          ? "Suspended"
+          : ecoAide.status === "Deactivated"
+            ? "Deactivated"
+            : "Active",
+      availability:
+        ecoAide.status === "On Route"
+          ? "On Route"
+          : ecoAide.status === "Off Duty"
+            ? "Off Duty"
+            : "Available",
       contactNumber: ecoAide.contactNumber,
       birthdate: ecoAide.birthdate,
       address: ecoAide.address,
       assignedRoute: ecoAide.assignedRoute,
       assignedTruck: ecoAide.assignedTruck,
-      totalRoutes: ecoAide.totalRoutes,
-      completionRate: ecoAide.completionRate,
-      missedAssignment: ecoAide.missedAssignment,
       email: ecoAide.email,
+          password: "",
     });
     setModalMode("edit");
   }
@@ -134,81 +225,174 @@ export function EcoAideManagementPage() {
     setModalMode("deactivate");
   }
 
+  function openArchiveModal(ecoAide: EcoAide) {
+    setSelectedEcoAide(ecoAide);
+    setModalMode("archive");
+  }
+
   function closeModal() {
     setSelectedEcoAide(null);
     setModalMode(null);
     setReason("");
   }
 
-  function saveEditedEcoAide(
+  async function saveEditedEcoAide(
     validatedFormValue: EcoAideFormValue,
   ) {
     if (!selectedEcoAide) {
       return;
     }
 
-    setEcoAides((currentEcoAides) =>
-      currentEcoAides.map((ecoAide) =>
-        ecoAide.id === selectedEcoAide.id
-          ? {
-              ...ecoAide,
-              ...validatedFormValue,
-            }
-          : ecoAide,
-      ),
+    await updateEcoAide(selectedEcoAide.id, {
+      name: validatedFormValue.name,
+      phone: validatedFormValue.contactNumber,
+      birthdate: validatedFormValue.birthdate,
+      address: validatedFormValue.address,
+      status:
+        validatedFormValue.status === "Suspended"
+          ? "SUSPENDED"
+          : validatedFormValue.status === "Deactivated"
+            ? "DEACTIVATED"
+            : "ACTIVE",
+      availability:
+        validatedFormValue.availability === "On Route"
+          ? "ON_ROUTE"
+          : validatedFormValue.availability === "Off Duty"
+            ? "OFF_DUTY"
+            : "AVAILABLE",
+    });
+
+    const ecoAideUsers = await fetchEcoAideUsers();
+    const currentUser = ecoAideUsers.find(
+      (ecoAide) =>
+        ecoAide.userNumber === selectedEcoAide.id,
     );
 
+    const oldRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber === selectedEcoAide.assignedRoute,
+    );
+
+    const newRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber ===
+        validatedFormValue.assignedRoute,
+    );
+
+    if (currentUser) {
+      if (
+        oldRoute &&
+        oldRoute.id !== newRoute?.id
+      ) {
+        await assignRouteEcoAideRequest(
+          oldRoute.id,
+          null,
+        );
+      }
+
+      if (
+        newRoute &&
+        newRoute.id !== oldRoute?.id
+      ) {
+        await assignRouteEcoAideRequest(
+          newRoute.id,
+          currentUser.id,
+        );
+      }
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
+
     closeModal();
   }
 
-  function createEcoAideAccount(
+  async function createEcoAideAccount(
     validatedFormValue: EcoAideFormValue,
   ) {
-    const nextIdNumber = ecoAides.length + 1;
+    const created = await createEcoAide({
+      name: validatedFormValue.name,
+      email: validatedFormValue.email,
+      password: validatedFormValue.password,
+      phone: validatedFormValue.contactNumber,
+      birthdate: validatedFormValue.birthdate,
+      address: validatedFormValue.address,
+      status:
+        validatedFormValue.status === "Suspended"
+          ? "SUSPENDED"
+          : validatedFormValue.status === "Deactivated"
+            ? "DEACTIVATED"
+            : "ACTIVE",
+      availability:
+        validatedFormValue.availability === "On Route"
+          ? "ON_ROUTE"
+          : validatedFormValue.availability === "Off Duty"
+            ? "OFF_DUTY"
+            : "AVAILABLE",
+    });
 
-    const nextEcoAide: EcoAide = {
-      id: `EA-${String(nextIdNumber).padStart(3, "0")}`,
-      addedDate: new Date().toLocaleDateString("en-PH"),
-      ...validatedFormValue,
-    };
+    const selectedRoute = routes.find(
+      (route) =>
+        route.routeDisplayNumber ===
+        validatedFormValue.assignedRoute,
+    );
 
-    setEcoAides((currentEcoAides) => [
-      nextEcoAide,
-      ...currentEcoAides,
-    ]);
+    if (selectedRoute) {
+      const ecoAideUsers = await fetchEcoAideUsers();
+
+      const createdUser = ecoAideUsers.find(
+        (ecoAide) =>
+          ecoAide.userNumber === created.ecoAideId,
+      );
+
+      if (!createdUser) {
+        throw new Error(
+          "Created Eco-Aide could not be resolved for route assignment.",
+        );
+      }
+
+      await assignRouteEcoAideRequest(
+        selectedRoute.id,
+        createdUser.id,
+      );
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
 
     closeModal();
   }
 
-  function confirmStatusChange(status: "Suspended" | "Deactivated") {
+  async function confirmArchive() {
     if (!selectedEcoAide) {
       return;
     }
 
-    setEcoAides((currentEcoAides) =>
-      currentEcoAides.map((ecoAide) =>
-        ecoAide.id === selectedEcoAide.id
-          ? {
-              ...ecoAide,
-              status,
-            }
-          : ecoAide,
-      ),
-    );
+    await archiveEcoAide(selectedEcoAide.id);
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
 
     closeModal();
   }
 
-  function approveRequest(id: string) {
-    setApprovalRequests((currentRequests) =>
-      currentRequests.filter((request) => request.id !== id),
-    );
-  }
+  async function confirmStatusChange(
+    status: "Suspended" | "Deactivated",
+  ) {
+    if (!selectedEcoAide) {
+      return;
+    }
 
-  function rejectRequest(id: string) {
-    setApprovalRequests((currentRequests) =>
-      currentRequests.filter((request) => request.id !== id),
-    );
+    if (status === "Suspended") {
+      await suspendEcoAide(selectedEcoAide.id);
+    } else {
+      await deactivateEcoAide(selectedEcoAide.id);
+    }
+
+    const refreshedEcoAides = await getEcoAides();
+    setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
+
+    closeModal();
   }
 
   return (
@@ -226,16 +410,7 @@ export function EcoAideManagementPage() {
             All Eco-Aides ({ecoAides.length})
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("approval");
-              setSearchValue("");
-            }}
-            className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-[13px] text-gray-900 ${activeTab === "approval" ? "border-b-2 border-gray-900 font-bold" : "font-medium"}`}
-          >
-            Approval queue ({approvalRequests.length})
-          </button>
+
         </div>
 
         <Button onClick={openCreateAccount}>+ Add Eco-Aide</Button>
@@ -283,21 +458,14 @@ export function EcoAideManagementPage() {
         />
       </section>
 
-      {activeTab === "all" ? (
-        <AllEcoAidesTable
+      <AllEcoAidesTable
           ecoAides={filteredEcoAides}
           onViewProfile={openViewProfile}
           onEdit={openEditProfile}
           onSuspend={openSuspendModal}
           onDeactivate={openDeactivateModal}
+          onArchive={openArchiveModal}
         />
-      ) : (
-        <ApprovalQueueTable
-          approvalRequests={filteredApprovalRequests}
-          onApprove={approveRequest}
-          onReject={rejectRequest}
-        />
-      )}
 
       {modalMode === "view" && selectedEcoAide && (
         <ViewProfileModal
@@ -315,6 +483,8 @@ export function EcoAideManagementPage() {
           title="Edit Eco-Aide Profile"
           formValue={formValue}
           setFormValue={setFormValue}
+          routes={routes}
+          trucks={trucks}
           onSave={saveEditedEcoAide}
           onClose={closeModal}
         />
@@ -326,6 +496,8 @@ export function EcoAideManagementPage() {
           title="Create Eco-Aide Account"
           formValue={formValue}
           setFormValue={setFormValue}
+          routes={routes}
+          trucks={trucks}
           onSave={createEcoAideAccount}
           onClose={closeModal}
           saveLabel="Create"
@@ -363,6 +535,22 @@ export function EcoAideManagementPage() {
           onClose={closeModal}
         />
       )}
+      {modalMode === "archive" && selectedEcoAide && (
+        <ConfirmActionModal
+          title="Archive Eco-Aide"
+          warning="This will remove the Eco-Aide from the active management list."
+          message={`Are you sure you want to archive ${selectedEcoAide.name}?`}
+          reasonLabel="Reason for archiving"
+          reason={reason}
+          setReason={setReason}
+          confirmLabel="Archive"
+          onConfirm={() => {
+            void confirmArchive();
+          }}
+          onClose={closeModal}
+        />
+      )}
+
     </main>
   );
 }
@@ -373,6 +561,7 @@ interface AllEcoAidesTableProps {
   onEdit: (ecoAide: EcoAide) => void;
   onSuspend: (ecoAide: EcoAide) => void;
   onDeactivate: (ecoAide: EcoAide) => void;
+  onArchive: (ecoAide: EcoAide) => void;
 }
 
 function AllEcoAidesTable({
@@ -381,23 +570,24 @@ function AllEcoAidesTable({
   onEdit,
   onSuspend,
   onDeactivate,
+  onArchive,
 }: AllEcoAidesTableProps) {
   return (
-    <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
+    <section className="rounded-b-[10px] border border-gray-200 bg-white">
       <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Eco-Aides</div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
+      <div className="w-full overflow-visible">
+        <table className="w-full table-fixed border-collapse">
           <thead>
             <tr className="bg-brand">
               {[
-                "Eco-Aide ID â†“",
+                "Eco-Aide ID",
                 "Eco-Aide Name",
                 "Added",
                 "Status",
                 "Actions",
               ].map((heading) => (
-                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
+                <th key={heading} className="px-3 py-2.5 text-left text-xs font-bold text-white">
                   {heading}
                 </th>
               ))}
@@ -414,14 +604,14 @@ function AllEcoAidesTable({
             ) : (
               ecoAides.map((ecoAide) => (
                 <tr key={ecoAide.id} className="border-b border-gray-200">
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.id}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.name}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{ecoAide.addedDate}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.id}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.name}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.addedDate}</td>
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
                     <StatusPill status={ecoAide.status} />
                   </td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       <button
                         type="button"
                         className="cursor-pointer rounded-[10px] border-0 bg-gray-500 px-2.5 py-[3px] text-xs text-white hover:bg-gray-600"
@@ -437,6 +627,7 @@ function AllEcoAidesTable({
                         onEdit={onEdit}
                         onSuspend={onSuspend}
                         onDeactivate={onDeactivate}
+                        onArchive={onArchive}
                       />
                     </div>
                   </td>
@@ -446,9 +637,7 @@ function AllEcoAidesTable({
           </tbody>
         </table>
       </div>
-
-      <Pagination />
-    </section>
+</section>
   );
 }
 
@@ -457,6 +646,7 @@ interface ActionMenuProps {
   onEdit: (ecoAide: EcoAide) => void;
   onSuspend: (ecoAide: EcoAide) => void;
   onDeactivate: (ecoAide: EcoAide) => void;
+  onArchive: (ecoAide: EcoAide) => void;
 }
 
 function ActionMenu({
@@ -464,11 +654,22 @@ function ActionMenu({
   onEdit,
   onSuspend,
   onDeactivate,
+  onArchive,
 }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
+      <button
+        type="button"
+        className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[13px] font-medium text-gray-900 hover:underline"
+        onClick={() => {
+          onEdit(ecoAide);
+        }}
+      >
+        Edit
+      </button>
+
       <button
         type="button"
         onClick={() => {
@@ -480,21 +681,11 @@ function ActionMenu({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-20 min-w-[100px] border border-gray-200 bg-white py-1.5 shadow-lg">
-          <button
-            type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onEdit(ecoAide);
-            }}
-          >
-            Edit
-          </button>
+        <div className="absolute right-0 top-full z-[100] mt-1 flex w-36 flex-col overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onSuspend(ecoAide);
@@ -505,7 +696,7 @@ function ActionMenu({
 
           <button
             type="button"
-            className="w-full cursor-pointer border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-gray-100"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
             onClick={() => {
               setIsOpen(false);
               onDeactivate(ecoAide);
@@ -513,84 +704,20 @@ function ActionMenu({
           >
             Deactivate
           </button>
+
+          <button
+            type="button"
+            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
+            onClick={() => {
+              setIsOpen(false);
+              onArchive(ecoAide);
+            }}
+          >
+            Archive
+          </button>
         </div>
       )}
     </div>
-  );
-}
-
-interface ApprovalQueueTableProps {
-  approvalRequests: EcoAideApprovalRequest[];
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-}
-
-function ApprovalQueueTable({
-  approvalRequests,
-  onApprove,
-  onReject,
-}: ApprovalQueueTableProps) {
-  return (
-    <section className="min-h-[395px] overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
-      <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Approval Queue</div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
-          <thead>
-            <tr className="bg-brand">
-              {["Eco-Aide Name", "Date", "Time", "Actions"].map((heading) => (
-                <th key={heading} className="whitespace-nowrap px-3.5 py-2.5 text-left text-xs font-bold text-white">
-                  {heading}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {approvalRequests.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="p-7 text-center text-[13px] text-gray-400">
-                  No approval requests found.
-                </td>
-              </tr>
-            ) : (
-              approvalRequests.map((request) => (
-                <tr key={request.id} className="border-b border-gray-200">
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.name}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.date}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">{request.time}</td>
-                  <td className="whitespace-nowrap px-3.5 py-2.5 text-[13px] text-gray-900">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onApprove(request.id);
-                        }}
-                        className="cursor-pointer rounded-xl border-0 bg-black px-3 py-1 text-xs text-white hover:bg-gray-800"
-                      >
-                        Approve
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onReject(request.id);
-                        }}
-                        className="cursor-pointer rounded-xl border-0 bg-red-700 px-3 py-1 text-xs text-white hover:bg-red-800"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination />
-    </section>
   );
 }
 
@@ -631,11 +758,7 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
           Assignment history
         </div>
 
-        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2">
-          <HistoryCard label="Total Routes" value={ecoAide.totalRoutes} />
-          <HistoryCard label="Completion Rate" value={ecoAide.completionRate} />
-          <HistoryCard label="Missed Assignment" value={ecoAide.missedAssignment} />
-        </div>
+
 
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
           <Button onClick={onEdit}>Edit Profile</Button>
@@ -648,10 +771,24 @@ function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   );
 }
 
+type EcoAideAccountStatus =
+  | "Active"
+  | "Suspended"
+  | "Deactivated";
+
+type EcoAideAvailability =
+  | "Available"
+  | "On Route"
+  | "Off Duty";
+
 type EcoAideFormValue = Omit<
   EcoAide,
-  "id" | "addedDate"
->;
+  "id" | "addedDate" | "status"
+> & {
+  status: EcoAideAccountStatus;
+  availability: EcoAideAvailability;
+  password: string;
+};
 
 type EcoAideFormErrors = Partial<
   Record<keyof EcoAideFormValue, string>
@@ -679,18 +816,18 @@ const ECO_AIDE_NAME_PATTERN = /^[\p{L} .'-]+$/u;
 const PH_MOBILE_PATTERN = /^09\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const ALLOWED_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+const ALLOWED_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
   "Active",
-  "On Duty",
-  "On Route",
-  "Off Duty",
   "Suspended",
   "Deactivated",
 ];
 
-const CREATE_ECO_AIDE_STATUSES: EcoAideStatus[] = [
+const CREATE_ECO_AIDE_STATUSES: EcoAideAccountStatus[] = [
   "Active",
-  "On Duty",
+];
+
+const ALLOWED_ECO_AIDE_AVAILABILITIES: EcoAideAvailability[] = [
+  "Available",
   "On Route",
   "Off Duty",
 ];
@@ -702,6 +839,8 @@ interface EditEcoAideModalProps {
   setFormValue: Dispatch<
     SetStateAction<EcoAideFormValue>
   >;
+  routes: Route[];
+  trucks: Truck[];
   onSave: (validatedValue: EcoAideFormValue) => void;
   onClose: () => void;
   saveLabel?: string;
@@ -712,6 +851,8 @@ function EditEcoAideModal({
   title,
   formValue,
   setFormValue,
+  routes,
+  trucks,
   onSave,
   onClose,
   saveLabel = "Save",
@@ -733,6 +874,15 @@ function EditEcoAideModal({
     useState<EcoAideAddressErrors>({});
 
   const isCreateMode = mode === "create";
+
+  // Records created before the structured address fields existed store the
+  // whole address as one string, so region/province/city/barangay/ZIP start
+  // empty here with nothing to prefill them from. Requiring them anyway would
+  // force a full address re-entry just to change an unrelated field, so they
+  // stay optional until the editor actually starts filling them in.
+  const [startedWithLegacyAddress] = useState(
+    () => !isCreateMode && Boolean(formValue.address),
+  );
 
   function updateField<Key extends keyof EcoAideFormValue>(
     key: Key,
@@ -848,10 +998,6 @@ function EditEcoAideModal({
       }
     }
 
-    if (key === "assignedTruck" && !stringValue) {
-      return "Select a truck assignment.";
-    }
-
     if (key === "assignedRoute" && !stringValue) {
       return "Select a route assignment.";
     }
@@ -861,9 +1007,40 @@ function EditEcoAideModal({
       !(isCreateMode
         ? CREATE_ECO_AIDE_STATUSES
         : ALLOWED_ECO_AIDE_STATUSES
-      ).includes(value as EcoAideStatus)
+      ).includes(value as EcoAideAccountStatus)
     ) {
       return "Select a valid Eco-Aide status.";
+    }
+
+    if (
+      key === "availability" &&
+      !ALLOWED_ECO_AIDE_AVAILABILITIES.includes(
+        value as EcoAideAvailability,
+      )
+    ) {
+      return "Select a valid Eco-Aide availability.";
+    }
+
+    if (key === "password" && isCreateMode) {
+      if (!stringValue) {
+        return "Initial password is required.";
+      }
+
+      if (!/[a-z]/.test(stringValue)) {
+        return "Password must contain at least one lowercase letter.";
+      }
+
+      if (!/[A-Z]/.test(stringValue)) {
+        return "Password must contain at least one uppercase letter.";
+      }
+
+      if (!/\d/.test(stringValue)) {
+        return "Password must contain at least one number.";
+      }
+
+      if (!/[^A-Za-z0-9]/.test(stringValue)) {
+        return "Password must contain at least one special character.";
+      }
     }
 
     if (key === "email" && isCreateMode) {
@@ -905,13 +1082,13 @@ function EditEcoAideModal({
       "contactNumber",
       "birthdate",
       "address",
-      "assignedTruck",
       "assignedRoute",
       "status",
+      "availability",
     ];
 
     if (isCreateMode) {
-      fields.push("email");
+      fields.push("email", "password");
     }
 
     const validationErrors: EcoAideFormErrors = {};
@@ -948,28 +1125,46 @@ function EditEcoAideModal({
       postalCode: addressValue.postalCode.trim(),
     };
 
-    const nextAddressErrors: EcoAideAddressErrors = {
-      streetAddress: normalizedAddress.streetAddress
-        ? undefined
-        : "House/unit number and street are required.",
-      region: normalizedAddress.region
-        ? undefined
-        : "Region is required.",
-      province: normalizedAddress.province
-        ? undefined
-        : "Province is required.",
-      cityMunicipality: normalizedAddress.cityMunicipality
-        ? undefined
-        : "City/Municipality is required.",
-      barangay: normalizedAddress.barangay
-        ? undefined
-        : "Barangay is required.",
-      postalCode: !normalizedAddress.postalCode
-        ? "ZIP/postal code is required."
-        : /^\d{4}$/.test(normalizedAddress.postalCode)
-          ? undefined
-          : "Enter a valid 4-digit Philippine ZIP/postal code.",
-    };
+    // Untouched means the editor has not begun replacing the legacy address,
+    // so the record keeps the address it already had. Filling in any one of
+    // the structured fields opts back into validating all of them.
+    const structuredAddressUntouched =
+      startedWithLegacyAddress &&
+      !normalizedAddress.region &&
+      !normalizedAddress.province &&
+      !normalizedAddress.cityMunicipality &&
+      !normalizedAddress.barangay &&
+      !normalizedAddress.postalCode;
+
+    const nextAddressErrors: EcoAideAddressErrors =
+      structuredAddressUntouched
+        ? {
+            streetAddress: normalizedAddress.streetAddress
+              ? undefined
+              : "House/unit number and street are required.",
+          }
+        : {
+            streetAddress: normalizedAddress.streetAddress
+              ? undefined
+              : "House/unit number and street are required.",
+            region: normalizedAddress.region
+              ? undefined
+              : "Region is required.",
+            province: normalizedAddress.province
+              ? undefined
+              : "Province is required.",
+            cityMunicipality: normalizedAddress.cityMunicipality
+              ? undefined
+              : "City/Municipality is required.",
+            barangay: normalizedAddress.barangay
+              ? undefined
+              : "Barangay is required.",
+            postalCode: !normalizedAddress.postalCode
+              ? "ZIP/postal code is required."
+              : /^\d{4}$/.test(normalizedAddress.postalCode)
+                ? undefined
+                : "Enter a valid 4-digit Philippine ZIP/postal code.",
+          };
 
     const hasAddressErrors = Object.values(
       nextAddressErrors,
@@ -988,6 +1183,10 @@ function EditEcoAideModal({
       .filter(Boolean)
       .join(", ");
 
+    const addressToSave = structuredAddressUntouched
+      ? formValue.address
+      : combinedAddress;
+
     const normalizedValue: EcoAideFormValue = {
       ...formValue,
       name: formValue.name
@@ -995,7 +1194,7 @@ function EditEcoAideModal({
         .replace(/\s+/g, " "),
       contactNumber: formValue.contactNumber.trim(),
       birthdate: formValue.birthdate.trim(),
-      address: combinedAddress,
+      address: addressToSave,
       assignedTruck: formValue.assignedTruck.trim(),
       assignedRoute: formValue.assignedRoute.trim(),
       email: formValue.email.trim().toLowerCase(),
@@ -1249,32 +1448,14 @@ function EditEcoAideModal({
 
           <FormField
             label="Truck Assignment"
-            required
-            error={errors.assignedTruck}
           >
-            <select
+            <input
+              type="text"
               value={formValue.assignedTruck}
-              aria-invalid={Boolean(
-                errors.assignedTruck,
-              )}
-              onChange={(event) => {
-                updateField(
-                  "assignedTruck",
-                  event.target.value,
-                );
-              }}
-              onBlur={() => {
-                validateOneField("assignedTruck");
-              }}
-              className={getInputClassName(
-                "assignedTruck",
-              )}
-            >
-              <option value="">Select truck</option>
-              <option value="FL-001">FL-001</option>
-              <option value="FL-002">FL-002</option>
-              <option value="FL-003">FL-003</option>
-            </select>
+              readOnly
+              placeholder="No truck assigned to selected route"
+              className={getInputClassName("assignedTruck")}
+            />
           </FormField>
 
           <FormField
@@ -1288,9 +1469,26 @@ function EditEcoAideModal({
                 errors.assignedRoute,
               )}
               onChange={(event) => {
+                const selectedRoute = routes.find(
+                  (route) =>
+                    route.routeDisplayNumber === event.target.value,
+                );
+
+                const selectedTruck = selectedRoute?.assignedTruckId
+                  ? trucks.find(
+                      (truck) =>
+                        truck.id === selectedRoute.assignedTruckId,
+                    )
+                  : undefined;
+
                 updateField(
                   "assignedRoute",
                   event.target.value,
+                );
+
+                updateField(
+                  "assignedTruck",
+                  selectedTruck?.truckNumber ?? "",
                 );
               }}
               onBlur={() => {
@@ -1301,9 +1499,14 @@ function EditEcoAideModal({
               )}
             >
               <option value="">Select route</option>
-              <option value="RT-001">RT-001</option>
-              <option value="RT-002">RT-002</option>
-              <option value="RT-003">RT-003</option>
+              {routes.map((route) => (
+                <option
+                  key={route.id}
+                  value={route.routeDisplayNumber}
+                >
+                  {route.routeDisplayNumber} - {route.name}
+                </option>
+              ))}
             </select>
           </FormField>
 
@@ -1318,7 +1521,7 @@ function EditEcoAideModal({
               onChange={(event) => {
                 updateField(
                   "status",
-                  event.target.value as EcoAideStatus,
+                  event.target.value as EcoAideAccountStatus,
                 );
               }}
               onBlur={() => {
@@ -1334,6 +1537,38 @@ function EditEcoAideModal({
                     {status}
                   </option>
                 ))}
+            </select>
+          </FormField>
+
+          <FormField
+            label="Availability"
+            required
+            error={errors.availability}
+          >
+            <select
+              value={formValue.availability}
+              aria-invalid={Boolean(errors.availability)}
+              onChange={(event) => {
+                updateField(
+                  "availability",
+                  event.target.value as EcoAideAvailability,
+                );
+              }}
+              onBlur={() => {
+                validateOneField("availability");
+              }}
+              className={getInputClassName("availability")}
+            >
+              {ALLOWED_ECO_AIDE_AVAILABILITIES.map(
+                (availability) => (
+                  <option
+                    key={availability}
+                    value={availability}
+                  >
+                    {availability}
+                  </option>
+                ),
+              )}
             </select>
           </FormField>
 
@@ -1360,6 +1595,29 @@ function EditEcoAideModal({
                   validateOneField("email");
                 }}
                 className={getInputClassName("email")}
+              />
+            </FormField>
+          )}
+
+          {isCreateMode && (
+            <FormField
+              label="Initial Password"
+              required
+              error={errors.password}
+            >
+              <input
+                type="password"
+                value={formValue.password}
+                autoComplete="new-password"
+                placeholder="Enter initial password"
+                aria-invalid={Boolean(errors.password)}
+                onChange={(event) => {
+                  updateField("password", event.target.value);
+                }}
+                onBlur={() => {
+                  validateOneField("password");
+                }}
+                className={getInputClassName("password")}
               />
             </FormField>
           )}
@@ -1490,20 +1748,6 @@ function InfoBlock({ label, value }: InfoBlockProps) {
   );
 }
 
-interface HistoryCardProps {
-  label: string;
-  value: string | number;
-}
-
-function HistoryCard({ label, value }: HistoryCardProps) {
-  return (
-    <div className="rounded-lg border border-gray-300 p-3">
-      <div className="text-[13px] font-bold">{label}</div>
-      <div className="text-[26px] font-extrabold">{value}</div>
-    </div>
-  );
-}
-
 function StatusPill({ status }: { status: EcoAideStatus }) {
   return (
     <span
@@ -1514,24 +1758,9 @@ function StatusPill({ status }: { status: EcoAideStatus }) {
   );
 }
 
-function Pagination() {
-  return (
-    <div className="flex items-center justify-center gap-3.5 pb-[18px] pt-[110px]">
-      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        â€¹
-      </button>
-      <button type="button" className="h-[34px] w-[34px] cursor-pointer rounded-[10px] border-0 bg-brand font-bold text-white">
-        1
-      </button>
-      <button type="button" className="cursor-pointer border-0 bg-transparent text-[22px] text-gray-500">
-        â€º
-      </button>
-    </div>
-  );
-}
 
 function getStatusClassName(status: EcoAideStatus) {
-  if (status === "Active" || status === "On Duty") {
+  if (status === "Active") {
     return "bg-green-100 text-green-800";
   }
 

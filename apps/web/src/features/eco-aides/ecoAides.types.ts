@@ -1,6 +1,5 @@
 export type EcoAideStatus =
   | "Active"
-  | "On Duty"
   | "On Route"
   | "Off Duty"
   | "Suspended"
@@ -20,15 +19,5 @@ export interface EcoAide {
   address: string;
   assignedRoute: string;
   assignedTruck: string;
-  totalRoutes: number;
-  completionRate: string;
-  missedAssignment: number;
   email: string;
-}
-
-export interface EcoAideApprovalRequest {
-  id: string;
-  name: string;
-  date: string;
-  time: string;
 }

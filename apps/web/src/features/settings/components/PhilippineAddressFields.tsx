@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   SearchableSelect,
@@ -102,6 +102,94 @@ export function PhilippineAddressFields({
     () => toOptions(barangays),
     [barangays],
   );
+
+  useEffect(() => {
+    if (regionCode || !value.region || regions.length === 0) {
+      return;
+    }
+
+    const savedRegion = regions.find(
+      (region) =>
+        region.name.localeCompare(value.region, undefined, {
+          sensitivity: "base",
+        }) === 0,
+    );
+
+    if (savedRegion) {
+      setRegionCode(savedRegion.code);
+    }
+  }, [regionCode, regions, value.region]);
+
+  useEffect(() => {
+    if (
+      !regionCode ||
+      isNcr ||
+      provinceCode ||
+      !value.province ||
+      provinces.length === 0
+    ) {
+      return;
+    }
+
+    const savedProvince = provinces.find(
+      (province) =>
+        province.name.localeCompare(value.province, undefined, {
+          sensitivity: "base",
+        }) === 0,
+    );
+
+    if (savedProvince) {
+      setProvinceCode(savedProvince.code);
+    }
+  }, [
+    isNcr,
+    provinceCode,
+    provinces,
+    regionCode,
+    value.province,
+  ]);
+
+  useEffect(() => {
+    if (
+      localityCode ||
+      !value.cityMunicipality ||
+      localities.length === 0
+    ) {
+      return;
+    }
+
+    const savedLocality = localities.find(
+      (locality) =>
+        locality.name.localeCompare(value.cityMunicipality, undefined, {
+          sensitivity: "base",
+        }) === 0,
+    );
+
+    if (savedLocality) {
+      setLocalityCode(savedLocality.code);
+    }
+  }, [localities, localityCode, value.cityMunicipality]);
+
+  useEffect(() => {
+    if (
+      barangayCode ||
+      !value.barangay ||
+      barangays.length === 0
+    ) {
+      return;
+    }
+
+    const savedBarangay = barangays.find(
+      (barangay) =>
+        barangay.name.localeCompare(value.barangay, undefined, {
+          sensitivity: "base",
+        }) === 0,
+    );
+
+    if (savedBarangay) {
+      setBarangayCode(savedBarangay.code);
+    }
+  }, [barangayCode, barangays, value.barangay]);
 
   function updateValue(
     changes: Partial<PhilippineAddressValue>,

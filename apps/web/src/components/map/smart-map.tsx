@@ -16,6 +16,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { env } from "@/lib/env";
+import { haversineMeters } from "@/lib/geo";
 
 /* ─── Maneuver Icon HUD Helper ──────────────────────────────────────── */
 function ManeuverIcon({ type, modifier }: { type?: string; modifier?: string }) {
@@ -76,9 +77,12 @@ function formatEta(seconds: number): string {
 }
 
 /* ─── Custom SVG marker components ─────────────────────────────────── */
-function TruckIcon({ pulse }: { pulse?: boolean | undefined }) {
+function TruckIcon({ pulse, rotation }: { pulse?: boolean | undefined; rotation?: number | undefined }) {
   return (
-    <div className="relative h-9 w-9">
+    <div
+      className="relative h-9 w-9 transition-transform duration-500 ease-out"
+      style={rotation !== undefined ? { transform: `rotate(${rotation}deg)` } : undefined}
+    >
       {pulse && <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/30" />}
       <div className="absolute inset-0.5 flex items-center justify-center rounded-full bg-blue-600 shadow-[0_2px_8px_rgba(37,99,235,0.5)]">
         <svg
@@ -95,9 +99,12 @@ function TruckIcon({ pulse }: { pulse?: boolean | undefined }) {
   );
 }
 
-function EcoIcon({ pulse }: { pulse?: boolean | undefined }) {
+function EcoIcon({ pulse, rotation }: { pulse?: boolean | undefined; rotation?: number | undefined }) {
   return (
-    <div className="relative h-9 w-9">
+    <div
+      className="relative h-9 w-9 transition-transform duration-500 ease-out"
+      style={rotation !== undefined ? { transform: `rotate(${rotation}deg)` } : undefined}
+    >
       {pulse && <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />}
       <div className="absolute inset-0.5 flex items-center justify-center rounded-full bg-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.5)]">
         <svg
@@ -190,6 +197,7 @@ export interface MapMarker {
   icon?: "truck" | "eco" | "home" | "done" | "pending" | "stop";
   stopNumber?: number;
   pulse?: boolean;
+  bearing?: number;
   popupContent?: React.ReactNode;
 }
 
@@ -261,16 +269,6 @@ function MapboxLine({
   );
 }
 
-/* ─── Helper for distance calculation ───────────────────────────────── */
-function distanceMeters(lng1: number, lat1: number, lng2: number, lat2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 /* ─── Mapbox Route Resolver ─────────────────────────────────────────── */
 function DirectionsRoute({
@@ -299,7 +297,7 @@ function DirectionsRoute({
         const wp0 = parsedWaypoints[0];
         const pr0 = prev[0];
         if (wp0 && pr0) {
-          const d = distanceMeters(wp0[0], wp0[1], pr0[0], pr0[1]);
+          const d = haversineMeters(wp0[1], wp0[0], pr0[1], pr0[0]);
           if (d < 25) {
             return;
           }
@@ -463,13 +461,66 @@ export default function SmartMap({
     }
   }, [is3D]);
 
-  const renderMarkerIcon = useCallback((m: MapMarker) => {
+  const [dynamicBearings, setDynamicBearings] = useState<Record<string, number>>({});
+  const prevMarkerPositionsRef = useRef<
+    Record<string, { lat: number; lng: number; bearing: number }>
+  >({});
+
+  useEffect(() => {
+    const nextBearings: Record<string, number> = {};
+    const currentIds = new Set<string>();
+
+    for (const marker of markers) {
+      if (!marker.id) continue;
+      currentIds.add(marker.id);
+
+      if (marker.bearing !== undefined) {
+        nextBearings[marker.id] = marker.bearing;
+        continue;
+      }
+
+      if (marker.icon !== "truck" && marker.icon !== "eco") continue;
+
+      const [lat, lng] = marker.position;
+      const prev = prevMarkerPositionsRef.current[marker.id];
+      let computedBearing = prev?.bearing;
+
+      if (prev && (prev.lat !== lat || prev.lng !== lng)) {
+        const dLon = ((lng - prev.lng) * Math.PI) / 180;
+        const lat1Rad = (prev.lat * Math.PI) / 180;
+        const lat2Rad = (lat * Math.PI) / 180;
+        const y = Math.sin(dLon) * Math.cos(lat2Rad);
+        const x =
+          Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+          Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+        const brng = (Math.atan2(y, x) * 180) / Math.PI;
+        computedBearing = (brng + 360) % 360;
+      }
+
+      prevMarkerPositionsRef.current[marker.id] = { lat, lng, bearing: computedBearing ?? 0 };
+      if (computedBearing !== undefined) {
+        nextBearings[marker.id] = computedBearing;
+      }
+    }
+
+    // Prune stale marker positions from prevMarkerPositionsRef
+    for (const id of Object.keys(prevMarkerPositionsRef.current)) {
+      if (!currentIds.has(id)) {
+        delete prevMarkerPositionsRef.current[id];
+      }
+    }
+
+    setDynamicBearings(nextBearings);
+  }, [markers]);
+
+  const renderMarkerIcon = useCallback((m: MapMarker, rotation?: number) => {
+    const rot = rotation ?? m.bearing;
     switch (m.icon) {
       case "truck": {
-        return <TruckIcon pulse={m.pulse} />;
+        return <TruckIcon pulse={m.pulse} rotation={rot} />;
       }
       case "eco": {
-        return <EcoIcon pulse={m.pulse} />;
+        return <EcoIcon pulse={m.pulse} rotation={rot} />;
       }
       case "home": {
         return <HomeIcon />;
@@ -599,6 +650,7 @@ export default function SmartMap({
         {/* Markers */}
         {markers.map((marker, i) => {
           const mId = marker.id ?? `marker-${i}`;
+          const dynamicBearing = marker.bearing ?? dynamicBearings[mId];
           return (
             <div key={mId}>
               <Marker
@@ -609,7 +661,9 @@ export default function SmartMap({
                   setActivePopupId(mId);
                 }}
               >
-                <div className="cursor-pointer">{renderMarkerIcon(marker)}</div>
+                <div className="cursor-pointer">
+                  {renderMarkerIcon(marker, dynamicBearing)}
+                </div>
               </Marker>
 
               {activePopupId === mId && (

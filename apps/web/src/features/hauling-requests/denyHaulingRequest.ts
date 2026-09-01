@@ -1,17 +1,28 @@
 import type { HaulingRequest } from "@bazoora/shared";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+import { apiClient } from "@/lib/api-client";
+import { toHaulingRequestError } from "./haulingRequestError";
+
+export interface DenyHaulingRequestInput {
+  requestId: string;
+  denialReason: string;
+}
 
 // PATCH /hauling-requests/:id/deny
-export async function denyHaulingRequest(
-  requestId: string,
-): Promise<HaulingRequest> {
-  const res = await fetch(
-    `${API_URL}/hauling-requests/${requestId}/deny`,
-    { method: "PATCH" },
-  );
-  if (!res.ok) {
-    throw new Error(`Request failed: ${res.status}`);
+export async function denyHaulingRequest({
+  requestId,
+  denialReason,
+}: DenyHaulingRequestInput): Promise<HaulingRequest> {
+  try {
+    const { data } = await apiClient.patch<HaulingRequest>(
+      `/hauling-requests/${requestId}/deny`,
+      { denialReason },
+    );
+    return data;
+  } catch (error) {
+    throw toHaulingRequestError(
+      error,
+      "Failed to deny request",
+    );
   }
-  return (await res.json()) as HaulingRequest;
 }
