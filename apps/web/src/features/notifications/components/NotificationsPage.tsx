@@ -82,11 +82,21 @@ export function NotificationsPage() {
   );
 
   const totalSent = history.length;
-  const totalReads = history.length * 7;
+  const totalReads = backendHistory.reduce(
+    (sum, notification) => sum + notification.totalReads,
+    0,
+  );
   const alertsToday = history.filter((item) =>
     item.title.toLowerCase().includes("alert"),
   ).length;
-  const averageReadRate = totalSent > 0 ? "82%" : "0%";
+  const totalRecipients = backendHistory.reduce(
+    (sum, notification) => sum + notification.totalRecipients,
+    0,
+  );
+  const averageReadRate =
+    totalRecipients > 0
+      ? `${Math.round((totalReads / totalRecipients) * 100)}%`
+      : "0%";
 
   function showToast(messageText: string) {
     setToast(messageText);

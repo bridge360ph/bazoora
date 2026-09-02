@@ -66,6 +66,42 @@ const truckInclude = {
   },
 } as const;
 
+// Truck.status is a plain String column whose legal values live only in a
+// schema comment, so the enum has to be enforced here. Without it any string
+// persists and that truck then falls out of every status bucket in the fleet
+// cards and the analytics pie.
+const truckBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["plateNumber", "model", "capacity", "status"],
+  properties: {
+    plateNumber: { type: "string", minLength: 1, maxLength: 20 },
+    model: { type: "string", minLength: 1, maxLength: 100 },
+    capacity: { type: "string", minLength: 1, maxLength: 50 },
+    status: {
+      type: "string",
+      enum: ["Active", "Idle", "Under Maintenance"],
+    },
+    assignedDriverId: { type: ["string", "null"] },
+  },
+} as const;
+
+const truckParamsSchema = {
+  type: "object",
+  required: ["id"],
+  properties: { id: { type: "string" } },
+} as const;
+
+const truckAssignmentBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["routeId", "ecoAideId"],
+  properties: {
+    routeId: { type: "string", minLength: 1 },
+    ecoAideId: { type: "string", minLength: 1 },
+  },
+} as const;
+
 export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => {
   app.addHook("preHandler", authGuard);
   app.addHook(
@@ -152,7 +188,10 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     };
   });
 
-  app.post("/", async (request, reply) => {
+  app.post(
+    "/",
+    { schema: { body: truckBodySchema } },
+    async (request, reply) => {
     const body = request.body as TruckInput;
 
     try {
@@ -188,7 +227,10 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     }
   });
 
-  app.patch("/:id", async (request, reply) => {
+  app.patch(
+    "/:id",
+    { schema: { params: truckParamsSchema, body: truckBodySchema } },
+    async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as TruckInput;
 
@@ -228,7 +270,15 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     }
   });
 
-  app.patch("/:id/assignment", async (request, reply) => {
+  app.patch(
+    "/:id/assignment",
+    {
+      schema: {
+        params: truckParamsSchema,
+        body: truckAssignmentBodySchema,
+      },
+    },
+    async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as {
       routeId: string;
