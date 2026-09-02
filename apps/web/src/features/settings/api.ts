@@ -124,3 +124,4 @@ export async function changeMyPassword(
 ): Promise<void> {
   await apiClient.post("/auth/change-password", input);
 }
+

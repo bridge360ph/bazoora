@@ -9,6 +9,7 @@ import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
 import { routeManagementRoutes } from "./routes/routeManagementRoutes.js";
 import { routeAssignmentRoutes } from "./routes/routeAssignmentRoutes.js";
 import { trucksRoutes } from "./routes/trucks.js";
+import { adminFleetRoutes } from "./routes/adminFleetRoutes.js";
 import { notificationRoutes } from "./routes/notificationRoutes.js";
 import { analyticsRoutes } from "./routes/analyticsRoutes.js";
 import { ecoAideRoutes } from "./routes/ecoAides.js";
@@ -59,6 +60,10 @@ const start = async () => {
   
   await app.register(trucksRoutes, {
     prefix: "/trucks",
+  });
+
+  await app.register(adminFleetRoutes, {
+    prefix: "/admin/fleet",
   });
 
   await app.register(notificationRoutes, {

@@ -64,7 +64,7 @@ export function NotificationsPage() {
             month: "long",
             day: "numeric",
           }),
-          hasGreenBorder: notification.totalReads < notification.totalRecipients,
+          hasGreenBorder: notification.totalReads === 0,
         };
       }),
     [backendHistory],
@@ -82,11 +82,21 @@ export function NotificationsPage() {
   );
 
   const totalSent = history.length;
-  const totalReads = history.length * 7;
+  const totalReads = backendHistory.reduce(
+    (sum, notification) => sum + notification.totalReads,
+    0,
+  );
   const alertsToday = history.filter((item) =>
     item.title.toLowerCase().includes("alert"),
   ).length;
-  const averageReadRate = totalSent > 0 ? "82%" : "0%";
+  const totalRecipients = backendHistory.reduce(
+    (sum, notification) => sum + notification.totalRecipients,
+    0,
+  );
+  const averageReadRate =
+    totalRecipients > 0
+      ? `${Math.round((totalReads / totalRecipients) * 100)}%`
+      : "0%";
 
   function showToast(messageText: string) {
     setToast(messageText);
@@ -295,7 +305,7 @@ export function NotificationsPage() {
                       </p>
 
                       <div className="flex items-center gap-1.5 pl-[26px] text-xs text-gray-400">
-                        <span aria-hidden="true">Ã¢â€”Â·</span>
+                        <span aria-hidden="true">•</span>
                         <span>{notification.timeAgo}</span>
                       </div>
                     </div>
@@ -304,7 +314,7 @@ export function NotificationsPage() {
                       aria-hidden="true"
                       className="text-2xl leading-none text-gray-400"
                     >
-                      Ã¢â‚¬Âº
+                      ›
                     </span>
                   </div>
                 </button>
@@ -325,7 +335,7 @@ export function NotificationsPage() {
 
       {toast && (
         <div className="fixed bottom-6 left-1/2 z-[2000] -translate-x-1/2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
-          Ã¢Å“â€œ {toast}
+          ✓ {toast}
         </div>
       )}
     </main>

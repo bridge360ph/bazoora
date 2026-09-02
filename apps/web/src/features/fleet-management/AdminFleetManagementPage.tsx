@@ -1,11 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, FilterByDropdown, PaginationControls, StatCard } from "@bazoora/ui";
+import type {
+  FleetAssignmentOption,
+  Truck,
+  TruckFormValue,
+  TruckStatusFilter,
+} from "./fleet.types";
 import {
-  ECO_AIDE_OPTIONS,
-  INITIAL_TRUCKS,
-  ROUTE_OPTIONS,
-} from "./fleet.mockData";
-import type { Truck, TruckFormValue, TruckStatusFilter } from "./fleet.types";
+  createTruck,
+  fetchFleetAssignmentOptions,
+  fetchTrucks,
+  updateTruck,
+  updateTruckAssignment,
+} from "./fleet.api";
 import { TruckStatusPill } from "./components/TruckStatusPill";
 import { TruckFormModal } from "./components/TruckFormModal";
 import { AssignTruckModal } from "./components/AssignTruckModal";
@@ -30,15 +37,68 @@ const emptyTruckForm: TruckFormValue = {
 };
 
 export function AdminFleetManagementPage() {
-  const [trucks, setTrucks] = useState<Truck[]>(INITIAL_TRUCKS);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<TruckStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
   const [truckForm, setTruckForm] = useState<TruckFormValue>(emptyTruckForm);
-  const [assignedRoute, setAssignedRoute] = useState(ROUTE_OPTIONS[0]);
-  const [assignedEcoAide, setAssignedEcoAide] = useState(ECO_AIDE_OPTIONS[0]);
+  const [assignedRoute, setAssignedRoute] = useState("");
+  const [assignedEcoAide, setAssignedEcoAide] = useState("");
+  const [routeOptions, setRouteOptions] =
+    useState<FleetAssignmentOption[]>([]);
+  const [ecoAideOptions, setEcoAideOptions] =
+    useState<FleetAssignmentOption[]>([]);
+  const [driverOptions, setDriverOptions] =
+    useState<FleetAssignmentOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [requestError, setRequestError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadFleetData() {
+      try {
+        setIsLoading(true);
+        setRequestError("");
+
+        const [truckRecords, assignmentOptions] = await Promise.all([
+          fetchTrucks(),
+          fetchFleetAssignmentOptions(),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        setTrucks(truckRecords);
+        setRouteOptions(assignmentOptions.routes);
+        setEcoAideOptions(assignmentOptions.ecoAides);
+        setDriverOptions(assignmentOptions.drivers);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setRequestError(
+          error instanceof Error
+            ? error.message
+            : "Fleet records could not be loaded.",
+        );
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadFleetData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredTrucks = useMemo(() => {
     return trucks.filter((truck) => {
@@ -87,15 +147,32 @@ export function AdminFleetManagementPage() {
       capacity: truck.capacity.replace(" kg", ""),
       status: truck.status,
       assignedDriver: truck.assignedDriver,
+      assignedDriverId: truck.assignedDriverId ?? "",
     });
     setModalMode("edit");
   }
 
-  function openAssignModal(truck: Truck) {
-    setSelectedTruck(truck);
-    setAssignedRoute(truck.assignedRoute ?? ROUTE_OPTIONS[0]);
-    setAssignedEcoAide(truck.assignedEcoAide ?? ECO_AIDE_OPTIONS[0]);
-    setModalMode("assign");
+  async function openAssignModal(truck: Truck) {
+    try {
+      setRequestError("");
+
+      const assignmentOptions = await fetchFleetAssignmentOptions();
+
+      setRouteOptions(assignmentOptions.routes);
+      setEcoAideOptions(assignmentOptions.ecoAides);
+      setDriverOptions(assignmentOptions.drivers);
+
+      setSelectedTruck(truck);
+      setAssignedRoute(truck.assignedRouteId ?? "");
+      setAssignedEcoAide(truck.assignedEcoAideId ?? "");
+      setModalMode("assign");
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load Fleet assignment options.",
+      );
+    }
   }
 
   function closeModal() {
@@ -103,65 +180,83 @@ export function AdminFleetManagementPage() {
     setModalMode(null);
   }
 
-  function registerTruck() {
-    const nextTruckNumber = trucks.length + 1;
+  async function registerTruck() {
+    try {
+      setRequestError("");
 
-    const nextTruck: Truck = {
-      id: `FL-${String(nextTruckNumber).padStart(3, "0")}`,
-      plateNumber: truckForm.plateNumber.trim() || "NEW-0000",
-      model: truckForm.model.trim() || "Unspecified Model",
-      capacity: `${truckForm.capacity.trim() || "0"} kg`,
-      status: truckForm.status,
-      assignedDriver: truckForm.assignedDriver.trim() || "Unassigned",
-      registeredDate: "26/03/2026",
-    };
-
-    setTrucks((currentTrucks) => [nextTruck, ...currentTrucks]);
-    closeModal();
+      const createdTruck = await createTruck(truckForm);
+      setTrucks((currentTrucks) => [createdTruck, ...currentTrucks]);
+      closeModal();
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? error.message
+          : "The truck could not be registered.",
+      );
+    }
   }
 
-  function saveEditedTruck() {
+  async function saveEditedTruck() {
     if (!selectedTruck) {
       return;
     }
 
-    setTrucks((currentTrucks) =>
-      currentTrucks.map((truck) =>
-        truck.id === selectedTruck.id
-          ? {
-              ...truck,
-              plateNumber: truckForm.plateNumber.trim() || truck.plateNumber,
-              model: truckForm.model.trim() || truck.model,
-              capacity: `${truckForm.capacity.trim() || "0"} kg`,
-              status: truckForm.status,
-              assignedDriver:
-                truckForm.assignedDriver.trim() || truck.assignedDriver,
-            }
-          : truck,
-      ),
-    );
+    try {
+      setRequestError("");
 
-    closeModal();
+      const updatedTruck = await updateTruck(
+        selectedTruck.databaseId,
+        truckForm,
+      );
+
+      setTrucks((currentTrucks) =>
+        currentTrucks.map((truck) =>
+          truck.databaseId === updatedTruck.databaseId
+            ? updatedTruck
+            : truck,
+        ),
+      );
+
+      closeModal();
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? error.message
+          : "The truck could not be updated.",
+      );
+    }
   }
 
-  function saveTruckAssignment() {
-    if (!selectedTruck) {
+  async function saveTruckAssignment() {
+    if (!selectedTruck || !assignedRoute || !assignedEcoAide) {
       return;
     }
 
-    setTrucks((currentTrucks) =>
-      currentTrucks.map((truck) =>
-        truck.id === selectedTruck.id
-          ? {
-              ...truck,
-              assignedRoute,
-              assignedEcoAide,
-            }
-          : truck,
-      ),
-    );
+    try {
+      setRequestError("");
 
-    closeModal();
+      const updatedTruck = await updateTruckAssignment(
+        selectedTruck.databaseId,
+        assignedRoute,
+        assignedEcoAide,
+      );
+
+      setTrucks((currentTrucks) =>
+        currentTrucks.map((truck) =>
+          truck.databaseId === updatedTruck.databaseId
+            ? updatedTruck
+            : truck,
+        ),
+      );
+
+      closeModal();
+    } catch (error) {
+      setRequestError(
+        error instanceof Error
+          ? error.message
+          : "The truck assignment could not be saved.",
+      );
+    }
   }
 
   return (
@@ -178,6 +273,18 @@ export function AdminFleetManagementPage() {
 
         <Button onClick={openRegisterModal}>+ Register Truck</Button>
       </section>
+
+      {requestError && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {requestError}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="mb-4 rounded-md border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
+          Loading fleet records...
+        </div>
+      )}
 
       <section className="mb-4 grid gap-[14px] [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
         <StatCard label="Active" value={activeCount} />
@@ -318,6 +425,7 @@ export function AdminFleetManagementPage() {
           formValue={truckForm}
           setFormValue={setTruckForm}
           saveLabel="Register"
+          driverOptions={driverOptions}
           onSave={registerTruck}
           onClose={closeModal}
         />
@@ -329,6 +437,7 @@ export function AdminFleetManagementPage() {
           formValue={truckForm}
           setFormValue={setTruckForm}
           saveLabel="Save"
+          driverOptions={driverOptions}
           onSave={saveEditedTruck}
           onClose={closeModal}
         />
@@ -341,8 +450,8 @@ export function AdminFleetManagementPage() {
           setAssignedRoute={setAssignedRoute}
           assignedEcoAide={assignedEcoAide}
           setAssignedEcoAide={setAssignedEcoAide}
-          routeOptions={ROUTE_OPTIONS}
-          ecoAideOptions={ECO_AIDE_OPTIONS}
+          routeOptions={routeOptions}
+          ecoAideOptions={ecoAideOptions}
           onSave={saveTruckAssignment}
           onClose={closeModal}
         />
@@ -350,3 +459,4 @@ export function AdminFleetManagementPage() {
     </div>
   );
 }
+

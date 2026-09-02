@@ -1,19 +1,19 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
-import type { TruckFormValue, TruckStatus } from "../fleet.types";
+import type { FleetAssignmentOption, TruckFormValue, TruckStatus } from "../fleet.types";
 
 interface TruckFormModalProps {
   title: string;
   formValue: TruckFormValue;
   setFormValue: Dispatch<SetStateAction<TruckFormValue>>;
   saveLabel: string;
+  driverOptions: FleetAssignmentOption[];
   onSave: () => void;
   onClose: () => void;
 }
 
 type ValidatedTruckField =
-  | "assignedDriver"
   | "plateNumber"
   | "model"
   | "capacity"
@@ -23,7 +23,6 @@ type TruckFormErrors = Partial<
   Record<ValidatedTruckField, string>
 >;
 
-const DRIVER_NAME_PATTERN = /^[\p{L} .'-]+$/u;
 const PLATE_NUMBER_PATTERN =
   /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 const TRUCK_MODEL_PATTERN =
@@ -43,6 +42,7 @@ export function TruckFormModal({
   formValue,
   setFormValue,
   saveLabel,
+  driverOptions,
   onSave,
   onClose,
 }: TruckFormModalProps) {
@@ -66,7 +66,6 @@ export function TruckFormModal({
     }));
 
     if (
-      key === "assignedDriver" ||
       key === "plateNumber" ||
       key === "model" ||
       key === "capacity" ||
@@ -88,24 +87,6 @@ export function TruckFormModal({
     key: ValidatedTruckField,
   ): string | undefined {
     const value = String(formValue[key] ?? "").trim();
-
-    if (key === "assignedDriver") {
-      if (!value) {
-        return "Assigned driver is required.";
-      }
-
-      if (value.length < 2) {
-        return "Driver name must contain at least 2 characters.";
-      }
-
-      if (value.length > 100) {
-        return "Driver name must not exceed 100 characters.";
-      }
-
-      if (!DRIVER_NAME_PATTERN.test(value)) {
-        return "Use letters, spaces, periods, hyphens, or apostrophes only.";
-      }
-    }
 
     if (key === "plateNumber") {
       if (!value) {
@@ -165,16 +146,13 @@ export function TruckFormModal({
 
     if (
       key === "status" &&
-      !ALLOWED_TRUCK_STATUSES.includes(
-        formValue.status,
-      )
+      !ALLOWED_TRUCK_STATUSES.includes(formValue.status)
     ) {
       return "Select a valid truck status.";
     }
 
     return undefined;
   }
-
   function validateField(key: ValidatedTruckField) {
     const error = getFieldError(key);
 
@@ -186,7 +164,6 @@ export function TruckFormModal({
 
   function handleSave() {
     const fields: ValidatedTruckField[] = [
-      "assignedDriver",
       "plateNumber",
       "model",
       "capacity",
@@ -221,30 +198,30 @@ export function TruckFormModal({
       </p>
 
       <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-2">
-        <FormField
-          label="Assigned Driver"
-          required
-          error={errors.assignedDriver}
-        >
-          <input
-            value={formValue.assignedDriver}
-            maxLength={100}
-            placeholder="e.g. Henry Correa"
-            autoComplete="name"
-            aria-invalid={Boolean(errors.assignedDriver)}
-            onChange={(event) => {
-              updateField(
-                "assignedDriver",
-                event.target.value,
-              );
-            }}
-            onBlur={() => {
-              validateField("assignedDriver");
-            }}
-            className={getInputClass(
-              Boolean(errors.assignedDriver),
-            )}
-          />
+        <FormField label="Assigned Driver">
+          <select
+              value={formValue.assignedDriverId ?? ""}
+              onChange={(event) => {
+                const selectedDriver = driverOptions.find(
+                  (driver) => driver.id === event.target.value,
+                );
+
+                setFormValue((currentValue) => ({
+                  ...currentValue,
+                  assignedDriverId: selectedDriver?.id ?? "",
+                  assignedDriver: selectedDriver?.label ?? "",
+                }));
+
+              }}
+              className={getInputClass(false)}
+            >
+              <option value="">Select assigned driver</option>
+              {driverOptions.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.label}
+                </option>
+              ))}
+            </select>
         </FormField>
 
         <FormField
@@ -366,3 +343,9 @@ export function TruckFormModal({
     </Modal>
   );
 }
+
+
+
+
+
+
