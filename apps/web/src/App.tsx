@@ -201,6 +201,7 @@ function AppContent() {
             <Route path="/resident" element={<ResidentLayout />}>
               <Route index element={<Navigate to="/resident/track" replace />} />
               <Route path="track" element={<TrackTruckPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>
 
