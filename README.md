@@ -82,3 +82,9 @@ script on `pnpm install`:
 
 - **pre-commit** — `turbo run lint` across the workspace
 - **pre-push** — `turbo run build typecheck` across the workspace
+
+## Contributing
+
+Read [`docs/git-workflow.md`](./docs/git-workflow.md) before your first pull
+request. It covers branching, commit format, PR scope, the review labels, the
+migration rules, and the checks that will block a merge.
