@@ -1,102 +1,187 @@
 "use client";
 
+import { useState, useEffect, useCallback, useRef } from "react";
 import { DashboardCard, Button, StatusBadge } from "@bazoora/ui";
 import SmartMap from "@/components/map/smart-map";
-import { Navigation, Leaf, Camera, Image as ImageIcon, Loader2 } from "lucide-react";
-import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Navigation,
+  MapPin,
+  Calendar,
+  Clock,
+  Trash2,
+  CheckCircle2,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { geocode, reverseGeocode } from "@/lib/geocoding";
-import { toast } from "sonner";
-import { useHaulingRequests, useUpdateHaulingRequest } from "@/features/hauling-requests/hooks";
 import { LocationPermissionModal } from "@/components/ui/location-permission";
-import { env } from "@/lib/env";
+import { fetchRoutes } from "@/features/route-management/routeService";
+import type { Route } from "@bazoora/shared";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
-import { compressImage } from "@/lib/image-compress";
+import { toast } from "sonner";
 
-function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+interface RouteStop {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  status: "pending" | "active" | "completed";
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const LOCAL_CENTER: [number, number] = [2.2231, 102.2421];
 
 export default function EcoAideRoute(): React.ReactNode {
   const user = useAuthStore((s) => s.user);
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const { data: haulingRequests } = useHaulingRequests();
-  const updateHauling = useUpdateHaulingRequest();
 
-  // State
-  const [stops, setStops] = useState<any[]>([]);
-  const [isPlanning, setIsPlanning] = useState(true);
-  const [isCollecting, setIsCollecting] = useState(false);
+  const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
+  const [stops, setStops] = useState<RouteStop[]>([]);
+  const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(true);
+  const [isGeocodingStops, setIsGeocodingStops] = useState<boolean>(false);
+  const [routeCompleted, setRouteCompleted] = useState<boolean>(false);
+
   const [gpsPos, setGpsPos] = useState<[number, number] | null>(null);
-  const [gpsAddress, setGpsAddress] = useState("Detecting location...");
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [trackerId, setTrackerId] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const gpsPosRef = useRef<[number, number] | null>(null);
+  const [gpsAddress, setGpsAddress] = useState<string>("Detecting location...");
+  const [isCollecting, setIsCollecting] = useState<boolean>(false);
+
+  const hasLoadedRef = useRef<boolean>(false);
   const watchIdRef = useRef<number | null>(null);
 
-  // Tabs and Decline state
-  const [activeTab, setActiveTab] = useState<"route" | "invites">("route");
-  const [declineRequest, setDeclineRequest] = useState<any | null>(null);
-  const [declineReason, setDeclineReason] = useState("");
-
-  /* ── Fetch Assigned Tracker ────────────────────────────────────── */
   useEffect(() => {
-    if (!accessToken || accessToken === "null") return;
+    gpsPosRef.current = gpsPos;
+  }, [gpsPos]);
 
-    async function getMyTracker() {
-      try {
-        const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/me`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const json = await res.json();
-        if (json.success && json.data) {
-          const tracker = json.data;
-          setTrackerId(tracker.id);
+  const detectGps = useCallback((): Promise<[number, number] | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
 
-          // Restore saved route if it exists
-          if (tracker.plannedRoute && tracker.plannedRoute.length > 0) {
-            setStops(tracker.plannedRoute);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          setGpsPos(coords);
+          gpsPosRef.current = coords;
 
-            // If already on route, restore UI state
-            if (tracker.status === "active") {
-              setIsPlanning(false);
-              setIsCollecting(true);
-
-              // Restore GPS position if available
-              if (tracker.currentLocation) {
-                setGpsPos([tracker.currentLocation.lat, tracker.currentLocation.lng]);
-              }
-            }
+          try {
+            const res = await reverseGeocode(coords[0], coords[1]);
+            setGpsAddress(res.display_name ?? `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
+          } catch {
+            setGpsAddress(`${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
           }
+          resolve(coords);
+        },
+        (err) => {
+          console.warn("GPS error:", err);
+          resolve(null);
+        },
+        { enableHighAccuracy: true, timeout: 5000 },
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    void detectGps();
+  }, [detectGps]);
+
+  const loadAssignedRoute = useCallback(
+    async (force = false) => {
+      if (!user?.id) return;
+      if (hasLoadedRef.current && !force) return;
+      hasLoadedRef.current = true;
+
+      setIsLoadingRoute(true);
+      setRouteCompleted(false);
+
+      try {
+        let currentPos = gpsPosRef.current;
+        if (!currentPos) {
+          currentPos = await detectGps();
+        }
+
+        const baseAnchor: [number, number] = currentPos ?? LOCAL_CENTER;
+        const allRoutes = await fetchRoutes();
+        const currentAssigned = allRoutes.find(
+          (r) => r.assignedEcoAideId === user.id || r.assignedEcoAide?.id === user.id,
+        );
+
+        setAssignedRoute(currentAssigned ?? null);
+
+        if (currentAssigned?.waypoints) {
+          setIsGeocodingStops(true);
+          const rawStops = currentAssigned.waypoints
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+          const resolvedStops: RouteStop[] = [];
+
+          for (let i = 0; i < rawStops.length; i++) {
+            const stopName = rawStops[i];
+            let lat = baseAnchor[0] + (i + 1) * 0.0025;
+            let lng = baseAnchor[1] + (i + 1) * 0.0025;
+
+            try {
+              if (i > 0) {
+                await sleep(1100);
+              }
+
+              let results = await geocode(`${stopName}, ${currentAssigned.barangay}`, { limit: 1 });
+              let match = results?.[0];
+
+              if (!match) {
+                results = await geocode(stopName, { limit: 1 });
+                match = results?.[0];
+              }
+
+              if (match && match.lat && match.lon) {
+                const parsedLat = Number(match.lat);
+                const parsedLng = Number(match.lon);
+                if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+                  lat = parsedLat;
+                  lng = parsedLng;
+                }
+              }
+            } catch (err) {
+              console.warn(`Geocoding failed for ${stopName}:`, err);
+            }
+
+            resolvedStops.push({
+              id: `stop-${i + 1}`,
+              name: stopName,
+              address: `${stopName}, ${currentAssigned.barangay}`,
+              lat,
+              lng,
+              status: i === 0 ? "active" : "pending",
+            });
+          }
+
+          setStops(resolvedStops);
+          setIsGeocodingStops(false);
+        } else {
+          setStops([]);
         }
       } catch (error) {
-        console.error("Failed to fetch assigned tracker", error);
+        console.error("Failed to load assigned route:", error);
+        toast.error("Failed to fetch assigned route.");
+      } finally {
+        setIsLoadingRoute(false);
       }
-    }
-    getMyTracker();
-  }, [accessToken]);
+    },
+    [user?.id, detectGps],
+  );
 
-  /* ── Derived State ────────────────── */
-  const activeStop = stops.find((s) => s.status === "active");
-  const allStopsDone = stops.length > 0 && stops.every((s) => s.status === "completed");
-  const distanceToActive =
-    gpsPos && activeStop
-      ? haversineMeters(gpsPos[0], gpsPos[1], activeStop.lat, activeStop.lng)
-      : Infinity;
-  const isNearby = distanceToActive < 150;
-
-  /* ── Real GPS Tracking Mode ────────────────────────────────────── */
   useEffect(() => {
-    if (!isCollecting || !trackerId) {
+    void loadAssignedRoute();
+  }, [loadAssignedRoute]);
+
+  useEffect(() => {
+    if (!isCollecting) {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -104,63 +189,22 @@ export default function EcoAideRoute(): React.ReactNode {
       return;
     }
 
-    if (!navigator.geolocation) {
-      toast.error("Geolocation not supported", {
-        description: "Your device does not support GPS tracking.",
-      });
-      return;
-    }
-
-    toast.info("Real GPS Tracking Active", {
-      description: "Streaming live device coordinates to the map.",
-    });
+    if (!navigator.geolocation) return;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng, heading, speed } = position.coords;
-        setGpsPos([lat, lng]);
-
-        // Post real location to backend
+      async (pos) => {
+        const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setGpsPos(coords);
+        gpsPosRef.current = coords;
         try {
-          await fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/${trackerId}/location`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-              lat,
-              lng,
-              heading: heading ?? 0,
-              speed: speed ?? 0,
-              timestamp: new Date().toISOString(),
-            }),
-          });
-        } catch (error) {
-          console.error("Failed to post real GPS location", error);
-        }
-
-        // Auto reverse geocode for status display
-        try {
-          const result = await reverseGeocode(lat, lng);
-          setGpsAddress(result.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+          const res = await reverseGeocode(coords[0], coords[1]);
+          setGpsAddress(res.display_name ?? `${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
         } catch {
-          setGpsAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+          setGpsAddress(`${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}`);
         }
       },
-      (error) => {
-        console.warn("GPS Watch error", error);
-        if (error.code === error.PERMISSION_DENIED) {
-          toast.error("GPS Tracking Error", {
-            description: "Location access denied. Please enable it in your browser settings.",
-          });
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 30_000,
-        timeout: 30_000,
-      },
+      (err) => console.warn("GPS watch error:", err),
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 30000 },
     );
 
     return () => {
@@ -169,449 +213,107 @@ export default function EcoAideRoute(): React.ReactNode {
         watchIdRef.current = null;
       }
     };
-  }, [isCollecting, trackerId, accessToken]);
+  }, [isCollecting]);
 
-  /* ── Load Resident Requests into Route ────────────────────────── */
-  useEffect(() => {
-    // Only load if we are in planning mode
-    if (haulingRequests && isPlanning) {
-      const approved = haulingRequests.filter((r) => r.status === "approved");
-
-      const loadStops = async () => {
-        const mappedStops = [];
-        for (const req of approved) {
-          // Use stored coordinates if available
-          if (req.lat && req.lng) {
-            mappedStops.push({
-              id: req.id,
-              name: req.pickupAddress.split(",")[0],
-              lat: req.lat,
-              lng: req.lng,
-              status: "pending" as const,
-              price: req.price,
-              paymentMethod: req.paymentMethod,
-              paymentStatus: req.paymentStatus,
-              wasteType: req.wasteType,
-              volume: req.volume,
-            });
-            continue;
-          }
-
-          try {
-            const results = await geocode(req.pickupAddress, { limit: 1 });
-            const first = results?.[0];
-            if (first) {
-              mappedStops.push({
-                id: req.id,
-                name: req.pickupAddress.split(",")[0],
-                lat: Number(first.lat),
-                lng: Number(first.lon),
-                status: "pending" as const,
-                price: req.price,
-                paymentMethod: req.paymentMethod,
-                paymentStatus: req.paymentStatus,
-                wasteType: req.wasteType,
-                volume: req.volume,
-              });
-            }
-          } catch (error) {
-            console.error("Geocoding failed for request", req.id, error);
-          }
-        }
-
-        setStops(mappedStops);
-      };
-
-      loadStops();
-    }
-  }, [haulingRequests, isPlanning]);
-
-  /* ── Initial Location ──────────────────────────────────────────── */
-  const detectGps = useCallback(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng } = position.coords;
-        setGpsPos([lat, lng]);
-        try {
-          const result = await reverseGeocode(lat, lng);
-          setGpsAddress(result.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        } catch {
-          setGpsAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        }
-      },
-      (error) => {
-        console.warn("Initial GPS error", error);
-      },
-      { enableHighAccuracy: true },
-    );
-  }, []);
-
-  /* ── Route Planning ────────────────────────────────────────────── */
-  const handleMapClick = async (_pos: [number, number]) => {
-    // Disabled: Eco-Aide cannot create own route
-    toast.info("Manual stops disabled", {
-      description: "Your route is based on resident hauling requests.",
-    });
-  };
-
-  const [isStarting, setIsStarting] = useState(false);
-
-  const optimizeRoute = () => {
-    if (stops.length < 2 || !stops[0]) {
-      toast.info("No need to optimize", {
-        description: "Add at least 2 stops to optimize the route.",
-      });
+  const markStopCompleted = (stopId: string) => {
+    if (!isCollecting) {
+      toast.info("Please start the collection route first.");
       return;
     }
 
-    const startingPos: [number, number] = gpsPos ?? [stops[0].lat, stops[0].lng];
-    const unvisited = [...stops];
-    const optimized: any[] = [];
-    let currentPos = startingPos;
-
-    while (unvisited.length > 0) {
-      let nearestIdx = 0;
-      let minDistance = Infinity;
-
-      for (const [i, stop] of unvisited.entries()) {
-        if (!stop) continue;
-        const dist = haversineMeters(currentPos[0], currentPos[1], stop.lat, stop.lng);
-        if (dist < minDistance) {
-          minDistance = dist;
-          nearestIdx = i;
+    setStops((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((s) => s.id === stopId);
+      if (idx !== -1) {
+        next[idx] = { ...next[idx], status: "completed" };
+        if (idx + 1 < next.length) {
+          next[idx + 1] = { ...next[idx + 1], status: "active" };
         }
       }
-
-      const nextStop = unvisited.splice(nearestIdx, 1)[0];
-      if (nextStop) {
-        optimized.push(nextStop);
-        currentPos = [nextStop.lat, nextStop.lng];
-      }
-    }
-
-    setStops(optimized);
-    toast.success("Route Optimized", {
-      description: "Stops rearranged using nearest-neighbor algorithm.",
+      return next;
     });
+    toast.success("Stop marked as completed.");
   };
 
-  const startCollection = async () => {
-    if (stops.length === 0) return;
+  const activeStop = stops.find((s) => s.status === "active");
+  const allStopsDone = stops.length > 0 && stops.every((s) => s.status === "completed");
 
-    if (!trackerId) {
-      toast.error("No Tracker Connected", { description: "Please wait for server connection." });
-      return;
-    }
-
-    setIsStarting(true);
-
-    // 1. Sync route with tracker so residents see it
-    try {
-      const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/${trackerId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${useAuthStore.getState().accessToken}`,
-        },
-        body: JSON.stringify({
-          plannedRoute: stops,
-          status: "active",
-        }),
-      });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.message);
-
-      setIsPlanning(false);
-      setIsCollecting(true);
-      setStops((prev) => prev.map((s, i) => (i === 0 ? { ...s, status: "active" } : s)));
-    } catch (error: any) {
-      console.error("Failed to sync eco-route", error);
-      toast.error("Sync Failed", { description: error.message || "Route could not be saved." });
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  /* ── Collection Lifecycle ───────────────────────────────────────── */
-
-  const finishCollection = async () => {
-    if (!trackerId) return;
-    setIsStarting(true);
-    try {
-      await fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/${trackerId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ plannedRoute: [], status: "idle" }),
-      });
-      setIsPlanning(true);
-      setIsCollecting(false);
-      setStops([]);
-      toast.success("Collection Completed", { description: "You have finalized this eco-route." });
-    } catch (error: any) {
-      toast.error("Finish Failed", { description: error.message });
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  /* ── Map state ────────────────────────────────────────────────── */
-  const mapCenter: [number, number] = gpsPos ?? [13.8248, 121.3964];
+  const mapCenter: [number, number] =
+    gpsPos ?? (stops.length > 0 ? [stops[0].lat, stops[0].lng] : LOCAL_CENTER);
 
   const mapMarkers: MapMarker[] = [
     ...(gpsPos
       ? [
           {
-            id: "eco",
+            id: "eco-aide-self",
             position: gpsPos,
-            label: isCollecting ? "Eco-Aide" : "Current Location",
-            icon: isCollecting ? ("eco" as const) : ("home" as const),
+            label: "My Location",
+            icon: "eco" as const,
             pulse: isCollecting,
           },
         ]
       : []),
-    ...stops.map((stop) => ({
+    ...stops.map((stop, idx) => ({
       id: stop.id,
-      position: [stop.lat, stop.lng] as [number, number],
+      position: [Number(stop.lat), Number(stop.lng)] as [number, number],
       label: stop.name,
-      icon: (stop.status === "completed" ? "done" : "pending") as any,
-      pulse: stop.status === "active",
+      icon: (stop.status === "completed" ? "done" : "stop") as any,
+      stopNumber: idx + 1,
+      pulse: stop.status === "active" && isCollecting,
     })),
-    ...(haulingRequests
-      ?.filter((req) => req.status === "pending")
-      .map((req) => ({
-        id: `pending-${req.id}`,
-        position: [req.lat ?? 13.8241, req.lng ?? 121.4019] as [number, number],
-        label: `Pending: ${req.pickupAddress.split(",")[0]}`,
-        icon: "pending" as const,
-        pulse: false,
-      })) || []),
   ];
 
-  const activeStops = stops.filter((s) => s.status !== "completed");
+  const remainingStops = stops.filter((s) => s.status !== "completed");
+  const activeWaypoints = remainingStops.length > 0 ? remainingStops : stops;
+
   const mapRoutes: MapRoute[] =
-    activeStops.length > 0
+    stops.length >= 2
       ? [
           {
             waypoints: [
-              ...(gpsPos ? [[gpsPos[1], gpsPos[0]] as [number, number]] : []),
-              ...activeStops.map((s) => [s.lng, s.lat] as [number, number]),
+              ...(gpsPos && isCollecting ? [[gpsPos[1], gpsPos[0]] as [number, number]] : []),
+              ...activeWaypoints.map((s) => [Number(s.lng), Number(s.lat)] as [number, number]),
             ],
             color: "green",
-            label: "Eco-Aide Route",
+            label: assignedRoute?.name ?? "Collection Route",
           },
         ]
       : [];
 
-  /* ── Mark Picked Up ────────────────────────────────────────────── */
-  const confirmPickup = async () => {
-    if (!activeStop || !user) return;
-    setIsUploading(true);
-    let uploadedUrl: string | null = null;
-
-    try {
-      if (photoFile) {
-        const { base64, mimeType } = await compressImage(photoFile);
-
-        const uploadRes = await fetch(`${env.NEXT_PUBLIC_API_URL}/uploads/image`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ base64, mimeType }),
-        });
-
-        const uploadData = await uploadRes.json();
-        if (uploadData.success) {
-          uploadedUrl = uploadData.data.url;
-        } else {
-          throw new Error("Failed to upload image");
-        }
-      }
-
-      // 1. Mark as completed in the database first
-      const completedTime = new Date().toLocaleTimeString();
-      const driverName = user?.firstName ? `${user.firstName} ${user.lastName}` : "Eco-Aide";
-
-      updateHauling.mutate(
-        {
-          id: activeStop.id,
-          input: { status: "completed", proofPhotoUrl: uploadedUrl },
-        },
-        {
-          onSuccess: () => {
-            // 2. We skip the notification mutation as requested.
-
-            // 3. Update local UI state
-            setStops((prev) => {
-              const next = [...prev];
-              const idx = next.findIndex((s) => s.id === activeStop.id);
-              if (idx !== -1) {
-                next[idx] = {
-                  ...next[idx],
-                  status: "completed",
-                  proofPhotoUrl: uploadedUrl ?? undefined,
-                  completedBy: driverName,
-                  time: completedTime,
-                  completedAt: completedTime,
-                };
-                if (idx + 1 < next.length) {
-                  next[idx + 1] = { ...next[idx + 1], status: "active" };
-                }
-              }
-
-              // Synchronize tracker plannedRoute in DB so residents see progress live!
-              fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/${trackerId}`, {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${useAuthStore.getState().accessToken}`,
-                },
-                body: JSON.stringify({ plannedRoute: next }),
-              }).catch((error) => {
-                console.error("Failed to sync tracker plannedRoute:", error);
-              });
-
-              return next;
-            });
-            setShowConfirm(false);
-            setPhotoFile(null);
-            setPhotoPreview(null);
-            toast.success("Stop Completed", { description: "Database updated." });
-          },
-          onError: (err: any) => {
-            console.error("Status update failed", err);
-            toast.error("Database Update Failed", {
-              description: "The request could not be marked as completed.",
-            });
-          },
-        },
-      );
-    } catch (error) {
-      console.error("Upload failed", error);
-      toast.error("Upload Failed", { description: "Could not upload photo." });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setPhotoFile(file);
-      const url = URL.createObjectURL(file);
-      setPhotoPreview(url);
-    }
-  };
-
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-white lg:flex-row">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-white lg:flex-row">
       <LocationPermissionModal onAllow={detectGps} />
-      {/* Confirmation Modal */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
-              <Leaf className="h-8 w-8 text-emerald-600" />
-            </div>
-            <h3 className="mb-2 text-xl font-black text-gray-900">Waste Collected?</h3>
-            <p className="mb-6 text-sm text-gray-500">
-              Confirm you have collected waste from <b>{activeStop?.name}</b>.
-            </p>
-            {activeStop?.paymentMethod === "cash" && (
-              <div className="mb-6 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 text-left">
-                <h4 className="mb-1 text-xs font-black tracking-wider text-amber-800 uppercase">
-                  💰 Collect Cash Payment
-                </h4>
-                <p className="text-sm font-bold text-amber-700">
-                  Please collect ₱{activeStop?.price} from the resident before completing the task.
-                </p>
-              </div>
-            )}
 
-            <div className="mb-6 flex flex-col items-center">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handlePhotoCapture}
-              />
-              {photoPreview ? (
-                <div className="relative h-32 w-full overflow-hidden rounded-xl border border-gray-200">
-                  <img src={photoPreview} alt="Proof" className="h-full w-full object-cover" />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="absolute right-2 bottom-2 rounded-lg bg-white/90 text-xs shadow-sm backdrop-blur"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Retake
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="h-24 w-full flex-col gap-2 rounded-xl border-dashed border-gray-300 text-gray-500 hover:border-emerald-500 hover:bg-emerald-50/50 hover:text-emerald-600"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Camera className="h-6 w-6" />
-                  <span className="text-xs font-semibold">Take Photo Proof</span>
-                </Button>
-              )}
-            </div>
-
-            <div className="flex gap-4">
-              <Button
-                variant="ghost"
-                className="flex-1 rounded-2xl"
-                onClick={() => {
-                  setShowConfirm(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 rounded-2xl bg-emerald-600 text-white shadow-lg"
-                onClick={confirmPickup}
-                disabled={isUploading || updateHauling.isPending}
-              >
-                {isUploading || updateHauling.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "Confirm"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Map Area */}
-      <div className="relative flex min-h-[400px] flex-1 flex-col lg:min-h-0">
+      {/* MAP VIEWPORT CONTAINER WITH EXPLICIT DIMENSIONS */}
+      <div className="relative h-[50vh] w-full flex-1 lg:h-full lg:min-h-0">
         <SmartMap
           center={mapCenter}
-          zoom={16}
+          zoom={15}
           markers={mapMarkers}
           routes={mapRoutes}
-          onMapClick={handleMapClick}
           isCollecting={isCollecting}
-          className="h-full w-full"
+          className="absolute inset-0 h-full w-full"
         />
 
+        {/* TOP STATUS OVERLAY */}
         <div className="absolute top-6 left-6 z-[1000] flex flex-col gap-3">
-          <DashboardCard className="flex items-center gap-4 border-gray-200 dark:border-slate-800 bg-white/95 p-4 shadow-xl backdrop-blur-md">
+          <DashboardCard className="flex items-center gap-3 border-gray-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md">
             <div
-              className={`h-3 w-3 rounded-full ${isCollecting ? "animate-pulse bg-emerald-500" : "bg-orange-500"}`}
+              className={`h-3 w-3 rounded-full ${
+                routeCompleted
+                  ? "bg-emerald-500"
+                  : isCollecting
+                  ? "animate-pulse bg-emerald-500"
+                  : "bg-amber-500"
+              }`}
             />
             <div className="min-w-0">
               <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">
-                {isPlanning ? "Planning Mode" : "🛰️ Real GPS Active"}
+                {routeCompleted
+                  ? "Route Completed"
+                  : isCollecting
+                  ? "Active Collection"
+                  : "Route Standby"}
               </p>
               <p className="truncate text-xs font-bold text-gray-900">{gpsAddress}</p>
             </div>
@@ -619,346 +321,215 @@ export default function EcoAideRoute(): React.ReactNode {
         </div>
       </div>
 
-      {/* Side Actions */}
-      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[380px]">
+      {/* SIDEBAR DETAILS & CONTROLS */}
+      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[400px]">
+        {/* HEADER SECTION */}
         <div className="flex flex-col gap-3 border-b border-gray-100 p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-black text-gray-900">Collection Hub</h2>
-              <StatusBadge status={isPlanning ? "Planning Mode" : "On Route"} />
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-gray-900">
+                  {assignedRoute?.routeDisplayNumber ?? "Assigned Route"}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void loadAssignedRoute(true)}
+                  className="h-7 w-7 p-0 text-gray-400 hover:text-gray-700"
+                  title="Refresh Route"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRoute ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+              <p className="text-sm font-semibold text-gray-500">
+                {assignedRoute?.name ?? "No active route assignment"}
+              </p>
             </div>
-            {isPlanning && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  /* Logic to fetch new hauling requests */
-                }}
-                className="h-9 rounded-xl border-gray-100 bg-white text-[10px] font-black tracking-widest text-emerald-600 uppercase shadow-sm"
-              >
-                Sync Requests
-              </Button>
+            <StatusBadge
+              status={
+                isLoadingRoute
+                  ? "Loading..."
+                  : routeCompleted
+                  ? "Completed"
+                  : assignedRoute
+                  ? isCollecting
+                    ? "In Progress"
+                    : assignedRoute.status
+                  : "Unassigned"
+              }
+            />
+          </div>
+
+          {assignedRoute && (
+            <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <MapPin className="h-4 w-4 text-emerald-600" />
+                <span className="truncate font-medium">{assignedRoute.barangay}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <Trash2 className="h-4 w-4 text-emerald-600" />
+                <span className="truncate font-medium">{assignedRoute.wasteType}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <Calendar className="h-4 w-4 text-emerald-600" />
+                <span className="truncate font-medium">{assignedRoute.collectionDay}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-600">
+                <Clock className="h-4 w-4 text-emerald-600" />
+                <span className="truncate font-medium">{assignedRoute.startTime}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* STOP SEQUENCE CHECKLIST */}
+        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black tracking-wider text-gray-400 uppercase">
+              Waypoints & Stops ({stops.length})
+            </h3>
+            {isGeocodingStops && (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                <Loader2 className="h-3 w-3 animate-spin" /> Resolving Map Coordinates...
+              </span>
             )}
           </div>
 
-          {/* Real-time GPS Tracker */}
-          <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50/50 p-2.5">
-            <span className="text-[9px] font-extrabold tracking-widest text-gray-400 uppercase">
-              Tracking Mode
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-[9px] font-black tracking-widest text-emerald-700">
-              🛰️ REAL GPS ACTIVE
-            </span>
-          </div>
-
-          {/* Tabs for Planning Mode */}
-          {isPlanning && (
-            <div className="mt-2 flex border-b border-gray-100">
-              <button
-                onClick={() => {
-                  setActiveTab("route");
-                }}
-                className={`flex-1 border-b-2 pb-3 text-center text-xs font-black tracking-wider uppercase transition ${
-                  activeTab === "route"
-                    ? "border-emerald-600 text-emerald-600"
-                    : "border-transparent text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                Planned Route ({stops.length})
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("invites");
-                }}
-                className={`relative flex-1 border-b-2 pb-3 text-center text-xs font-black tracking-wider uppercase transition ${
-                  activeTab === "invites"
-                    ? "border-emerald-600 text-emerald-600"
-                    : "border-transparent text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                New Invites ({haulingRequests?.filter((r) => r.status === "pending").length || 0})
-                {(haulingRequests?.filter((r) => r.status === "pending").length || 0) > 0 && (
-                  <span className="absolute top-0 right-4 h-2 w-2 animate-pulse rounded-full bg-rose-500" />
-                )}
-              </button>
+          {isLoadingRoute ? (
+            <div className="flex h-48 flex-col items-center justify-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+              <p className="text-xs font-semibold text-gray-400">Loading route details...</p>
             </div>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-6 pt-4 pb-6">
-          {isPlanning && activeTab === "invites" ? (
-            <>
-              {!haulingRequests ||
-              haulingRequests.filter((r) => r.status === "pending").length === 0 ? (
-                <div className="flex h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
-                  <p className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">
-                    No new invites
-                  </p>
-                </div>
-              ) : (
-                haulingRequests
-                  .filter((r) => r.status === "pending")
-                  .map((req) => (
-                    <DashboardCard
-                      key={req.id}
-                      className="space-y-4 overflow-hidden rounded-3xl border-gray-200 dark:border-slate-800 bg-gray-50/50 p-5 shadow-sm"
-                    >
-                      <div>
-                        <p className="text-[10px] font-extrabold tracking-widest text-emerald-600 uppercase">
-                          {req.wasteType} waste
-                        </p>
-                        <h4 className="mt-1 text-sm font-black text-gray-900">
-                          {req.pickupAddress}
-                        </h4>
-                        <p className="mt-1 text-xs font-semibold text-gray-400">
-                          Volume: {req.volume}
-                        </p>
-                        {req.notes && (
-                          <p className="mt-2 rounded-xl border border-gray-100 bg-white/85 p-2.5 text-xs font-semibold text-gray-500">
-                            {req.notes}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            updateHauling.mutate({ id: req.id, input: { status: "approved" } });
-                          }}
-                          className="h-9 flex-1 rounded-xl bg-emerald-600 text-[10px] font-black tracking-wider text-white uppercase"
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setDeclineRequest(req);
-                          }}
-                          className="h-9 flex-1 rounded-xl border-rose-200 text-[10px] font-black tracking-wider text-rose-600 uppercase hover:bg-rose-50"
-                        >
-                          Decline
-                        </Button>
-                      </div>
-                    </DashboardCard>
-                  ))
-              )}
-            </>
+          ) : !assignedRoute ? (
+            <div className="flex h-56 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50">
+                <AlertCircle className="h-6 w-6 text-amber-600" />
+              </div>
+              <h4 className="text-sm font-bold text-gray-800">No Route Assigned</h4>
+              <p className="mt-1 text-xs text-gray-400">
+                You do not have a collection route assigned yet. Please check in with your hauling coordinator.
+              </p>
+            </div>
+          ) : stops.length === 0 ? (
+            <div className="flex h-48 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
+              <Navigation className="mb-2 h-6 w-6 text-gray-300" />
+              <p className="text-xs font-bold text-gray-400">No collection waypoints defined.</p>
+            </div>
           ) : (
-            <>
-              {stops.length === 0 && (
-                <div className="flex h-40 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
-                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100/50">
-                    <Navigation className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <p className="text-[11px] font-bold tracking-widest text-gray-400 uppercase">
-                    {isPlanning
-                      ? "Accept invites to start planning your route"
-                      : "No stops on route"}
-                  </p>
-                </div>
-              )}
-              {stops.map((stop, i) => (
+            stops.map((stop, idx) => {
+              const isCurrent = stop.status === "active";
+              const isDone = stop.status === "completed";
+
+              return (
                 <DashboardCard
                   key={stop.id}
-                  className={`overflow-hidden rounded-3xl border-gray-200 dark:border-slate-800 shadow-sm transition-all ${stop.status === "active" ? "ring-2 ring-emerald-500 ring-offset-2" : ""}`}
+                  className={`overflow-hidden rounded-2xl border-gray-200 transition-all ${
+                    isCurrent && isCollecting
+                      ? "border-emerald-500 shadow-md ring-1 ring-emerald-500"
+                      : "bg-gray-50/40"
+                  }`}
                 >
-                  <div className="flex items-center gap-4 p-5">
+                  <div className="flex items-center gap-3.5 p-4">
                     <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-xs font-black ${stop.status === "completed" ? "bg-emerald-500 text-white" : "bg-emerald-50"}`}
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                        isDone
+                          ? "bg-emerald-600 text-white"
+                          : isCurrent && isCollecting
+                          ? "bg-emerald-100 text-emerald-900"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
                     >
-                      {stop.status === "completed" ? "✓" : i + 1}
+                      {isDone ? <CheckCircle2 className="h-5 w-5" /> : idx + 1}
                     </div>
+
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-black text-gray-900">{stop.name}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                          {stop.status}
-                        </span>
-                        {stop.price !== undefined && (
-                          <>
-                            <span className="h-1 w-1 rounded-full bg-gray-200" />
-                            <span
-                              className={`rounded-full border-0 px-2 py-0.5 text-[9px] font-bold ${
-                                stop.paymentMethod === "cash"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-blue-100 text-blue-800"
-                              }`}
-                            >
-                              ₱{stop.price} ·{" "}
-                              {stop.paymentMethod === "cash" ? "Collect Cash" : "Paid Online"}
-                            </span>
-                          </>
-                        )}
-                      </div>
+                      <p className="truncate text-xs font-medium text-gray-400">{stop.address}</p>
                     </div>
+
+                    {isCurrent && isCollecting && (
+                      <Button
+                        size="sm"
+                        onClick={() => markStopCompleted(stop.id)}
+                        className="h-8 rounded-xl bg-emerald-600 px-3 text-[11px] font-bold text-white shadow-sm"
+                      >
+                        Complete
+                      </Button>
+                    )}
                   </div>
-
-                  {stop.status === "completed" && (
-                    <div className="mx-5 mt-1 mb-5 flex items-start justify-between rounded-xl bg-gray-50 p-2.5">
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase">
-                          Collected By
-                        </p>
-                        <p className="text-xs font-semibold text-gray-900">
-                          {stop.completedBy || "Unknown"}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-gray-400">{stop.time}</p>
-                      </div>
-                      {stop.proofPhotoUrl ? (
-                        <div className="h-10 w-10 overflow-hidden rounded-lg border border-gray-200">
-                          <img
-                            src={`${env.NEXT_PUBLIC_SOCKET_URL}${stop.proofPhotoUrl}`}
-                            alt="Proof"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200">
-                          <ImageIcon className="h-4 w-4 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </DashboardCard>
-              ))}
-            </>
+              );
+            })
           )}
         </div>
 
-        <div className="space-y-3 border-t border-gray-100 p-8">
-          {isPlanning ? (
-            <>
-              {stops.length >= 2 && (
+        {/* BOTTOM ACTION BUTTONS */}
+        {assignedRoute && (
+          <div className="border-t border-gray-100 p-6">
+            {routeCompleted ? (
+              <div className="flex flex-col gap-2">
+                <div className="rounded-2xl bg-emerald-50 p-3 text-center">
+                  <p className="text-xs font-bold text-emerald-800">All stops completed successfully.</p>
+                </div>
                 <Button
-                  onClick={optimizeRoute}
-                  className="h-11 w-full rounded-2xl border border-gray-200 bg-white text-[10px] font-black tracking-widest text-[#0f2419] uppercase shadow-sm transition-all hover:bg-gray-50 active:scale-95"
+                  variant="outline"
+                  onClick={() => void loadAssignedRoute(true)}
+                  className="h-11 w-full rounded-2xl text-xs font-bold text-gray-600"
                 >
-                  Optimize Stops (TSP)
+                  Reset Run
                 </Button>
-              )}
-              <Button
-                onClick={startCollection}
-                disabled={stops.length === 0 || isStarting}
-                className="h-14 w-full rounded-2xl bg-emerald-600 text-xs font-black tracking-widest text-white uppercase shadow-xl disabled:opacity-50"
-              >
-                {isStarting ? "Initializing..." : "Start Collecting"}
-              </Button>
-            </>
-          ) : allStopsDone ? (
-            <Button
-              onClick={finishCollection}
-              disabled={isStarting}
-              className="h-14 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-xl"
-            >
-              {isStarting ? "Finishing..." : "Finish Collecting"}
-            </Button>
-          ) : (
-            <>
+              </div>
+            ) : !isCollecting ? (
               <Button
                 onClick={() => {
-                  setShowConfirm(true);
+                  setIsCollecting(true);
+                  void detectGps();
+                  toast.success("Collection route started.");
                 }}
-                disabled={!activeStop || !isNearby}
-                className="h-16 w-full rounded-3xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-xl"
+                disabled={stops.length === 0}
+                className="h-13 w-full rounded-2xl bg-emerald-600 text-xs font-black tracking-widest text-white uppercase shadow-lg hover:bg-emerald-700 disabled:opacity-50"
               >
-                Confirm Collection
+                Start Collection Route
               </Button>
-              <p className="mt-2 text-center text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                {isNearby ? "✓ Within Range" : "Moving to next stop..."}
-              </p>
-            </>
-          )}
-          {!isPlanning && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setIsPlanning(true);
-                setIsCollecting(false);
-                // Notify backend so it doesn't restore "active" state on next login
-                if (trackerId) {
-                  fetch(`${env.NEXT_PUBLIC_API_URL}/trucks/${trackerId}`, {
-                    method: "PATCH",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify({ status: "idle" }),
-                  }).catch((error) => {
-                    console.error("Failed to sync reset", error);
-                  });
-                }
-              }}
-              className="w-full rounded-2xl text-[10px] font-black tracking-widest text-gray-400 uppercase"
-            >
-              Reset & Edit Route
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Decline Reason Modal */}
-      {declineRequest && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-md">
-          <div className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 shadow-2xl">
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50">
-              <Navigation className="h-8 w-8 rotate-45 text-rose-600" />
-            </div>
-            <h3 className="mb-2 text-xl font-black text-gray-900">Decline Request?</h3>
-            <p className="mb-4 text-sm text-gray-500">
-              Provide a reason for declining the collection request from{" "}
-              <b>{declineRequest.pickupAddress.split(",")[0]}</b>.
-            </p>
-
-            <textarea
-              value={declineReason}
-              onChange={(e) => {
-                setDeclineReason(e.target.value);
-              }}
-              placeholder="e.g. Road blocked, incorrect waste category, volume too large..."
-              className="mb-6 h-24 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 p-3.5 text-sm font-semibold text-gray-800 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-rose-500 focus:outline-none"
-            />
-
-            <div className="flex gap-4">
+            ) : allStopsDone ? (
               <Button
-                variant="ghost"
-                className="flex-1 rounded-2xl font-bold"
                 onClick={() => {
-                  setDeclineRequest(null);
-                  setDeclineReason("");
+                  setIsCollecting(false);
+                  setRouteCompleted(true);
+                  toast.success("All stops completed! Route finished.");
                 }}
+                className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
               >
-                Cancel
+                Finish Route
               </Button>
-              <Button
-                className="flex-1 rounded-2xl bg-rose-600 font-bold text-white shadow-lg"
-                onClick={async () => {
-                  if (!declineReason.trim()) {
-                    toast.error("Please provide a reason");
-                    return;
-                  }
-                  updateHauling.mutate(
-                    {
-                      id: declineRequest.id,
-                      input: { status: "cancelled", declineReason },
-                    },
-                    {
-                      onSuccess: () => {
-                        setDeclineRequest(null);
-                        setDeclineReason("");
-                        toast.success("Request Declined");
-                      },
-                    },
-                  );
-                }}
-                disabled={updateHauling.isPending}
-              >
-                {updateHauling.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Decline"}
-              </Button>
-            </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => {
+                    if (activeStop) {
+                      markStopCompleted(activeStop.id);
+                    }
+                  }}
+                  disabled={!activeStop}
+                  className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
+                >
+                  Mark Active Stop Completed
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setIsCollecting(false);
+                    toast.info("Collection paused.");
+                  }}
+                  className="h-9 w-full text-xs font-bold text-gray-400 hover:text-gray-600"
+                >
+                  Pause Collection
+                </Button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
