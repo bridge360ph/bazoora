@@ -131,7 +131,7 @@ export default function EcoAideRoute(): React.ReactNode {
                 await sleep(1100);
               }
 
-              let results = await geocode(`${stopName}, ${currentAssigned.barangay}`, { limit: 1 });
+              let results = await geocode(`${stopName}, ${currentAssigned.barangay}`, { limit: 1, countryCodes: "ph" });
               let match = results?.[0];
 
               if (!match) {
@@ -335,7 +335,8 @@ export default function EcoAideRoute(): React.ReactNode {
                   variant="ghost"
                   size="sm"
                   onClick={() => void loadAssignedRoute(true)}
-                  className="h-7 w-7 p-0 text-gray-400 hover:text-gray-700"
+                  disabled={isLoadingRoute}
+                  className="h-7 w-7 p-0 text-gray-400 hover:text-gray-700 disabled:opacity-50"
                   title="Refresh Route"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRoute ? "animate-spin" : ""}`} />
