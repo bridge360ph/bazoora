@@ -135,7 +135,7 @@ export default function EcoAideRoute(): React.ReactNode {
               let match = results?.[0];
 
               if (!match) {
-                results = await geocode(stopName, { limit: 1 });
+                results = await geocode(stopName, { limit: 1, countryCodes: "ph" });
                 match = results?.[0];
               }
 
