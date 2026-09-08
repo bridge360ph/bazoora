@@ -15,7 +15,7 @@ if (process.env.NODE_ENV !== "development") {
 
 const email = (process.env.SEED_ECO_AIDE_EMAIL ?? "ecoaide@bazoora.com").trim().toLowerCase();
 const name = process.env.SEED_ECO_AIDE_NAME?.trim() || "Test Eco-Aide";
-const password = process.env.SEED_ECO_AIDE_PASSWORD ?? "Password123!";
+const password = process.env.SEED_ECO_AIDE_PASSWORD ?? "";
 
 if (!email) {
   throw new Error("SEED_ECO_AIDE_EMAIL is required.");
