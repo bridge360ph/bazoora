@@ -32,7 +32,7 @@ interface RouteStop {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const LOCAL_CENTER: [number, number] = [2.2231, 102.2421];
+const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
 
 export default function EcoAideRoute(): React.ReactNode {
   const user = useAuthStore((s) => s.user);
