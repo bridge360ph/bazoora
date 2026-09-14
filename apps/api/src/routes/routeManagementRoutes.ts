@@ -38,6 +38,14 @@ const routeAdminRoles = [
   "HAULING_ADMIN",
 ] as const;
 
+const routeStatusUpdateRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+  "DRIVER",
+  "ECO_AIDE",
+] as const;
+
 export function routeManagementRoutes(
   app: FastifyInstance,
 ): void {
@@ -116,7 +124,7 @@ export function routeManagementRoutes(
       schema: updateRouteStatusSchema,
       preHandler: [
         authGuard,
-        requireRole(...routeAdminRoles),
+        requireRole(...routeStatusUpdateRoles),
       ],
     },
     async (request, reply) => {

@@ -5,10 +5,6 @@ import { DashboardCard, Button, StatusBadge } from "@bazoora/ui";
 import SmartMap from "@/components/map/smart-map";
 import {
   Navigation,
-  MapPin,
-  Calendar,
-  Clock,
-  Trash2,
   CheckCircle2,
   Loader2,
   AlertCircle,
@@ -18,9 +14,14 @@ import { useAuthStore } from "@/stores/auth-store";
 import { geocode, reverseGeocode } from "@/lib/geocoding";
 import { LocationPermissionModal } from "@/components/ui/location-permission";
 import { fetchRoutes } from "@/features/route-management/routeService";
+import { env } from "@/lib/env";
 import type { Route } from "@bazoora/shared";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { toast } from "sonner";
+
+import { CurrentStopCard } from "./CurrentStopCard";
+import { RouteSummaryStats } from "./RouteSummaryStats";
+import { ReportIssueModal } from "./ReportIssueModal";
 
 interface RouteStop {
   id: string;
@@ -36,6 +37,7 @@ const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
 
 export default function EcoAideRoute(): React.ReactNode {
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
   const [stops, setStops] = useState<RouteStop[]>([]);
@@ -47,6 +49,7 @@ export default function EcoAideRoute(): React.ReactNode {
   const gpsPosRef = useRef<[number, number] | null>(null);
   const [gpsAddress, setGpsAddress] = useState<string>("Detecting location...");
   const [isCollecting, setIsCollecting] = useState<boolean>(false);
+  const [isIssueModalOpen, setIsIssueModalOpen] = useState<boolean>(false);
 
   const hasLoadedRef = useRef<boolean>(false);
   const watchIdRef = useRef<number | null>(null);
@@ -88,6 +91,22 @@ export default function EcoAideRoute(): React.ReactNode {
   useEffect(() => {
     void detectGps();
   }, [detectGps]);
+
+  const updateBackendRouteStatus = async (status: string) => {
+    if (!assignedRoute?.id || !accessToken) return;
+    try {
+      await fetch(`${env.NEXT_PUBLIC_API_URL}/routes/${assignedRoute.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+    } catch (err) {
+      console.warn("Failed to sync route status to backend:", err);
+    }
+  };
 
   const loadAssignedRoute = useCallback(
     async (force = false) => {
@@ -131,7 +150,10 @@ export default function EcoAideRoute(): React.ReactNode {
                 await sleep(1100);
               }
 
-              let results = await geocode(`${stopName}, ${currentAssigned.barangay}`, { limit: 1, countryCodes: "ph" });
+              let results = await geocode(`${stopName}, ${currentAssigned.barangay}`, {
+                limit: 1,
+                countryCodes: "ph",
+              });
               let match = results?.[0];
 
               if (!match) {
@@ -235,7 +257,10 @@ export default function EcoAideRoute(): React.ReactNode {
     toast.success("Stop marked as completed.");
   };
 
+  const totalStops = stops.length;
+  const completedStops = stops.filter((s) => s.status === "completed").length;
   const activeStop = stops.find((s) => s.status === "active");
+  const activeStopIndex = stops.findIndex((s) => s.status === "active");
   const allStopsDone = stops.length > 0 && stops.every((s) => s.status === "completed");
 
   const mapCenter: [number, number] =
@@ -284,7 +309,7 @@ export default function EcoAideRoute(): React.ReactNode {
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-white lg:flex-row">
       <LocationPermissionModal onAllow={detectGps} />
 
-      {/* MAP VIEWPORT CONTAINER WITH EXPLICIT DIMENSIONS */}
+      {/* MAP VIEWPORT CONTAINER */}
       <div className="relative h-[50vh] w-full flex-1 lg:h-full lg:min-h-0">
         <SmartMap
           center={mapCenter}
@@ -362,26 +387,30 @@ export default function EcoAideRoute(): React.ReactNode {
           </div>
 
           {assignedRoute && (
-            <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <MapPin className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.barangay}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Trash2 className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.wasteType}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Calendar className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.collectionDay}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Clock className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.startTime}</span>
-              </div>
-            </div>
+            <RouteSummaryStats
+              routeName={assignedRoute.name}
+              barangay={assignedRoute.barangay}
+              completedStops={completedStops}
+              totalStops={totalStops}
+              isCollecting={isCollecting}
+            />
           )}
         </div>
+
+        {/* CURRENT STOP HERO CARD */}
+        {activeStop && !routeCompleted && (
+          <div className="border-b border-gray-100 p-6 pb-4">
+            <CurrentStopCard
+              stopName={activeStop.name}
+              stopIndex={activeStopIndex >= 0 ? activeStopIndex : 0}
+              address={activeStop.address}
+              wasteType={assignedRoute?.wasteType}
+              isCollecting={isCollecting}
+              onComplete={() => markStopCompleted(activeStop.id)}
+              onReportIssue={() => setIsIssueModalOpen(true)}
+            />
+          </div>
+        )}
 
         {/* STOP SEQUENCE CHECKLIST */}
         <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
@@ -474,7 +503,10 @@ export default function EcoAideRoute(): React.ReactNode {
                 </div>
                 <Button
                   variant="outline"
-                  onClick={() => void loadAssignedRoute(true)}
+                  onClick={() => {
+                    void updateBackendRouteStatus("COMPLETED");
+                    void loadAssignedRoute(true);
+                  }}
                   className="h-11 w-full rounded-2xl text-xs font-bold text-gray-600"
                 >
                   Reset Run
@@ -485,6 +517,7 @@ export default function EcoAideRoute(): React.ReactNode {
                 onClick={() => {
                   setIsCollecting(true);
                   void detectGps();
+                  void updateBackendRouteStatus("IN_PROGRESS");
                   toast.success("Collection route started.");
                 }}
                 disabled={stops.length === 0}
@@ -497,6 +530,7 @@ export default function EcoAideRoute(): React.ReactNode {
                 onClick={() => {
                   setIsCollecting(false);
                   setRouteCompleted(true);
+                  void updateBackendRouteStatus("COMPLETED");
                   toast.success("All stops completed! Route finished.");
                 }}
                 className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
@@ -531,6 +565,16 @@ export default function EcoAideRoute(): React.ReactNode {
           </div>
         )}
       </div>
+
+      {/* ISSUE REPORTING MODAL */}
+      <ReportIssueModal
+        isOpen={isIssueModalOpen}
+        stopName={activeStop?.name ?? "Current Stop"}
+        onClose={() => setIsIssueModalOpen(false)}
+        onSubmit={(data) => {
+          toast.info(`Incident noted (${data.category})`);
+        }}
+      />
     </div>
   );
 }
