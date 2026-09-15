@@ -18,6 +18,7 @@ import { config } from "./plugins/config.js";
 import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { settingsRoutes } from "./routes/settingsRoutes.js";
+import { incidentReportRoutes } from "./routes/incidentReportRoutes.js";
 
 const app = Fastify({
   logger: true,
@@ -74,11 +75,16 @@ const start = async () => {
     prefix: "/analytics",
   });
 
-await app.register(ecoAideRoutes, {
-  prefix: "/eco-aides",
-});
+  await app.register(ecoAideRoutes, {
+    prefix: "/eco-aides",
+  });
+
   await app.register(locationRoutes, {
     prefix: "/locations",
+  });
+
+  await app.register(incidentReportRoutes, {
+    prefix: "/incidents",
   });
 
   app.get("/", (): HealthResponse => {

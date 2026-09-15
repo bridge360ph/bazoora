@@ -9,7 +9,9 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
+  FileText,
 } from "lucide-react";
+import { IncidentHistoryModal } from "./IncidentHistoryModal";
 import { useAuthStore } from "@/stores/auth-store";
 import { geocode, reverseGeocode } from "@/lib/geocoding";
 import { LocationPermissionModal } from "@/components/ui/location-permission";
@@ -55,6 +57,8 @@ export default function EcoAideRoute(): React.ReactNode {
 
   const hasLoadedRef = useRef<boolean>(false);
   const watchIdRef = useRef<number | null>(null);
+
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     gpsPosRef.current = gpsPos;
@@ -368,6 +372,16 @@ export default function EcoAideRoute(): React.ReactNode {
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRoute ? "animate-spin" : ""}`} />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  className="h-7 px-2 text-xs font-semibold text-gray-500 hover:text-emerald-700"
+                  title="View Reported Incidents"
+                >
+                  <FileText className="mr-1 h-3.5 w-3.5" />
+                  Reports
+                </Button>
               </div>
               <p className="text-sm font-semibold text-gray-500">
                 {assignedRoute?.name ?? "No active route assignment"}
@@ -572,10 +586,17 @@ export default function EcoAideRoute(): React.ReactNode {
       <ReportIssueModal
         isOpen={isIssueModalOpen}
         stopName={activeStop?.name ?? "Current Stop"}
+        routeId={assignedRoute?.id}
         onClose={() => setIsIssueModalOpen(false)}
-        onSubmit={(data) => {
-          toast.info(`Incident noted (${data.category})`);
+        onSuccess={() => {
+          // OPTIONAL: REFRESH OR MARK STOP STATE IF REQUIRED
         }}
+      />
+
+      {/* INCIDENT HISTORY MODAL */}
+      <IncidentHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
       />
     </div>
   );
