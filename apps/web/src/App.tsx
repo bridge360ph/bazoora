@@ -35,6 +35,7 @@ import { Messages } from "./features/driver/Messages";
 import { Settings } from "./features/driver/Settings";
 
 // Resident Pages
+import { ResidentDashboard } from "./features/residents/components/ResidentDashboard";
 import TrackTruckPage from "./features/residents/components/TrackTruckPage";
 
 // Eco-Aide Pages
@@ -201,8 +202,12 @@ function AppContent() {
             <Route path="/resident" element={<ResidentLayout />}>
               <Route index element={<Navigate to="/resident/dashboard" replace />} />
               <Route path="track" element={<TrackTruckPage />} />
+<<<<<<< HEAD
               <Route path="settings" element={<SettingsPage />} />
               <Route path="dashboard" element={<div />} />
+=======
+              <Route path="dashboard" element={<ResidentDashboard />} />
+>>>>>>> 60e1fb1 (import ResidentDashboard.tsx and its route path)
               <Route path="schedule" element={<div />} />
               <Route path="reports" element={<div />} />
               <Route path="hauling-requests" element={<div />} />
