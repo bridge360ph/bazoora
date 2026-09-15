@@ -113,7 +113,7 @@ function AppContent() {
       {import.meta.env.DEV && (
         <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black tracking-wider text-brand dark:text-[#4ade80]">
+            <span className="text-lg font-black tracking-wider text-brand dark:text-brand-accent">
                BAZOORA
             </span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
@@ -199,9 +199,13 @@ function AppContent() {
           {/* RESIDENT */}
           <Route element={<ProtectedRoute allow={["resident", "business", "citizen"]} />}>
             <Route path="/resident" element={<ResidentLayout />}>
-              <Route index element={<Navigate to="/resident/track" replace />} />
+              <Route index element={<Navigate to="/resident/dashboard" replace />} />
               <Route path="track" element={<TrackTruckPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="dashboard" element={<div />} />
+              <Route path="schedule" element={<div />} />
+              <Route path="reports" element={<div />} />
+              <Route path="hauling-requests" element={<div />} />
             </Route>
           </Route>
 
