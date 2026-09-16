@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutGrid,
@@ -10,12 +11,18 @@ import {
   Bell,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useResidentNotifications } from "@/features/notifications/hooks";
+import { NotificationDrawer } from "@/features/notifications/components/NotificationDrawer";
 import { ecoAideNavItems } from "../../../routes/navigation";
 
 export default function EcoAideLayout() {
   const user = useAuthStore((s) => s.user);
   const clearSession = useAuthStore((s) => s.clear);
   const location = useLocation();
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const { data: notifications = [] } = useResidentNotifications();
+  const unreadCount = notifications.filter((n) => n.readAt === null).length;
 
   const userInitials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
@@ -25,7 +32,6 @@ export default function EcoAideLayout() {
     ? `${user.firstName} ${user.lastName}`
     : "Tomas Masipag";
 
-  // Helper to map route paths to icons
   const getIcon = (label: string) => {
     switch (label) {
       case "Dashboard":
@@ -41,11 +47,11 @@ export default function EcoAideLayout() {
     }
   };
 
-  // Get active route label for display
-  const activeLabel = ecoAideNavItems.find(item => {
-    if (item.end) return location.pathname === item.to;
-    return location.pathname.startsWith(item.to);
-  })?.label || "Portal";
+  const activeLabel =
+    ecoAideNavItems.find((item) => {
+      if (item.end) return location.pathname === item.to;
+      return location.pathname.startsWith(item.to);
+    })?.label || "Portal";
 
   return (
     <div className="flex h-full w-full overflow-hidden font-sans bg-gray-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
@@ -128,9 +134,20 @@ export default function EcoAideLayout() {
             {activeLabel}
           </h2>
           <div className="flex items-center gap-4">
-            <button className="relative p-2 rounded-lg hover:bg-gray-50 text-gray-550 hover:text-gray-700 dark:hover:bg-slate-800 dark:text-gray-400 dark:hover:text-white cursor-pointer">
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-gray-700 dark:hover:bg-slate-800 dark:text-gray-400 dark:hover:text-white cursor-pointer transition-colors"
+              aria-label="Open notifications"
+            >
+              <div className="relative">
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2.25 -right-2.75 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-[10px] font-black text-white leading-none shadow-sm ring-2 ring-white dark:ring-slate-900">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
             </button>
             <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-gray-700 dark:text-gray-300">
               {userInitials}
@@ -143,6 +160,12 @@ export default function EcoAideLayout() {
           <Outlet />
         </div>
       </div>
+
+      {/* Notifications Slide-over Drawer */}
+      <NotificationDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      />
     </div>
   );
 }
