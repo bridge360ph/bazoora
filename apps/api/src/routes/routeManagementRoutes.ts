@@ -38,6 +38,14 @@ const routeAdminRoles = [
   "HAULING_ADMIN",
 ] as const;
 
+const routeStatusUpdateRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+  "DRIVER",
+  "ECO_AIDE",
+] as const;
+
 export function routeManagementRoutes(
   app: FastifyInstance,
 ): void {
@@ -116,13 +124,32 @@ export function routeManagementRoutes(
       schema: updateRouteStatusSchema,
       preHandler: [
         authGuard,
-        requireRole(...routeAdminRoles),
+        requireRole(...routeStatusUpdateRoles),
       ],
     },
     async (request, reply) => {
       const { id } = request.params as {
         id: string;
       };
+
+      const existingRoute = await getRouteById(id);
+
+      if (!existingRoute) {
+        return reply.status(404).send({
+          message: "Route not found",
+        });
+      }
+
+      const user = request.user;
+      const isAdmin = routeAdminRoles.includes(user.role as (typeof routeAdminRoles)[number]);
+
+      if (!isAdmin) {
+        if (user.role === "ECO_AIDE" && existingRoute.assignedEcoAideId !== user.sub) {
+          return reply.status(403).send({
+            message: "You are not assigned to this route",
+          });
+        }
+      }
 
       const { status } =
         request.body as UpdateRouteStatusRequest;
