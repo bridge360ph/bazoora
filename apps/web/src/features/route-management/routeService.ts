@@ -15,6 +15,8 @@ import type {
  * `authGuard` + `requireRole`, so a plain `fetch` would always be rejected.
  */
 
+export type RouteOperationalStatus = "Not Started" | "In Progress" | "Completed";
+
 /**
  * Rethrows an API failure as an Error carrying the server's message when it
  * sent one, so the hooks can surface it instead of a generic axios string.
@@ -71,5 +73,21 @@ export async function updateRouteRequest(
     return response.data;
   } catch (error) {
     throw toApiError(error, "Failed to update route");
+  }
+}
+
+export async function updateRouteStatusRequest(
+  routeId: string,
+  status: RouteOperationalStatus,
+): Promise<Route> {
+  try {
+    const response = await apiClient.patch<Route>(
+      `/routes/${routeId}/status`,
+      { status },
+    );
+
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Failed to update route status");
   }
 }

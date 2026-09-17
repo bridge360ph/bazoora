@@ -21,7 +21,7 @@ export function CurrentStopCard({
   onReportIssue,
 }: CurrentStopCardProps): React.ReactNode {
   return (
-    <div className="flex flex-col justify-between gap-4 rounded-2xl bg-[#003d1f] px-[22px] py-[18px] text-white shadow-lg">
+    <div className="flex flex-col justify-between gap-4 rounded-2xl bg-brand-dark px-[22px] py-[18px] text-white shadow-lg">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-black tracking-widest text-emerald-300 uppercase">

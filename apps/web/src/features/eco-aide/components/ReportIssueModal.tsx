@@ -23,12 +23,12 @@ export function ReportIssueModal({
 
   const handleSend = () => {
     if (!notes.trim()) {
-      toast.error("Please add issue details before submitting.");
+      toast.error("Please add issue details before saving.");
       return;
     }
     onSubmit({ category, notes });
     setNotes("");
-    toast.success("Incident report drafted for this stop.");
+    toast.info("Issue note recorded locally (preview mode).");
     onClose();
   };
 
@@ -38,7 +38,7 @@ export function ReportIssueModal({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-rose-600 font-black">
             <AlertTriangle className="h-5 w-5" />
-            <span>Report Issue at Stop</span>
+            <span>Report Issue at Stop (Preview)</span>
           </div>
           <button onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:text-gray-700">
             <X className="h-4 w-4" />
@@ -46,7 +46,7 @@ export function ReportIssueModal({
         </div>
 
         <p className="mb-4 text-xs text-gray-500">
-          Flagging obstacle or collection issue at <b className="text-gray-800">{stopName}</b>.
+          Record a local issue note for <b className="text-gray-800">{stopName}</b>. Full dispatch incident persistence and photo evidence are enabled in the follow-up reporting module.
         </p>
 
         <div className="space-y-3">
@@ -88,7 +88,7 @@ export function ReportIssueModal({
             onClick={handleSend}
             className="flex-1 rounded-xl bg-rose-600 text-xs font-bold text-white shadow-md hover:bg-rose-700"
           >
-            Submit Report
+            Save Note (Preview)
           </Button>
         </div>
       </div>

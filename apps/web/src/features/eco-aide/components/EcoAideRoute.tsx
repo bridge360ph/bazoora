@@ -13,8 +13,11 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { geocode, reverseGeocode } from "@/lib/geocoding";
 import { LocationPermissionModal } from "@/components/ui/location-permission";
-import { fetchRoutes } from "@/features/route-management/routeService";
-import { env } from "@/lib/env";
+import {
+  fetchRoutes,
+  updateRouteStatusRequest,
+  type RouteOperationalStatus,
+} from "@/features/route-management/routeService";
 import type { Route } from "@bazoora/shared";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { toast } from "sonner";
@@ -37,7 +40,6 @@ const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
 
 export default function EcoAideRoute(): React.ReactNode {
   const user = useAuthStore((s) => s.user);
-  const accessToken = useAuthStore((s) => s.accessToken);
 
   const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
   const [stops, setStops] = useState<RouteStop[]>([]);
@@ -92,17 +94,11 @@ export default function EcoAideRoute(): React.ReactNode {
     void detectGps();
   }, [detectGps]);
 
-  const updateBackendRouteStatus = async (status: string) => {
-    if (!assignedRoute?.id || !accessToken) return;
+  const updateBackendRouteStatus = async (status: RouteOperationalStatus) => {
+    if (!assignedRoute?.id) return;
     try {
-      await fetch(`${env.NEXT_PUBLIC_API_URL}/routes/${assignedRoute.id}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ status }),
-      });
+      await updateRouteStatusRequest(assignedRoute.id, status);
+      setAssignedRoute((prev) => (prev ? { ...prev, status } : null));
     } catch (err) {
       console.warn("Failed to sync route status to backend:", err);
     }
@@ -115,7 +111,6 @@ export default function EcoAideRoute(): React.ReactNode {
       hasLoadedRef.current = true;
 
       setIsLoadingRoute(true);
-      setRouteCompleted(false);
 
       try {
         let currentPos = gpsPosRef.current;
@@ -130,6 +125,9 @@ export default function EcoAideRoute(): React.ReactNode {
         );
 
         setAssignedRoute(currentAssigned ?? null);
+
+        const isDbCompleted = currentAssigned?.status === "Completed";
+        setRouteCompleted(isDbCompleted);
 
         if (currentAssigned?.waypoints) {
           setIsGeocodingStops(true);
@@ -179,7 +177,11 @@ export default function EcoAideRoute(): React.ReactNode {
               address: `${stopName}, ${currentAssigned.barangay}`,
               lat,
               lng,
-              status: i === 0 ? "active" : "pending",
+              status: isDbCompleted
+                ? "completed"
+                : i === 0
+                ? "active"
+                : "pending",
             });
           }
 
@@ -347,9 +349,9 @@ export default function EcoAideRoute(): React.ReactNode {
       </div>
 
       {/* SIDEBAR DETAILS & CONTROLS */}
-      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[400px]">
+      <div className="z-10 flex h-full min-h-0 w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[400px]">
         {/* HEADER SECTION */}
-        <div className="flex flex-col gap-3 border-b border-gray-100 p-6">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-gray-100 p-6">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -399,7 +401,7 @@ export default function EcoAideRoute(): React.ReactNode {
 
         {/* CURRENT STOP HERO CARD */}
         {activeStop && !routeCompleted && (
-          <div className="border-b border-gray-100 p-6 pb-4">
+          <div className="shrink-0 border-b border-gray-100 p-6 pb-4">
             <CurrentStopCard
               stopName={activeStop.name}
               stopIndex={activeStopIndex >= 0 ? activeStopIndex : 0}
@@ -413,7 +415,7 @@ export default function EcoAideRoute(): React.ReactNode {
         )}
 
         {/* STOP SEQUENCE CHECKLIST */}
-        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black tracking-wider text-gray-400 uppercase">
               Waypoints & Stops ({stops.length})
@@ -495,19 +497,19 @@ export default function EcoAideRoute(): React.ReactNode {
 
         {/* BOTTOM ACTION BUTTONS */}
         {assignedRoute && (
-          <div className="border-t border-gray-100 p-6">
+          <div className="shrink-0 border-t border-gray-100 p-6">
             {routeCompleted ? (
               <div className="flex flex-col gap-2">
                 <div className="rounded-2xl bg-emerald-50 p-3 text-center">
                   <p className="text-xs font-bold text-emerald-800">All stops completed successfully.</p>
                 </div>
                 <Button
-                  variant="outline"
-                  onClick={() => {
-                    void updateBackendRouteStatus("COMPLETED");
-                    void loadAssignedRoute(true);
+                  onClick={async () => {
+                    await updateBackendRouteStatus("Not Started");
+                    await loadAssignedRoute(true);
                   }}
-                  className="h-11 w-full rounded-2xl text-xs font-bold text-gray-600"
+                  style={{ color: "#1f2937", backgroundColor: "#f3f4f6" }}
+                  className="h-11 w-full rounded-2xl border border-gray-200 text-xs font-bold shadow-sm transition-colors hover:bg-gray-200"
                 >
                   Reset Run
                 </Button>
@@ -517,7 +519,7 @@ export default function EcoAideRoute(): React.ReactNode {
                 onClick={() => {
                   setIsCollecting(true);
                   void detectGps();
-                  void updateBackendRouteStatus("IN_PROGRESS");
+                  void updateBackendRouteStatus("In Progress");
                   toast.success("Collection route started.");
                 }}
                 disabled={stops.length === 0}
@@ -530,7 +532,7 @@ export default function EcoAideRoute(): React.ReactNode {
                 onClick={() => {
                   setIsCollecting(false);
                   setRouteCompleted(true);
-                  void updateBackendRouteStatus("COMPLETED");
+                  void updateBackendRouteStatus("Completed");
                   toast.success("All stops completed! Route finished.");
                 }}
                 className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
