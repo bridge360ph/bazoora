@@ -293,11 +293,11 @@ export default function TrackTruckPage(): React.ReactNode {
     distanceFromTruckMeters !== null && distanceFromTruckMeters <= 250;
 
 return (
-  <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-[#f5f6f5] p-5">
+  <div className="flex h-full min-h-0 overflow-hidden bg-[#f5f6f5] p-5 box-border">
     <LocationPermissionModal onAllow={detectGps} />
 
     {/* Main content */}
-    <div className="flex min-w-0 flex-1 gap-5">
+    <div className="flex min-h-0 min-w-0 flex-1 gap-5">
       {/* LEFT / MAP SECTION */}
       <div className="flex min-w-0 flex-1 flex-col gap-5">
         {/* Map */}
@@ -358,7 +358,7 @@ return (
         {/* Bottom information cards */}
         <div className="grid h-77.5 grid-cols-2 gap-5">
           {/* Route Overview */}
-          <section className="rounded-xl border border-gray-200 bg-white p-6">
+          <section className="rounded-xl border border-solid border-gray-300! bg-white p-6">
             <p className="text-[10px] font-semibold tracking-[0.16em] text-gray-400">
               ROUTE OVERVIEW
             </p>
@@ -378,7 +378,7 @@ return (
           </section>
 
           {/* Destination */}
-          <section className="rounded-xl border border-gray-200 bg-white p-6">
+          <section className="rounded-xl border border-solid border-gray-300! bg-white p-6">
             <p className="text-[10px] font-semibold tracking-[0.16em] text-gray-400">
               DESTINATION POINT
             </p>
@@ -415,9 +415,9 @@ return (
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex w-77.5 shrink-0 flex-col gap-5">
+      <div className="flex min-h-0 w-77.5 shrink-0 flex-col gap-5">
         {/* Truck Information */}
-        <section className="rounded-xl border border-gray-200 bg-white p-6">
+        <section className="rounded-xl border border-gray-300 bg-white p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-semibold tracking-[0.15em] text-gray-400">
@@ -447,7 +447,7 @@ return (
         </section>
 
         {/* Route Path */}
-        <section className="min-h-0 flex-1 overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-solid border-gray-300! bg-white">
           <div className="px-5 pb-3 pt-6 text-center">
             <h2 className="text-base font-bold text-gray-800">
               Route Path
@@ -458,7 +458,7 @@ return (
             </p>
           </div>
 
-          <div className="h-full overflow-y-auto px-5 pb-5">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
             <div className="relative space-y-3">
               {dynamicStops.length === 0 ? (
                 <p className="py-8 text-center text-xs text-gray-400">
