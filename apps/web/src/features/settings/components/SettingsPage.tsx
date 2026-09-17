@@ -97,6 +97,13 @@ export function SettingsPage() {
   const authUser = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clear);
 
+  const isAdmin =
+    authUser?.role === "super_admin" ||
+    authUser?.role === "government_agency" ||
+    authUser?.role === "hauling_org" ||
+    authUser?.role === "lgu" ||
+    authUser?.role === "business_org";
+
   const [tab, setTab] = useState<Tab>("Account");
 
   const [firstName, setFirstName] = useState(authUser?.firstName ?? "");
@@ -570,11 +577,12 @@ export function SettingsPage() {
       <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="m-0 text-2xl font-extrabold text-gray-900 dark:text-white">
-            Settings and System Configuration
+            {isAdmin ? "Settings and System Configuration" : "Account Settings"}
           </h1>
           <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
-            Manage account details, notification preferences, and system
-            behavior.
+            {isAdmin
+              ? "Manage account details, notification preferences, and system behavior."
+              : "Manage your profile details and notification preferences."}
           </p>
         </div>
       </section>
@@ -600,14 +608,16 @@ export function SettingsPage() {
         >
           Notifications
         </TabButton>
-        <TabButton
-          active={tab === "System"}
-          onClick={() => {
-            setTab("System");
-          }}
-        >
-          System
-        </TabButton>
+        {isAdmin && (
+          <TabButton
+            active={tab === "System"}
+            onClick={() => {
+              setTab("System");
+            }}
+          >
+            System
+          </TabButton>
+        )}
       </div>
 
       <div className="mx-auto max-w-[760px]">
@@ -960,7 +970,7 @@ export function SettingsPage() {
           </SectionCard>
         )}
 
-        {tab === "System" && (
+        {isAdmin && tab === "System" && (
           <>
             <SectionCard
               icon={<Palette size={24} strokeWidth={1.8} />}
