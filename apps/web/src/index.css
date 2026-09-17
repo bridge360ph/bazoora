@@ -1,6 +1,8 @@
-@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
+@import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
 @source "../src";
 @source "../../../packages/ui/src";
 
@@ -9,6 +11,8 @@
    for those classes to generate. Prefer bg-brand over arbitrary bg-brand so
    the brand color stays defined in one place. */
 @theme {
+  --font-inter: "Inter", sans-serif; /*Primary navigation bar headline used*/
+
   --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */
   --color-brand-secondary: #185034; /* Secondary brand green used for supporting UI elements (e.g., table headers) */
   --color-brand-dark: #072217; /* Dark brand variant commonly used for buttons and active states */
@@ -17,3 +21,21 @@
   --color-accent-dark: #475c53; /* Muted green accent used for secondary UI surfaces */
   --color-accent-light: #a3beb9; /* Muted light green accent used for subtle backgrounds and highlights */
 }
+
+/* Slide animation for sidebar navigation */
+.report-slide-in {
+  animation: report-slide-in 300ms ease-out;
+}
+
+@keyframes report-slide-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+

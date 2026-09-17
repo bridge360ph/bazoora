@@ -37,6 +37,9 @@ import { Settings } from "./features/driver/Settings";
 // Resident Pages
 import { ResidentDashboard } from "./features/residents/components/ResidentDashboard";
 import TrackTruckPage from "./features/residents/components/TrackTruckPage";
+import ResidentSchedule from "./features/residents/components/ResidentSchedule";
+import ResidentReports from "./features/residents/components/ResidentReports";
+import ResidentHaulingRequests from "./features/residents/components/ResidentHaulingRequests";
 
 // Eco-Aide Pages
 import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
@@ -204,9 +207,9 @@ function AppContent() {
               <Route path="track" element={<TrackTruckPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="dashboard" element={<ResidentDashboard />} />
-              <Route path="schedule" element={<div />} />
-              <Route path="reports" element={<div />} />
-              <Route path="hauling-requests" element={<div />} />
+              <Route path="schedule" element={<ResidentSchedule />} />
+              <Route path="reports" element={<ResidentReports />} />
+              <Route path="hauling-requests" element={<ResidentHaulingRequests />} />
             </Route>
           </Route>
 

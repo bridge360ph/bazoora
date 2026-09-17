@@ -132,7 +132,7 @@ export default function ResidentLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="h-16 bg-[#0a1811] border-b border-[#0a1811] px-8 flex items-center justify-between shrink-0">
-          <h2 className="absolute left-1/2 -translate-x-1/2 text-sm font-semibold text-white!">
+          <h2 className="absolute left-1/2 -translate-x-1/2 font-inter text-base font-bold text-white!">
             {activeLabel}
           </h2>
           <div className="ml-auto flex items-center gap-4">
@@ -151,7 +151,7 @@ export default function ResidentLayout() {
         </header>
 
         {/* Content Panel */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div key={location.pathname} className="report-slide-in min-h-0 flex-1">
           <Outlet />
         </div>
       </div>

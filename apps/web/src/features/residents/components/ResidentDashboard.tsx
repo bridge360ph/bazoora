@@ -81,7 +81,7 @@ export function ResidentDashboard() {
                   Your Location
                 </h2>
 
-                <p className="mt-2 max-w-[360px] text-sm leading-5 text-gray-400">
+                <p className="mt-2 max-w-90 text-sm leading-5 text-gray-400">
                   Address Line, Barangay, City/Municipality, and Province
                 </p>
               </div>
