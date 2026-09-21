@@ -293,7 +293,7 @@ export default function TrackTruckPage(): React.ReactNode {
     distanceFromTruckMeters !== null && distanceFromTruckMeters <= 250;
 
 return (
-  <div className="flex h-full min-h-0 overflow-hidden bg-[#f5f6f5] p-5 box-border">
+  <div className="flex h-full min-h-0 overflow-hidden bg-surface p-5 box-border">
     <LocationPermissionModal onAllow={detectGps} />
 
     {/* Main content */}
@@ -384,7 +384,7 @@ return (
             </p>
 
             <div className="mt-4 flex items-start gap-4">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#dce9e2] text-brand-secondary">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-border text-brand-secondary">
                 ▣
               </div>
 
@@ -415,7 +415,7 @@ return (
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="flex min-h-0 w-77.5 shrink-0 flex-col gap-5">
+       <div className="flex min-h-0 w-full lg:w-77.5 lg:shrink-0 flex-col gap-5">
         {/* Truck Information */}
         <section className="rounded-xl border border-gray-300 bg-white p-6">
           <div className="flex items-start justify-between">
@@ -481,7 +481,7 @@ return (
                           stop.status === "now"
                             ? "bg-brand-dark text-white"
                             : stop.status === "done"
-                              ? "bg-[#dce9e2] text-brand-secondary"
+                              ? "bg-surface-border text-brand-secondary"
                               : "bg-gray-100 text-gray-500"
                         }`}
                       >
@@ -511,7 +511,7 @@ return (
                         <span
                           className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold ${
                             stop.status === "done"
-                              ? "bg-[#dce9e2] text-brand-secondary"
+                              ? "bg-surface-border text-brand-secondary"
                               : stop.status === "now"
                                 ? "bg-white text-brand-dark"
                                 : "bg-[#e5eee9] text-[#4d6a5b]"
