@@ -1,6 +1,11 @@
-@import "tailwindcss";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
 
+@import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
+
 @source "../src";
 @source "../../../packages/ui/src";
 
@@ -9,6 +14,8 @@
    for those classes to generate. Prefer bg-brand over arbitrary bg-brand so
    the brand color stays defined in one place. */
 @theme {
+  --font-inter: "Inter", sans-serif; /*Primary navigation bar headline used*/
+
   --color-brand: #1a3a2e; /* Primary brand green used for major UI elements (e.g., Navbar, Sidebar) */
   --color-brand-secondary: #185034; /* Secondary brand green used for supporting UI elements (e.g., table headers) */
   --color-brand-dark: #072217; /* Dark brand variant commonly used for buttons and active states */
@@ -16,4 +23,25 @@
   --color-danger: #BA1A1A; /* Destructive actions and error states (e.g., reject, decline, delete) */
   --color-accent-dark: #475c53; /* Muted green accent used for secondary UI surfaces */
   --color-accent-light: #a3beb9; /* Muted light green accent used for subtle backgrounds and highlights */
+  --color-surface: #f5f6f5; /* Resident page background */
+  --color-surface-border: #dce9e2; /* Card and input borders on resident surfaces */
+  --color-surface-muted: #5d806e; /* Muted green body text on resident surfaces */
 }
+
+/* Slide animation for sidebar navigation */
+.report-slide-in {
+  animation: report-slide-in 300ms ease-out;
+}
+
+@keyframes report-slide-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
