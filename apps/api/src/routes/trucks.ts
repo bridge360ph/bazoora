@@ -116,12 +116,40 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
   // POST /trucks/:id/location
   app.post(
     "/:id/location",
-    {
-      preHandler: [
-        authGuard,
-        requireRole("DRIVER", "ECO_AIDE"),
-      ],
+  {
+    schema: {
+      body: {
+        type: "object",
+        additionalProperties: false,
+        required: ["lat", "lng", "timestamp"],
+        properties: {
+          lat: {
+            type: "number",
+            minimum: -90,
+            maximum: 90,
+          },
+          lng: {
+            type: "number",
+            minimum: -180,
+            maximum: 180,
+          },
+          heading: {
+            type: "number",
+          },
+          speed: {
+            type: "number",
+          },
+          timestamp: {
+            type: "string",
+          },
+        },
+      },
     },
+    preHandler: [
+      authGuard,
+      requireRole("DRIVER", "ECO_AIDE"),
+    ],
+  },
     async (req, reply) => {
       const { id } = req.params as { id: string };
       const userId = req.user.sub;
@@ -174,40 +202,29 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const existingLocation = await prisma.driverLocation.findFirst({
-        where: {
+      const [location] = await prisma.$transaction([
+        prisma.driverLocation.upsert({
+        where: { driverId: userId },
+        update: {
           truckId: id,
+          latitude: body.lat,
+          longitude: body.lng,
         },
-        orderBy: {
-          updatedAt: "desc",
+        create: {
+          driverId: userId,
+          truckId: id,
+          latitude: body.lat,
+          longitude: body.lng,
         },
-      });
+      }),
 
-      const location = existingLocation
-        ? await prisma.driverLocation.update({
-            where: {
-              id: existingLocation.id,
-            },
-            data: {
-              latitude: body.lat,
-              longitude: body.lng,
-            },
-          })
-        : await prisma.driverLocation.create({
-            data: {
-              driverId: userId,
-              truckId: id,
-              latitude: body.lat,
-              longitude: body.lng,
-            },
-          });
-
-      await prisma.truck.update({
-        where: { id },
-        data: {
-          status: "Active",
-        },
-      });
+        prisma.truck.update({
+          where: { id },
+          data: {
+            status: "Active",
+          },
+        }),
+      ]);
 
       emitTruckLocation("org-1", {
         truckId: id,
