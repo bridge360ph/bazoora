@@ -23,34 +23,37 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
       ],
     },
     async (_req, _reply) => {
-    const trucks = await prisma.truck.findMany({
-      include: {
-        assignedDriver: {
-          include: {
-            driverLocation: true,
+      const trucks = await prisma.truck.findMany({
+        include: {
+          driverLocations: {
+            orderBy: {
+              updatedAt: "desc",
+            },
+            take: 1,
           },
         },
-      },
-    });
+      });
 
-    const formatted = trucks.map((t: any) => {
-      const location = t.assignedDriver?.driverLocation;
-      return {
-        id: t.id,
-    truckNumber: t.truckNumber,
-    plateNumber: t.plateNumber,
-        status: t.status === "Active" ? "active" : "idle",
-        currentLocation: location
-          ? {
-              lat: location.latitude,
-              lng: location.longitude,
-              timestamp: location.updatedAt.toISOString(),
-            }
-          : null,
-        plannedRoute: plannedRoutes.get(t.id) || [],
-        organizationId: "org-1",
-      };
-    });
+      const formatted = trucks.map((t: any) => {
+        const location = t.driverLocations[0];
+
+        return {
+          id: t.id,
+          truckNumber: t.truckNumber,
+          plateNumber: t.plateNumber,
+          status: t.status === "Active" ? "active" : "idle",
+          currentLocation: location
+            ? {
+                lat: location.latitude,
+                lng: location.longitude,
+                timestamp: location.updatedAt.toISOString(),
+              }
+            : null,
+          plannedRoute: plannedRoutes.get(t.id) || [],
+          organizationId: "org-1",
+        };
+      });
+
       return { success: true, data: formatted };
     },
   );
@@ -72,10 +75,11 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
           assignedDriverId: driverId,
         },
         include: {
-          assignedDriver: {
-            include: {
-              driverLocation: true,
+          driverLocations: {
+            orderBy: {
+              updatedAt: "desc",
             },
+            take: 1,
           },
         },
       });
@@ -87,7 +91,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const location = truck.assignedDriver?.driverLocation;
+      const location = truck.driverLocations[0];
 
       return reply.send({
         success: true,
@@ -112,15 +116,43 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
   // POST /trucks/:id/location
   app.post(
     "/:id/location",
-    {
-      preHandler: [
-        authGuard,
-        requireRole("DRIVER"),
-      ],
+  {
+    schema: {
+      body: {
+        type: "object",
+        additionalProperties: false,
+        required: ["lat", "lng", "timestamp"],
+        properties: {
+          lat: {
+            type: "number",
+            minimum: -90,
+            maximum: 90,
+          },
+          lng: {
+            type: "number",
+            minimum: -180,
+            maximum: 180,
+          },
+          heading: {
+            type: "number",
+          },
+          speed: {
+            type: "number",
+          },
+          timestamp: {
+            type: "string",
+          },
+        },
+      },
     },
+    preHandler: [
+      authGuard,
+      requireRole("DRIVER", "ECO_AIDE"),
+    ],
+  },
     async (req, reply) => {
       const { id } = req.params as { id: string };
-      const driverId = req.user.sub;
+      const userId = req.user.sub;
 
       const body = req.body as {
         lat: number;
@@ -130,44 +162,69 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         timestamp: string;
       };
 
-      const assignedTruck = await prisma.truck.findFirst({
-        where: {
-          id,
-          assignedDriverId: driverId,
-        },
+      const truck = await prisma.truck.findUnique({
+        where: { id },
         select: {
           id: true,
+          assignedDriverId: true,
+          assignedRoute: {
+            select: {
+              assignedEcoAide: {
+                select: {
+                  id: true,
+                },
+              },
+            },
+          },
         },
       });
 
-      if (!assignedTruck) {
-        return reply.code(403).send({
+      if (!truck) {
+        return reply.code(404).send({
           success: false,
-          error: "You may only update the location of your assigned truck.",
+          error: "Truck was not found.",
         });
       }
 
-      const location = await prisma.driverLocation.upsert({
-        where: { driverId },
+      const isDriver =
+        req.user.role === "DRIVER" &&
+        truck.assignedDriverId === userId;
+
+      const isEcoAide =
+        req.user.role === "ECO_AIDE" &&
+        truck.assignedRoute?.assignedEcoAide?.id === userId;
+
+      if (!isDriver && !isEcoAide) {
+        return reply.code(403).send({
+          success: false,
+          error:
+            "You may only update the location of your assigned truck.",
+        });
+      }
+
+      const [location] = await prisma.$transaction([
+        prisma.driverLocation.upsert({
+        where: { driverId: userId },
         update: {
           truckId: id,
           latitude: body.lat,
           longitude: body.lng,
         },
         create: {
-          driverId,
+          driverId: userId,
           truckId: id,
           latitude: body.lat,
           longitude: body.lng,
         },
-      });
+      }),
 
-      await prisma.truck.update({
-        where: { id },
-        data: {
-          status: "Active",
-        },
-      });
+        prisma.truck.update({
+          where: { id },
+          data: {
+            status: "Active",
+          },
+        }),
+      ]);
 
       emitTruckLocation("org-1", {
         truckId: id,
