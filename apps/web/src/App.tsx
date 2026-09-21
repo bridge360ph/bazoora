@@ -12,6 +12,7 @@ import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
 import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+import { AdminRouteManagementPage } from "./features/routes/AdminRouteManagementPage";
 
 // Driver imports
 import { DriverLayout } from "./layouts/DriverLayout";
@@ -62,7 +63,7 @@ function App() {
 
           <Route
             path="routes"
-            element={<RoutePlaceholder title="Route Management" />}
+            element={<AdminRouteManagementPage />}
           />
 
           <Route
