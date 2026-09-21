@@ -1,6 +1,22 @@
-export type TruckStatus = "Active" | "Idle" | "Under Maintenance";
+export type TruckStatus =
+  | "Active"
+  | "Idle"
+  | "Under Maintenance";
 
-export type TruckStatusFilter = "All" | TruckStatus;
+export type TruckStatusFilter =
+  | "All"
+  | TruckStatus;
+
+export interface Driver {
+  id: string;
+  userNumber: string | null;
+  name: string | null;
+  email: string;
+  assignedTruck: {
+    id: string;
+    plateNumber: string;
+  } | null;
+}
 
 export interface FleetAssignmentOption {
   id: string;
@@ -31,3 +47,12 @@ export interface TruckFormValue {
   assignedDriver: string;
   assignedDriverId?: string;
 }
+
+export interface FleetRoute {
+  id: string;
+  routeNumber: number;
+  name: string;
+  barangay: string;
+  assignedTruckId: string | null;
+}
+
