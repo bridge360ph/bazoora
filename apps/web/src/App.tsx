@@ -1,232 +1,133 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { getSocket } from "./lib/socket";
-import { useAuthStore, type UserRole } from "@/stores/auth-store";
-import { LoginPage } from "@/features/auth/components/LoginPage";
-import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
-import { useSessionBootstrap } from "@/features/auth/useSessionBootstrap";
-import { roleHome } from "@/features/auth/roles";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { getSocket, disconnectSocket } from "./lib/socket";
 
-// Layout Imports
+// Auth
+import LoginPage from "./features/auth/components/LoginPage";
+
+// Admin imports
 import { AdminLayout } from "./layouts/AdminLayout";
-
-// driver imports
-import { DriverLayout } from "./layouts/DriverLayout";
-import ResidentLayout from "./features/residents/components/ResidentLayout";
-import EcoAideLayout from "./features/eco-aide/components/EcoAideLayout";
-
-// Page Imports
-import { AdminDashboard } from "./pages/AdminDashboard";
-import { EcoAideManagementPage } from "./features/eco-aides/components/EcoAideManagementPage";
+import { AdminHome } from "./pages/AdminHome";
+import { RoutePlaceholder } from "./pages/RoutePlaceholder";
 import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
-import { AdminRouteManagementPage } from "./features/route-management/AdminRouteManagementPage";
 import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
-import { SettingsPage } from "./features/settings/components/SettingsPage";
-import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
-import { NotificationListener } from "./features/notifications/components/NotificationListener";
+import { AdminRouteManagementPage } from "./features/routes/AdminRouteManagementPage";
 
-// Driver Pages
+// Driver imports
+import { DriverLayout } from "./layouts/DriverLayout";
 import DriverDashboard from "./features/driver/DriverDashboard";
-import DriverRoute from "./features/driver/components/DriverRoute";
+import { CurrentRoute } from "./features/driver/CurrentRoute";
 import { Collections } from "./features/driver/Collections";
 import { ReportIssue } from "./features/driver/ReportIssue";
 import { Messages } from "./features/driver/Messages";
 import { Settings } from "./features/driver/Settings";
+import { CompletedRoute } from "./features/driver/CompletedRoute";
 
-// Resident Pages
-import TrackTruckPage from "./features/residents/components/TrackTruckPage";
-
-// Eco-Aide Pages
-import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
-
-function AppContent() {
-  const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
-  const setSession = useAuthStore((s) => s.setSession);
-  const navigate = useNavigate();
-  const bootstrapped = useSessionBootstrap();
-
+// App.tsx is routing configuration only
+function App() {
   useEffect(() => {
-    const s = getSocket(() => useAuthStore.getState().accessToken);
-    if (user) {
-      s.connect();
-    } else {
-      s.disconnect();
-    }
+  const socket = getSocket(() => {
+    return localStorage.getItem("token");
+  });
 
-    return () => {
-      s.disconnect();
-    };
-  }, [user]);
+  socket.connect();
 
-  const handleRoleChange = (role: string) => {
-    if (!user) return;
-    setSession(
-      {
-        ...user,
-        role: (role === "admin" ? "super_admin" : role) as UserRole,
-        email: `${role}@bazoora.com`,
-        firstName: role === "resident" ? "Jane" : role === "driver" ? "John" : role === "eco_aide" ? "Eco" : "Admin",
-        lastName: role === "resident" ? "Smith" : role === "driver" ? "Doe" : role === "eco_aide" ? "Aide" : "User",
-        id: `usr-mock-${role}-1`,
-      },
-      `mock-token-${role}`
-    );
-
-    if (role === "admin") {
-      void navigate("/admin");
-    } else if (role === "driver") {
-      void navigate("/driver");
-    } else if (role === "eco_aide") {
-      void navigate("/eco-aide");
-    } else if (role === "resident") {
-      void navigate("/resident");
-    }
+  return () => {
+    disconnectSocket();
   };
+}, []);
 
-  const getActiveRoleKey = (): string => {
-    const role = user?.role;
-    if (role === "super_admin" || role === "government_agency" || role === "lgu") {
-      return "admin";
-    }
-    return role ?? "resident";
-  };
-
-  if (!bootstrapped) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-slate-950">
-        <div
-          role="status"
-          aria-label="Loading"
-          className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-brand"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <NotificationListener />
-      <div className="flex h-screen flex-col overflow-hidden bg-gray-50 dark:bg-slate-950">
-      {/* Role Simulator banner - development builds only, never shipped to production */}
-      {import.meta.env.DEV && (
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-black tracking-wider text-brand dark:text-[#4ade80]">
-               BAZOORA
-            </span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-              DEMO ENVIRONMENT
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
-              Role Simulator:
-            </span>
-            <div className="flex rounded-lg bg-gray-150 p-0.5 dark:bg-slate-800">
-              {(["resident", "driver", "eco_aide", "admin"] as const).map((r) => {
-                const activeKey = getActiveRoleKey();
-                return (
-                  <button
-                    key={r}
-                    onClick={() => handleRoleChange(r)}
-                    className={`rounded-md px-3 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
-                      activeKey === r
-                        ? "bg-brand text-white shadow-md"
-                        : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {r.replace("_", "-").toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => clearSession()}
-              className="ml-3 rounded-md border border-gray-300 bg-white hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 px-3 py-1 text-xs font-black text-red-500 transition-all active:scale-95 cursor-pointer"
-            >
-              RESET
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-hidden relative">
-        <Routes>
-          {/* Public */}
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* Base Redirect */}
-          <Route
-            path="/"
-            element={<Navigate to={user ? roleHome(user.role) : "/login"} replace />}
-          />
-
-          {/* ADMIN */}
-          <Route
-            element={
-              <ProtectedRoute
-                allow={["super_admin", "government_agency", "lgu", "hauling_org", "business_org"]}
-              />
-            }
-          >
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="eco-aides" element={<EcoAideManagementPage />} />
-              <Route path="fleet" element={<AdminFleetManagementPage />} />
-              <Route path="routes" element={<AdminRouteManagementPage />} />
-              <Route path="hauling" element={<AdminHaulingRequestManagementPage />} />
-              <Route path="analytics" element={<AdminAnalyticsPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Route>
-
-          {/* DRIVER */}
-          <Route element={<ProtectedRoute allow={["driver"]} />}>
-            <Route path="/driver" element={<DriverLayout />}>
-              <Route index element={<DriverDashboard />} />
-              <Route path="route" element={<DriverRoute />} />
-              <Route path="collections" element={<Collections />} />
-              <Route path="report" element={<ReportIssue />} />
-              <Route path="messages" element={<Messages />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-          </Route>
-
-          {/* RESIDENT */}
-          <Route element={<ProtectedRoute allow={["resident", "business", "citizen"]} />}>
-            <Route path="/resident" element={<ResidentLayout />}>
-              <Route index element={<Navigate to="/resident/track" replace />} />
-              <Route path="track" element={<TrackTruckPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Route>
-
-          {/* ECO-AIDE */}
-          <Route element={<ProtectedRoute allow={["eco_aide"]} />}>
-            <Route path="/eco-aide" element={<EcoAideLayout />}>
-              <Route index element={<Navigate to="/eco-aide/route" replace />} />
-              <Route path="route" element={<EcoAideRoute />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-          </Route>
-
-          {/* Fallback Redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-      </div>
-    </>
-  );
-}
-
-export default function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <Routes>
+        {/* AUTH */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Default route */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+
+        {/* ADMIN */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminHome />} />
+
+          <Route
+            path="eco-aides"
+            element={<RoutePlaceholder title="Eco-Aide Management" />}
+          />
+
+          <Route
+            path="fleet"
+            element={<AdminFleetManagementPage />}
+          />
+
+          <Route
+            path="routes"
+            element={<AdminRouteManagementPage />}
+          />
+
+          <Route
+            path="hauling"
+            element={<AdminHaulingRequestManagementPage />}
+          />
+
+          <Route
+            path="analytics"
+            element={<AdminAnalyticsPage />}
+          />
+
+          <Route
+            path="notifications"
+            element={<RoutePlaceholder title="Notifications" />}
+          />
+
+          <Route
+            path="settings"
+            element={<RoutePlaceholder title="Settings" />}
+          />
+        </Route>
+
+        {/* DRIVER */}
+        <Route path="/driver" element={<DriverLayout />}>
+          <Route index element={<DriverDashboard />} />
+
+          <Route
+            path="route"
+            element={<CurrentRoute />}
+          />
+
+          <Route
+            path="collections"
+            element={<Collections />}
+          />
+
+          <Route
+            path="report"
+            element={<ReportIssue />}
+          />
+
+          <Route
+            path="messages"
+            element={<Messages />}
+          />
+
+          <Route
+            path="settings"
+            element={<Settings />}
+          />
+
+          <Route
+            path="completed-route"
+            element={<CompletedRoute />}
+          />
+
+        </Route>
+
+        {/* Unknown routes */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     </BrowserRouter>
   );
 }
+
+export default App;
