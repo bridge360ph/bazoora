@@ -1,82 +1,150 @@
 "use client";
 
-import { LocateFixed } from "lucide-react";
-import "mapbox-gl/dist/mapbox-gl.css";
-import Map, { Marker, Popup, Source, Layer, type MapRef } from "react-map-gl/mapbox";
-import { useEffect, useRef, useState, useCallback } from "react";
-import { calculateRoute, type RouteStep } from "@/lib/routing";
 import {
-  Layers,
-  Navigation,
-  MapPin,
   ArrowUp,
-  ArrowUpRight,
   ArrowUpLeft,
-  CornerUpRight,
+  ArrowUpRight,
+  ChevronDown,
+  ChevronUp,
   CornerUpLeft,
+  CornerUpRight,
+  Layers,
+  LocateFixed,
+  MapPin,
+  Navigation,
   RotateCw,
 } from "lucide-react";
+
+import "mapbox-gl/dist/mapbox-gl.css";
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+
+import Map, {
+  Layer,
+  Marker,
+  Popup,
+  Source,
+  type MapRef,
+} from "react-map-gl/mapbox";
+
+import {
+  calculateRoute,
+  type RouteStep,
+} from "@/lib/routing";
+
 import { env } from "@/lib/env";
 
-/* ─── Maneuver Icon HUD Helper ──────────────────────────────────────── */
-function ManeuverIcon({ type, modifier }: { type?: string; modifier?: string }) {
-  const m = modifier?.toLowerCase() ?? "";
-  const t = type?.toLowerCase() ?? "";
+/* -------------------------------------------------------------------------- */
+/* Helpers                                                                    */
+/* -------------------------------------------------------------------------- */
 
-  if (t === "arrive") {
-    return <MapPin className="h-5 w-5 text-emerald-400" />;
+function ManeuverIcon({
+  type,
+  modifier,
+}: {
+  type?: string;
+  modifier?: string;
+}) {
+  const maneuverType =
+    type?.toLowerCase() ?? "";
+  const maneuverModifier =
+    modifier?.toLowerCase() ?? "";
+
+  if (maneuverType === "arrive") {
+    return (
+      <MapPin className="h-5 w-5 text-emerald-400" />
+    );
   }
 
-  switch (m) {
+  switch (maneuverModifier) {
     case "right":
-    case "sharp right": {
-      return <CornerUpRight className="h-5 w-5 text-white" />;
-    }
+    case "sharp right":
+      return (
+        <CornerUpRight className="h-5 w-5 text-white" />
+      );
+
     case "left":
-    case "sharp left": {
-      return <CornerUpLeft className="h-5 w-5 text-white" />;
-    }
-    case "slight right": {
-      return <ArrowUpRight className="h-5 w-5 text-white" />;
-    }
-    case "slight left": {
-      return <ArrowUpLeft className="h-5 w-5 text-white" />;
-    }
-    case "uturn": {
-      return <RotateCw className="h-5 w-5 text-white" />;
-    }
-    default: {
-      return <ArrowUp className="h-5 w-5 text-white" />;
-    }
+    case "sharp left":
+      return (
+        <CornerUpLeft className="h-5 w-5 text-white" />
+      );
+
+    case "slight right":
+      return (
+        <ArrowUpRight className="h-5 w-5 text-white" />
+      );
+
+    case "slight left":
+      return (
+        <ArrowUpLeft className="h-5 w-5 text-white" />
+      );
+
+    case "uturn":
+      return (
+        <RotateCw className="h-5 w-5 text-white" />
+      );
+
+    default:
+      return (
+        <ArrowUp className="h-5 w-5 text-white" />
+      );
   }
 }
 
-/* ─── Metric Formatting Helpers ───────────────────────────────────────── */
-function formatDistance(meters: number): string {
+function formatDistance(
+  meters: number,
+) {
   if (meters < 1000) {
     return `${Math.round(meters)} m`;
   }
-  return `${(meters / 1000).toFixed(1)} km`;
+
+  return `${(
+    meters / 1000
+  ).toFixed(1)} km`;
 }
 
-function formatDuration(seconds: number): string {
-  const minutes = Math.ceil(seconds / 60);
+function formatDuration(
+  seconds: number,
+) {
+  const minutes = Math.ceil(
+    seconds / 60,
+  );
+
   if (minutes < 60) {
     return `${minutes} min`;
   }
-  const hours = Math.floor(minutes / 60);
-  const remainingMins = minutes % 60;
-  return `${hours}h ${remainingMins}m`;
+
+  const hours = Math.floor(
+    minutes / 60,
+  );
+
+  const remaining =
+    minutes % 60;
+
+  return `${hours}h ${remaining}m`;
 }
 
-function formatEta(seconds: number): string {
-  return new Date(Date.now() + seconds * 1000).toLocaleTimeString("en-PH", {
+function formatEta(
+  seconds: number,
+) {
+  return new Date(
+    Date.now() + seconds * 1000,
+  ).toLocaleTimeString("en-PH", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-/* ─── Custom SVG marker components ─────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* Marker icons                                                               */
+/* -------------------------------------------------------------------------- */
+
 function TruckIcon({
   pulse,
   heading = 0,
@@ -86,13 +154,16 @@ function TruckIcon({
 }) {
   return (
     <div className="relative h-9 w-9">
-      {pulse && <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/30" />}
+      {pulse && (
+        <div className="absolute inset-0 animate-ping rounded-full bg-blue-500/30" />
+      )}
+
       <div
-  className="absolute inset-0.5 flex items-center justify-center rounded-full bg-blue-600 shadow-[0_2px_8px_rgba(37,99,235,0.5)] transition-transform duration-300"
-  style={{
-    transform: `rotate(${heading}deg)`,
-  }}
->
+        className="absolute inset-0.5 flex items-center justify-center rounded-full bg-blue-600 shadow-[0_2px_8px_rgba(37,99,235,0.5)] transition-transform duration-300"
+        style={{
+          transform: `rotate(${heading}deg)`,
+        }}
+      >
         <svg
           width="18"
           height="18"
@@ -100,17 +171,24 @@ function TruckIcon({
           fill="white"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5 1.5 1.5 1.5-1.5 1.5-1.5 1.5z" />
         </svg>
       </div>
     </div>
   );
 }
 
-function EcoIcon({ pulse }: { pulse?: boolean | undefined }) {
+function EcoIcon({
+  pulse,
+}: {
+  pulse?: boolean;
+}) {
   return (
     <div className="relative h-9 w-9">
-      {pulse && <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />}
+      {pulse && (
+        <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />
+      )}
+
       <div className="absolute inset-0.5 flex items-center justify-center rounded-full bg-emerald-500 shadow-[0_2px_8px_rgba(16,185,129,0.5)]">
         <svg
           width="18"
@@ -166,6 +244,7 @@ function PendingIcon() {
   return (
     <div className="relative h-8 w-8">
       <div className="absolute inset-0 animate-ping rounded-full bg-orange-500/30" />
+
       <div className="absolute inset-0.5 flex items-center justify-center rounded-full bg-orange-500 shadow-[0_2px_8px_rgba(249,115,22,0.5)]">
         <svg
           width="16"
@@ -174,73 +253,102 @@ function PendingIcon() {
           fill="white"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 2.5 2.5 2.5-1.12 2.5-2.5 2.5z" />
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
         </svg>
       </div>
     </div>
   );
 }
 
-function StopIcon({ number, pulse }: { number: number; pulse?: boolean | undefined }) {
+function StopIcon({
+  number,
+  pulse,
+}: {
+  number: number;
+  pulse?: boolean;
+}) {
   return (
     <div className="relative flex h-8 w-8 items-center justify-center">
-      {pulse && <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />}
-      <div className="absolute inset-0.5 flex items-center justify-center rounded-full border-2 border-white bg-[#1a3a2a] font-mono text-[11px] font-black text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)] transition-all hover:bg-[#2d6a4f]">
+      {pulse && (
+        <div className="absolute inset-0 animate-ping rounded-full bg-emerald-500/30" />
+      )}
+
+      <div className="absolute inset-0.5 flex items-center justify-center rounded-full border-2 border-white bg-[#1a3a2a] font-mono text-[11px] font-black text-white shadow-[0_2px_8px_rgba(0,0,0,0.35)]">
         {number}
       </div>
     </div>
   );
 }
 
-/* ─── Types ──────────────────────────────────────────────────────────── */
-export type RouteColor = "blue" | "green" | "orange" | "gray";
+/* -------------------------------------------------------------------------- */
+/* Types                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type RouteColor =
+  | "blue"
+  | "green"
+  | "orange"
+  | "gray";
 
 export interface MapMarker {
   id?: string;
   position: [number, number];
   label?: string;
-  icon?: "truck" | "eco" | "home" | "done" | "pending" | "stop";
+  icon?:
+    | "truck"
+    | "eco"
+    | "home"
+    | "done"
+    | "pending"
+    | "stop";
   stopNumber?: number;
   pulse?: boolean;
   heading?: number;
-  popupContent?: React.ReactNode;
+  popupContent?: ReactNode;
 }
 
 export interface MapRoute {
-  path?: [number, number][] | undefined; // [lat, lng] pairs
-  waypoints?: [number, number][] | undefined; // [lng, lat] pairs
+  path?: [number, number][];
+  waypoints?: [number, number][];
   color: RouteColor;
-  label?: string | undefined;
-  eta?: string | undefined;
+  label?: string;
+  eta?: string;
 }
 
 export interface SmartMapProps {
-  center?: [number, number] | undefined;
-  zoom?: number | undefined;
-  markers?: MapMarker[] | undefined;
-  routes?: MapRoute[] | undefined;
-  className?: string | undefined;
-  start3D?: boolean | undefined;
-  onMapClick?: ((pos: [number, number]) => void) | undefined;
-  isCollecting?: boolean | undefined;
-  navigationSteps?: RouteStep[] | undefined;
-  routeSummary?:
-    | {
-        distance: number;
-        duration: number;
-      }
-    | undefined;
+  center?: [number, number];
+  zoom?: number;
+  markers?: MapMarker[];
+  routes?: MapRoute[];
+  className?: string;
+  start3D?: boolean;
+  onMapClick?: (
+    pos: [number, number],
+  ) => void;
+  isCollecting?: boolean;
+  navigationSteps?: RouteStep[];
+  routeSummary?: {
+    distance: number;
+    duration: number;
+  };
+  onMarkComplete?: () => void;
+  onReportIssue?: () => void;
 }
 
-/* ─── Route color map ───────────────────────────────────────────────── */
-const ROUTE_COLORS: Record<RouteColor, string> = {
+const ROUTE_COLORS: Record<
+  RouteColor,
+  string
+> = {
   blue: "#2563eb",
   green: "#10b981",
   orange: "#f97316",
   gray: "#9ca3af",
 };
 
-/* ─── Mapbox Line Component ─────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* Route rendering                                                            */
+/* -------------------------------------------------------------------------- */
+
 function MapboxLine({
   path,
   color,
@@ -255,17 +363,24 @@ function MapboxLine({
     properties: {},
     geometry: {
       type: "LineString" as const,
-      coordinates: path.map(([lat, lng]) => [lng, lat]),
+      coordinates: path.map(
+        ([lat, lng]) => [lng, lat],
+      ),
     },
   };
 
   return (
-    <Source id={id} type="geojson" data={geojson}>
+    <Source
+      id={id}
+      type="geojson"
+      data={geojson}
+    >
       <Layer
         id={`${id}-line`}
         type="line"
         paint={{
-          "line-color": ROUTE_COLORS[color],
+          "line-color":
+            ROUTE_COLORS[color],
           "line-width": 5,
           "line-opacity": 0.8,
         }}
@@ -274,18 +389,44 @@ function MapboxLine({
   );
 }
 
-/* ─── Helper for distance calculation ───────────────────────────────── */
-function distanceMeters(lng1: number, lat1: number, lng2: number, lat2: number): number {
-  const R = 6_371_000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+function distanceMeters(
+  lng1: number,
+  lat1: number,
+  lng2: number,
+  lat2: number,
+) {
+  const radius = 6_371_000;
+
+  const dLat =
+    ((lat2 - lat1) *
+      Math.PI) /
+    180;
+
+  const dLng =
+    ((lng2 - lng1) *
+      Math.PI) /
+    180;
+
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    Math.cos(
+      (lat1 * Math.PI) / 180,
+    ) *
+      Math.cos(
+        (lat2 * Math.PI) / 180,
+      ) *
+      Math.sin(dLng / 2) ** 2;
+
+  return (
+    radius *
+    2 *
+    Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1 - a),
+    )
+  );
 }
 
-/* ─── Mapbox Route Resolver ─────────────────────────────────────────── */
 function DirectionsRoute({
   waypoints,
   color,
@@ -295,74 +436,183 @@ function DirectionsRoute({
   color: RouteColor;
   id: string;
 }) {
-  const [path, setPath] = useState<[number, number][]>([]);
-  const prevWaypointsRef = useRef<[number, number][]>([]);
-  const waypointsStr = JSON.stringify(waypoints);
+  const [path, setPath] =
+    useState<
+      [number, number][]
+    >([]);
+
+  const previousWaypoints =
+    useRef<
+      [number, number][]
+    >([]);
+
+  const waypointsKey =
+    JSON.stringify(
+      waypoints,
+    );
 
   useEffect(() => {
-    const parsedWaypoints = JSON.parse(waypointsStr) as [number, number][];
-    if (parsedWaypoints.length < 2) return;
+    const parsed =
+      JSON.parse(
+        waypointsKey,
+      ) as [number, number][];
 
-    const prev = prevWaypointsRef.current;
-    if (prev.length === parsedWaypoints.length && path.length > 0) {
-      const stopsIdentical = parsedWaypoints
-        .slice(1)
-        .every((wp, i) => wp[0] === prev[i + 1]?.[0] && wp[1] === prev[i + 1]?.[1]);
-      if (stopsIdentical) {
-        const wp0 = parsedWaypoints[0];
-        const pr0 = prev[0];
-        if (wp0 && pr0) {
-          const d = distanceMeters(wp0[0], wp0[1], pr0[0], pr0[1]);
-          if (d < 25) {
+    if (parsed.length < 2) {
+      return;
+    }
+
+    const previous =
+      previousWaypoints.current;
+
+    if (
+      previous.length ===
+        parsed.length &&
+      path.length > 0
+    ) {
+      const sameStops =
+        parsed
+          .slice(1)
+          .every(
+            (point, index) =>
+              point[0] ===
+                previous[
+                  index + 1
+                ]?.[0] &&
+              point[1] ===
+                previous[
+                  index + 1
+                ]?.[1],
+          );
+
+      if (sameStops) {
+        const current =
+          parsed[0];
+
+        const old =
+          previous[0];
+
+        if (current && old) {
+          const distance =
+            distanceMeters(
+              current[0],
+              current[1],
+              old[0],
+              old[1],
+            );
+
+          if (distance < 25) {
             return;
           }
         }
       }
     }
 
-    prevWaypointsRef.current = parsedWaypoints;
+    previousWaypoints.current =
+      parsed;
 
-    calculateRoute(parsedWaypoints, { profile: "driving" })
+    calculateRoute(parsed, {
+      profile: "driving",
+    })
       .then((route) => {
-        const coords = route.geometry.coordinates.map(
-          ([lng, lat]) => [lat, lng] as [number, number],
+        const coordinates =
+          route.geometry.coordinates.map(
+            ([lng, lat]) =>
+              [lat, lng] as [
+                number,
+                number,
+              ],
+          );
+
+        setPath(
+          coordinates,
         );
-        setPath(coords);
       })
       .catch(() => {
-        const fallback = parsedWaypoints.map(([lng, lat]) => [lat, lng] as [number, number]);
-        setPath(fallback);
+        setPath(
+          parsed.map(
+            ([lng, lat]) =>
+              [lat, lng] as [
+                number,
+                number,
+              ],
+          ),
+        );
       });
-  }, [waypointsStr, color, path.length]);
+  }, [
+    waypointsKey,
+    color,
+    path.length,
+  ]);
 
-  if (path.length === 0) return null;
-  return <MapboxLine path={path} color={color} id={id} />;
+  if (path.length === 0) {
+    return null;
+  }
+
+  return (
+    <MapboxLine
+      id={id}
+      path={path}
+      color={color}
+    />
+  );
 }
 
-/* ─── Bounding box helper for fitBounds ─────────────────────────────── */
-function getBounds(coords: [number, number][]): [[number, number], [number, number]] | null {
-  if (coords.length === 0) return null;
-  const first = coords[0];
-  if (!first) return null;
+function getBounds(
+  coords: [number, number][],
+) {
+  if (coords.length === 0) {
+    return null;
+  }
+
+  const first =
+    coords[0];
+
+  if (!first) {
+    return null;
+  }
+
   let minLng = first[1];
   let maxLng = first[1];
   let minLat = first[0];
   let maxLat = first[0];
+
   for (const [lat, lng] of coords) {
-    if (lng < minLng) minLng = lng;
-    if (lng > maxLng) maxLng = lng;
-    if (lat < minLat) minLat = lat;
-    if (lat > maxLat) maxLat = lat;
+    minLng = Math.min(
+      minLng,
+      lng,
+    );
+
+    maxLng = Math.max(
+      maxLng,
+      lng,
+    );
+
+    minLat = Math.min(
+      minLat,
+      lat,
+    );
+
+    maxLat = Math.max(
+      maxLat,
+      lat,
+    );
   }
+
   return [
     [minLng, minLat],
     [maxLng, maxLat],
+  ] as [
+    [number, number],
+    [number, number],
   ];
 }
 
-/* ─── Main SmartMap component ────────────────────────────────────────── */
+/* -------------------------------------------------------------------------- */
+/* SmartMap                                                                  */
+/* -------------------------------------------------------------------------- */
+
 export default function SmartMap({
-  center = [14.3833, 120.8833],
+  center = [0, 0],
   zoom = 15,
   markers = [],
   routes = [],
@@ -372,250 +622,481 @@ export default function SmartMap({
   isCollecting = false,
   navigationSteps = [],
   routeSummary,
+  onMarkComplete,
+  onReportIssue,
 }: SmartMapProps) {
+  const [is3D, setIs3D] =
+    useState(start3D);
 
-  const [is3D, setIs3D] = useState(start3D);
-  const [activePopupId, setActivePopupId] = useState<string | null>(null);
-  const mapRef = useRef<MapRef>(null);
+  const [
+    etaExpanded,
+    setEtaExpanded,
+  ] = useState(false);
 
-  const centerOnTruck = () => {
-  const truck = markers.find(
-    (m) => m.id === "truck-main"
-  );
+  const [
+    activePopupId,
+    setActivePopupId,
+  ] = useState<
+    string | null
+  >(null);
 
-  if (!truck) return;
+  const mapRef =
+    useRef<MapRef>(null);
 
-  mapRef.current?.flyTo({
-    center: [
-      truck.position[1],
-      truck.position[0],
-    ],
-    zoom: 17,
-    duration: 800,
-  });
-};
+  const fittedRef =
+    useRef(false);
 
-  console.warn("SMART MAP MARKERS", markers);
-  console.warn("SMART MAP CENTER", center);
+  const previousCoords =
+    useRef<
+      [number, number] | null
+    >(null);
 
-          useEffect(() => {
-            if (!mapRef.current) return;
-            if (!isCollecting) return;
+  const centerOnTruck =
+    () => {
+      const truck =
+        markers.find(
+          (marker) =>
+            marker.id ===
+            "truck-main",
+        );
 
-            const truck = markers.find(
-              (m) => m.id === "truck-main"
-            );
+      if (!truck) {
+        return;
+      }
 
-            if (!truck) return;
+      mapRef.current?.flyTo({
+        center: [
+          truck.position[1],
+          truck.position[0],
+        ],
+        zoom: 17,
+        duration: 800,
+      });
+    };
 
-            mapRef.current.flyTo({
-              center: [
-                truck.position[1],
-                truck.position[0],
-              ],
-              zoom: 16,
-              duration: 800,
-            });
+  useEffect(() => {
+    if (
+      !mapRef.current ||
+      !isCollecting
+    ) {
+      return;
+    }
 
-          }, [markers, isCollecting]);
+    const truck =
+      markers.find(
+        (marker) =>
+          marker.id ===
+          "truck-main",
+      );
 
-  const hasFittedRef = useRef(false);
-  const prevCoordsRef = useRef<[number, number] | null>(null);
+    if (!truck) {
+      return;
+    }
 
-  // Track isCollecting transition to true to trigger fitBounds
+    mapRef.current.flyTo({
+      center: [
+        truck.position[1],
+        truck.position[0],
+      ],
+      zoom: 16,
+      duration: 800,
+    });
+  }, [
+    markers,
+    isCollecting,
+  ]);
+
   useEffect(() => {
     if (!isCollecting) {
-      hasFittedRef.current = false;
-    } else if (!hasFittedRef.current) {
-      const map = mapRef.current?.getMap();
-      const route = routes?.[0];
-      if (map && route) {
-        let coords: [number, number][] = [];
-        if (route.path && route.path.length >= 2) {
-          coords = route.path;
-        } else if (route.waypoints && route.waypoints.length >= 2) {
-          coords = route.waypoints.map(([lng, lat]) => [lat, lng]);
-        }
-
-        if (coords.length >= 2) {
-          const bounds = getBounds(coords);
-          if (bounds) {
-            hasFittedRef.current = true;
-            map.fitBounds(bounds, {
-              padding: { top: 80, bottom: 80, left: 80, right: 80 },
-              duration: 1500,
-            });
-          }
-        }
-      }
+      fittedRef.current =
+        false;
+      return;
     }
-  }, [isCollecting, routes]);
 
-  const [centerLat, centerLng] = center;
+    if (fittedRef.current) {
+      return;
+    }
 
-  // Update camera focus when center or zoom changes, unless we are collecting
+    const map =
+      mapRef.current?.getMap();
+
+    const route =
+      routes[0];
+
+    if (!map || !route) {
+      return;
+    }
+
+    let coords: [
+      number,
+      number,
+    ][] = [];
+
+    if (
+      route.path &&
+      route.path.length >= 2
+    ) {
+      coords = route.path;
+    } else if (
+      route.waypoints &&
+      route.waypoints.length >= 2
+    ) {
+      coords =
+        route.waypoints.map(
+          ([lng, lat]) =>
+            [lat, lng],
+        );
+    }
+
+    if (coords.length < 2) {
+      return;
+    }
+
+    const bounds =
+      getBounds(coords);
+
+    if (!bounds) {
+      return;
+    }
+
+    fittedRef.current =
+      true;
+
+    map.fitBounds(bounds, {
+      padding: 80,
+      duration: 1500,
+    });
+  }, [
+    isCollecting,
+    routes,
+  ]);
+
+  const [
+    centerLat,
+    centerLng,
+  ] = center;
+
   useEffect(() => {
-  if (isCollecting) return;
+    if (isCollecting) {
+      return;
+    }
 
-  const map = mapRef.current?.getMap();
-  if (map) {
+    const map =
+      mapRef.current?.getMap();
+
+    if (!map) {
+      return;
+    }
+
     map.flyTo({
-      center: [centerLng, centerLat],
+      center: [
+        centerLng,
+        centerLat,
+      ],
       zoom,
       duration: 1200,
     });
-  }
-}, [centerLat, centerLng, zoom, isCollecting]);
+  }, [
+    centerLat,
+    centerLng,
+    zoom,
+    isCollecting,
+  ]);
 
-  // Dynamic Camera Following during active navigation
   useEffect(() => {
     if (!isCollecting) {
-      prevCoordsRef.current = null;
+      previousCoords.current =
+        null;
       return;
     }
-    const map = mapRef.current?.getMap();
-    if (!map) return;
 
-    const truck = markers.find((m) => m.id === "truck-main");
-    if (!truck) return;
-    const [lat, lng] = truck.position;
+    const map =
+      mapRef.current?.getMap();
 
-    const prev = prevCoordsRef.current;
+    if (!map) {
+      return;
+    }
+
+    const truck =
+      markers.find(
+        (marker) =>
+          marker.id ===
+          "truck-main",
+      );
+
+    if (!truck) {
+      return;
+    }
+
+    const [lat, lng] =
+      truck.position;
+
+    const previous =
+      previousCoords.current;
+
     let bearing = 0;
 
-    if (prev && (prev[0] !== lat || prev[1] !== lng)) {
-      // Calculate bearing direction
-      const dLon = ((lng - prev[1]) * Math.PI) / 180;
-      const lat1Rad = (prev[0] * Math.PI) / 180;
-      const lat2Rad = (lat * Math.PI) / 180;
-      const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    if (
+      previous &&
+      (previous[0] !== lat ||
+        previous[1] !== lng)
+    ) {
+      const dLon =
+        ((lng -
+          previous[1]) *
+          Math.PI) /
+        180;
+
+      const lat1 =
+        (previous[0] *
+          Math.PI) /
+        180;
+
+      const lat2 =
+        (lat * Math.PI) /
+        180;
+
+      const y =
+        Math.sin(dLon) *
+        Math.cos(lat2);
+
       const x =
-        Math.cos(lat1Rad) * Math.sin(lat2Rad) -
-        Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
-      const brng = (Math.atan2(y, x) * 180) / Math.PI;
-      bearing = (brng + 360) % 360;
+        Math.cos(lat1) *
+          Math.sin(lat2) -
+        Math.sin(lat1) *
+          Math.cos(lat2) *
+          Math.cos(dLon);
+
+      bearing =
+        ((Math.atan2(y, x) *
+          180) /
+          Math.PI +
+          360) %
+        360;
     }
 
-    prevCoordsRef.current = [lat, lng];
+    previousCoords.current =
+      [lat, lng];
 
     map.easeTo({
-      center: [lng, lat],
+      center: [
+        lng,
+        lat,
+      ],
       zoom: 16.8,
       pitch: 60,
-      bearing: prev ? bearing : 0,
+      bearing,
       duration: 1000,
     });
-  }, [centerLat, centerLng, isCollecting, markers]);
+  }, [
+    isCollecting,
+    markers,
+  ]);
 
-  // Handle 3D ease toggle natively
   useEffect(() => {
-    const map = mapRef.current?.getMap();
-    if (map) {
-      map.easeTo({
-        pitch: is3D ? 45 : 0,
-        bearing: is3D ? -10 : 0,
-        duration: 1000,
-      });
+    const map =
+      mapRef.current?.getMap();
+
+    if (!map) {
+      return;
     }
+
+    map.easeTo({
+      pitch:
+        is3D ? 45 : 0,
+      bearing:
+        is3D ? -10 : 0,
+      duration: 1000,
+    });
   }, [is3D]);
 
-  const renderMarkerIcon = useCallback((m: MapMarker) => {
-    switch (m.icon) {
-      case "truck": {
-  return (
-    <TruckIcon
-      pulse={m.pulse}
-      heading={m.heading}
-    />
-  );
-}
-      case "eco": {
-        return <EcoIcon pulse={m.pulse} />;
-      }
-      case "home": {
-        return <HomeIcon />;
-      }
-      case "done": {
-        return <DoneIcon />;
-      }
-      case "pending": {
-        return <PendingIcon />;
-      }
-      case "stop": {
-        return <StopIcon number={m.stopNumber ?? 1} pulse={m.pulse} />;
-      }
-      default: {
-        return null;
-      }
-    }
-  }, []);
+  const renderMarkerIcon =
+    useCallback(
+      (marker: MapMarker) => {
+        switch (
+          marker.icon
+        ) {
+          case "truck":
+            return (
+              <TruckIcon
+                pulse={
+                  marker.pulse
+                }
+                heading={
+                  marker.heading
+                }
+              />
+            );
 
-  const getProgressPercentage = () => {
-    const totalStops = markers.filter((m) => m.id?.startsWith("stop-")).length;
-    if (totalStops === 0) return 0;
-    const completedStops = markers.filter(
-      (m) => m.id?.startsWith("stop-") && m.icon === "done",
-    ).length;
-    return Math.round((completedStops / totalStops) * 100);
-  };
+          case "eco":
+            return (
+              <EcoIcon
+                pulse={
+                  marker.pulse
+                }
+              />
+            );
+
+          case "home":
+            return (
+              <HomeIcon />
+            );
+
+          case "done":
+            return (
+              <DoneIcon />
+            );
+
+          case "pending":
+            return (
+              <PendingIcon />
+            );
+
+          case "stop":
+            return (
+              <StopIcon
+                number={
+                  marker.stopNumber ??
+                  1
+                }
+                pulse={
+                  marker.pulse
+                }
+              />
+            );
+
+          default:
+            return null;
+        }
+      },
+      [],
+    );
+
+  const getProgressPercentage =
+    () => {
+      const total =
+        markers.filter(
+          (marker) =>
+            marker.id?.startsWith(
+              "stop-",
+            ),
+        ).length;
+
+      if (total === 0) {
+        return 0;
+      }
+
+      const completed =
+        markers.filter(
+          (marker) =>
+            marker.id?.startsWith(
+              "stop-",
+            ) &&
+            marker.icon ===
+              "done",
+        ).length;
+
+      return Math.round(
+        (completed / total) *
+          100,
+      );
+    };
 
   return (
-    <div className={`relative ${className} overflow-hidden`}>
+    <div
+      className={`relative ${className} overflow-hidden`}
+    >
       <Map
         ref={mapRef}
         initialViewState={{
-          latitude: center[0],
-          longitude: center[1],
+          latitude:
+            center[0],
+          longitude:
+            center[1],
           zoom,
-          pitch: start3D ? 45 : 0,
-          bearing: start3D ? -10 : 0,
+          pitch:
+            start3D
+              ? 45
+              : 0,
+          bearing:
+            start3D
+              ? -10
+              : 0,
         }}
-        onClick={(e) => {
-        if (onMapClick) {
-          onMapClick([e.lngLat.lat, e.lngLat.lng]);
-        }
-      }}
-        onLoad={(e) => {
-          const map = e.target;
-          const layers = map.getStyle().layers;
-          const labelLayer = layers?.find(
-            (layer) => layer.type === "symbol"
-          );
-          const labelLayerId = labelLayer ? labelLayer.id : undefined;
+        onClick={(event) => {
+          onMapClick?.([
+            event.lngLat.lat,
+            event.lngLat.lng,
+          ]);
+        }}
+        onLoad={(event) => {
+          const map =
+            event.target;
 
-          if (!map.getLayer("3d-buildings")) {
+          const layers =
+            map.getStyle()
+              .layers;
+
+          const labelLayer =
+            layers?.find(
+              (layer) =>
+                layer.type ===
+                "symbol",
+            );
+
+          if (
+            !map.getLayer(
+              "3d-buildings",
+            )
+          ) {
             map.addLayer(
               {
                 id: "3d-buildings",
-                source: "composite",
-                "source-layer": "building",
-                filter: ["==", "extrude", "true"],
+                source:
+                  "composite",
+                "source-layer":
+                  "building",
+                filter: [
+                  "==",
+                  "extrude",
+                  "true",
+                ],
                 type: "fill-extrusion",
                 minzoom: 15,
                 paint: {
-                  "fill-extrusion-color": "#cbd5e1",
-                  "fill-extrusion-height": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    15,
-                    0,
-                    15.05,
-                    ["get", "height"],
-                  ],
-                  "fill-extrusion-base": [
-                    "interpolate",
-                    ["linear"],
-                    ["zoom"],
-                    15,
-                    0,
-                    15.05,
-                    ["get", "min_height"],
-                  ],
-                  "fill-extrusion-opacity": 0.6,
+                  "fill-extrusion-color":
+                    "#cbd5e1",
+                  "fill-extrusion-height":
+                    [
+                      "interpolate",
+                      ["linear"],
+                      ["zoom"],
+                      15,
+                      0,
+                      15.05,
+                      [
+                        "get",
+                        "height",
+                      ],
+                    ],
+                  "fill-extrusion-base":
+                    [
+                      "interpolate",
+                      ["linear"],
+                      ["zoom"],
+                      15,
+                      0,
+                      15.05,
+                      [
+                        "get",
+                        "min_height",
+                      ],
+                    ],
+                  "fill-extrusion-opacity":
+                    0.6,
                 },
               },
-              labelLayerId,
+              labelLayer?.id,
             );
           }
         }}
@@ -624,241 +1105,385 @@ export default function SmartMap({
             ? "mapbox://styles/mapbox/streets-v12"
             : "mapbox://styles/mapbox/light-v11"
         }
-        
-        mapboxAccessToken={env.VITE_MAPBOX_ACCESS_TOKEN || ""}
-        style={{ width: "100%", height: "100%" }}
+        mapboxAccessToken={
+          env.VITE_MAPBOX_ACCESS_TOKEN ??
+          ""
+        }
+        style={{
+          width: "100%",
+          height: "100%",
+        }}
       >
-        {/* Routes */}
-        {routes.map((route, i) => {
-          const routeId = `route-${i}`;
-          if (route.path && route.path.length > 1) {
-            return <MapboxLine key={routeId} id={routeId} path={route.path} color={route.color} />;
-          }
-          if (route.waypoints && route.waypoints.length >= 2) {
+        {routes.map(
+          (route, index) => {
+            const routeId =
+              `route-${index}`;
+
+            if (
+              route.path &&
+              route.path.length > 1
+            ) {
+              return (
+                <MapboxLine
+                  key={routeId}
+                  id={routeId}
+                  path={route.path}
+                  color={
+                    route.color
+                  }
+                />
+              );
+            }
+
+            if (
+              route.waypoints &&
+              route.waypoints
+                .length >= 2
+            ) {
+              return (
+                <DirectionsRoute
+                  key={routeId}
+                  id={routeId}
+                  waypoints={
+                    route.waypoints
+                  }
+                  color={
+                    route.color
+                  }
+                />
+              );
+            }
+
+            return null;
+          },
+        )}
+
+        {markers.map(
+          (marker, index) => {
+            const markerId =
+              marker.id ??
+              `marker-${index}`;
+
             return (
-              <DirectionsRoute
-                key={routeId}
-                id={routeId}
-                waypoints={route.waypoints}
-                color={route.color}
-              />
-            );
-          }
-          return null;
-        })}
-
-        {/* Markers */}
-        {markers.map((marker, i) => {
-          const mId = marker.id ?? `marker-${i}`;
-          return (
-            <div key={mId}>
-              <Marker
-                longitude={marker.position[1]}
-                latitude={marker.position[0]}
-                anchor="bottom"
-                onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                setActivePopupId(mId);
-              }}
+              <div
+                key={markerId}
               >
-                <div className="cursor-pointer">{renderMarkerIcon(marker)}</div>
-              </Marker>
-
-              {activePopupId === mId && (
-                <Popup
-                  longitude={marker.position[1]}
-                  latitude={marker.position[0]}
+                <Marker
+                  longitude={
+                    marker
+                      .position[1]
+                  }
+                  latitude={
+                    marker
+                      .position[0]
+                  }
                   anchor="bottom"
-                  onClose={() => {
-                    setActivePopupId(null);
+                  onClick={(event) => {
+                    event.originalEvent.stopPropagation();
+
+                    setActivePopupId(
+                      markerId,
+                    );
                   }}
-                  closeOnClick={false}
-                  offset={18}
                 >
-                  {marker.popupContent ? (
-                    <div className="font-sans text-xs text-gray-900">{marker.popupContent}</div>
-                  ) : marker.label ? (
-                    <div className="font-sans text-xs font-bold text-gray-900">{marker.label}</div>
-                  ) : null}
-                </Popup>
-              )}
-            </div>
-          );
-        })}
+                  <div className="cursor-pointer">
+                    {renderMarkerIcon(
+                      marker,
+                    )}
+                  </div>
+                </Marker>
+
+                {activePopupId ===
+                  markerId && (
+                  <Popup
+                    longitude={
+                      marker
+                        .position[1]
+                    }
+                    latitude={
+                      marker
+                        .position[0]
+                    }
+                    anchor="bottom"
+                    closeOnClick={false}
+                    offset={18}
+                    onClose={() =>
+                      setActivePopupId(
+                        null,
+                      )
+                    }
+                  >
+                    {marker.popupContent ? (
+                      <div className="font-sans text-xs text-gray-900">
+                        {
+                          marker.popupContent
+                        }
+                      </div>
+                    ) : marker.label ? (
+                      <div className="font-sans text-xs font-bold text-gray-900">
+                        {marker.label}
+                      </div>
+                    ) : null}
+                  </Popup>
+                )}
+              </div>
+            );
+          },
+        )}
       </Map>
 
-      {/* Map controls overlay */}
-<div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      {/* Map controls */}
+      <div className="absolute right-4 top-4 z-[1000] flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={
+            centerOnTruck
+          }
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-700 shadow-md hover:bg-slate-50 active:scale-95"
+          title="Center location"
+        >
+          <LocateFixed className="h-5 w-5" />
+        </button>
 
-  <button
-    type="button"
-    onClick={centerOnTruck}
-    className="
-      flex h-10 w-10
-      items-center justify-center
-      rounded-xl
-      bg-white
-      text-slate-700
-      shadow-md
-      hover:bg-slate-50
-      active:scale-95
-    "
-    title="Center location"
-  >
-    <LocateFixed className="h-5 w-5" />
-  </button>
-
-
-  <button
-    type="button"
-    onClick={() => {
-      setIs3D((v) => !v);
-    }}
-    title={is3D ? "Switch to 2D" : "Switch to 3D"}
-    className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-md transition-all active:scale-90 ${
-      is3D
-        ? "border-blue-200 bg-blue-600 text-white"
-        : "border-gray-100 bg-white text-gray-700 hover:bg-gray-50"
-    }`}
-  >
-    <Layers className="h-4 w-4" />
-  </button>
-
-</div>
-
-      {/* Navigation HUD Overlay */}
-{(() => {
-  const activeStep = navigationSteps?.[0];
-
-  if (!isCollecting || !activeStep) return null;
-
-  return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 absolute bottom-6 left-1/2 z-[1000] w-[340px] -translate-x-1/2 duration-300">
-
-      <div className="rounded-2xl border border-emerald-700 bg-emerald-600/95 p-3 text-white shadow-2xl backdrop-blur-md">
-
-        {/* Direction + distance */}
-        <div className="flex items-center gap-4">
-
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
-            <ManeuverIcon
-              type={activeStep.maneuver?.type || ""}
-              modifier={activeStep.maneuver?.modifier || ""}
-            />
-          </div>
-
-
-          <div className="flex-1">
-
-            <div className="text-lg font-black">
-              {formatDistance(activeStep.distance)}
-            </div>
-
-            <p className="text-[11px] font-semibold text-emerald-100">
-              {activeStep.maneuver?.instruction ??
-                "Continue driving"}
-            </p>
-
-          </div>
-
-        </div>
-
-
-
-        {/* Divider */}
-        {routeSummary && (
-          <div className="my-3 border-t border-white/20"/>
-        )}
-
-
-
-        {/* ETA + Remaining */}
-        {routeSummary && (
-          <div className="flex items-center justify-between">
-
-            <div>
-
-              <span className="text-[10px] font-bold tracking-widest text-emerald-100">
-                ARRIVAL
-              </span>
-
-              <p className="text-lg font-black text-white">
-                {formatEta(routeSummary.duration)}
-              </p>
-
-            </div>
-
-
-            <div className="text-right">
-
-              <span className="text-[10px] font-bold tracking-widest text-emerald-100">
-                REMAINING
-              </span>
-
-              <p className="text-sm font-bold text-white">
-                {formatDuration(routeSummary.duration)}
-                {" · "}
-                {formatDistance(routeSummary.distance)}
-              </p>
-
-            </div>
-
-
-          </div>
-        )}
-
-
-
-        {/* Progress */}
-        {routeSummary && (
-          <div className="mt-3">
-
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
-
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
-                style={{
-                  width:`${getProgressPercentage()}%`
-                }}
-              />
-
-            </div>
-
-
-            <div className="mt-1 flex justify-between text-[8px] font-extrabold tracking-widest text-emerald-100">
-
-              <span>START</span>
-              <span>PROGRESS</span>
-              <span>END</span>
-
-            </div>
-
-          </div>
-        )}
-
+        <button
+          type="button"
+          onClick={() =>
+            setIs3D(
+              (value) =>
+                !value,
+            )
+          }
+          title={
+            is3D
+              ? "Switch to 2D"
+              : "Switch to 3D"
+          }
+          className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-md transition-all active:scale-90 ${
+            is3D
+              ? "border-blue-200 bg-blue-600 text-white"
+              : "border-gray-100 bg-white text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          <Layers className="h-4 w-4" />
+        </button>
       </div>
 
-    </div>
-  );
+      {/* Collapsible ETA card */}
+      {(() => {
+        const activeStep =
+          navigationSteps[0];
 
-})()}
+        if (
+          !isCollecting ||
+          !activeStep
+        ) {
+          return null;
+        }
 
-      {/* ETA overlays (Only show if not in navigation mode) */}
+        return (
+          <div className="absolute bottom-5 left-1/2 z-[1000] w-[340px] -translate-x-1/2">
+            <div className="overflow-hidden rounded-2xl border border-emerald-700 bg-emerald-600/95 text-white shadow-2xl backdrop-blur-md">
+              {/* Drag / toggle handle */}
+              <button
+                type="button"
+                onClick={() =>
+                  setEtaExpanded(
+                    (value) =>
+                      !value,
+                  )
+                }
+                className="relative flex w-full items-center justify-center py-1.5"
+                aria-label={
+                  etaExpanded
+                    ? "Collapse route details"
+                    : "Expand route details"
+                }
+              >
+                <div className="h-1.5 w-12 rounded-full bg-white/40" />
+
+                <span className="absolute right-3">
+                  {etaExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-white/80" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4 text-white/80" />
+                  )}
+                </span>
+              </button>
+
+              {/* Always visible */}
+              <div className="px-3 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
+                    <ManeuverIcon
+                      type={
+                        activeStep
+                          .maneuver
+                          ?.type
+                      }
+                      modifier={
+                        activeStep
+                          .maneuver
+                          ?.modifier
+                      }
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="text-lg font-black">
+                      {formatDistance(
+                        activeStep.distance,
+                      )}
+                    </div>
+
+                    <p className="truncate text-[11px] font-semibold text-emerald-100">
+                      {activeStep
+                        .maneuver
+                        ?.instruction ??
+                        "Continue driving"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Complete button remains visible when collapsed */}
+                {!etaExpanded && (
+                  <button
+                    type="button"
+                    onClick={
+                      onMarkComplete
+                    }
+                    className="mt-3 w-full rounded-xl bg-white px-3 py-2.5 text-xs font-extrabold text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98]"
+                  >
+                    Mark as Complete
+                  </button>
+                )}
+              </div>
+
+              {/* Expandable details */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  etaExpanded
+                    ? "max-h-[320px] opacity-100"
+                    : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="border-t border-white/20 px-3 pb-3 pt-3">
+                  {routeSummary && (
+                    <>
+                      {/* ETA + remaining */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-bold tracking-widest text-emerald-100">
+                            ARRIVAL
+                          </span>
+
+                          <p className="text-lg font-black text-white">
+                            {formatEta(
+                              routeSummary.duration,
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold tracking-widest text-emerald-100">
+                            REMAINING
+                          </span>
+
+                          <p className="text-sm font-bold text-white">
+                            {formatDuration(
+                              routeSummary.duration,
+                            )}
+                            {" · "}
+                            {formatDistance(
+                              routeSummary.distance,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progress */}
+                      <div className="mt-3">
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                          <div
+                            className="h-full rounded-full bg-white transition-all duration-300"
+                            style={{
+                              width: `${getProgressPercentage()}%`,
+                            }}
+                          />
+                        </div>
+
+                        <div className="mt-1 flex justify-between text-[8px] font-extrabold tracking-widest text-emerald-100">
+                          <span>
+                            START
+                          </span>
+
+                          <span>
+                            PROGRESS
+                          </span>
+
+                          <span>
+                            END
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Expanded actions */}
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={
+                        onMarkComplete
+                      }
+                      className="rounded-xl bg-white px-3 py-2.5 text-xs font-extrabold text-emerald-700 shadow-sm transition hover:bg-emerald-50 active:scale-[0.98]"
+                    >
+                      Mark as Complete
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={
+                        onReportIssue
+                      }
+                      className="rounded-xl bg-red-600 px-3 py-2.5 text-xs font-extrabold text-white shadow-sm transition hover:bg-red-700 active:scale-[0.98]"
+                    >
+                      Report Issue
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Non-navigation ETA */}
       {!isCollecting &&
         routes.map(
-          (route, i) =>
+          (route, index) =>
             route.eta && (
               <div
-                key={`eta-${i.toString()}`}
+                key={`eta-${index}`}
                 className="absolute bottom-4 left-4 z-[1000] flex items-center gap-2 rounded-xl border border-white/20 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-md"
-                style={{ background: `${ROUTE_COLORS[route.color]}cc` }}
+                style={{
+                  background: `${ROUTE_COLORS[route.color]}cc`,
+                }}
               >
                 <Navigation className="h-3.5 w-3.5" />
-                {route.label && <span>{route.label} ·</span>}
-                <span>ETA {route.eta}</span>
+
+                {route.label && (
+                  <span>
+                    {route.label} ·
+                  </span>
+                )}
+
+                <span>
+                  ETA {route.eta}
+                </span>
               </div>
             ),
         )}
     </div>
   );
 }
+

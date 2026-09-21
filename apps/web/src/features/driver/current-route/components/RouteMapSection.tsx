@@ -1,13 +1,10 @@
 import SmartMap from "@/components/map/smart-map";
-import { useDriverRouteMap } from "../hooks/useDriverRouteMap";
 
-type Stop = {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  status: "pending" | "active" | "completed";
-};
+import {
+  useDriverRouteMap,
+} from "../hooks/useDriverRouteMap";
+
+import type { Stop } from "../types";
 
 interface Props {
   gpsPos: [number, number] | null;
@@ -17,6 +14,8 @@ interface Props {
   isCollecting: boolean;
   routePath?: [number, number][];
   locationPermissionGranted: boolean;
+  onMarkComplete?: () => void;
+  onReportIssue?: () => void;
 }
 
 export default function RouteMapSection({
@@ -27,6 +26,8 @@ export default function RouteMapSection({
   isCollecting,
   routePath = [],
   locationPermissionGranted,
+  onMarkComplete,
+  onReportIssue,
 }: Props) {
   const {
     mapCenter,
@@ -48,7 +49,9 @@ export default function RouteMapSection({
       <div className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[580px] lg:h-[740px]">
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm">
-            <span className="text-2xl">📍</span>
+            <span className="text-2xl">
+              📍
+            </span>
           </div>
 
           <h3 className="text-base font-bold text-slate-900">
@@ -65,17 +68,32 @@ export default function RouteMapSection({
   }
 
   return (
-    <section className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 sm:h-[580px] lg:h-[740px]">
-      <div className="absolute inset-0">
+    <section className="relative h-[500px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white sm:h-[580px] lg:h-[740px]">
+      <div className="relative h-full w-full">
         <SmartMap
           center={mapCenter}
+          zoom={15}
           markers={mapMarkers}
           routes={mapRoutes}
-          isCollecting={isCollecting}
-          navigationSteps={navigationSteps}
-          routeSummary={routeSummary}
+          isCollecting={
+            isCollecting
+          }
+          navigationSteps={
+            navigationSteps
+          }
+          routeSummary={
+            routeSummary
+          }
+          className="absolute inset-0 h-full w-full"
+          onMarkComplete={
+            onMarkComplete
+          }
+          onReportIssue={
+            onReportIssue
+          }
         />
       </div>
     </section>
   );
 }
+

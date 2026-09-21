@@ -1,92 +1,143 @@
 import { useNavigate } from "react-router-dom";
 
-import { Icon } from "../../shared/icons";
-import { icons } from "../../shared/iconData";
-
 import { MiniTaskCard } from "./MiniTaskCard";
-import { schedule } from "../data/schedule";
+
+import type { Stop } from "../types";
+
+interface AssignedRoute {
+  id: string;
+  routeNumber: number;
+  name: string;
+  barangay: string;
+  waypoints: string;
+  wasteType: string;
+  collectionDay: string;
+  startTime: string;
+  status: string;
+  stops: number;
+  routeType: string;
+}
+
+interface AssignedTasksPanelProps {
+  stops: Stop[];
+  assignedRoute: AssignedRoute | null;
+  onDashboard: () => void;
+}
 
 export function AssignedTasksPanel({
+  stops,
+  assignedRoute,
   onDashboard,
-  onComplete,
-  onReportIssue,
-}: {
-  onDashboard: () => void;
-  onComplete?: () => void;
-  onReportIssue?: () => void;
-}) {
+}: AssignedTasksPanelProps) {
   const navigate = useNavigate();
 
-  const handleViewDetails = (stop: (typeof schedule)[number]) => {
+  const handleViewDetails = (
+    stop: Stop,
+  ) => {
     if (stop.status !== "DONE") {
       return;
     }
 
-    void navigate("/driver/completed-route", {
-      state: {
-        stop,
+    void navigate(
+      "/driver/completed-route",
+      {
+        state: { stop },
       },
-    });
+    );
   };
 
+  const collectionCount =
+    assignedRoute
+      ? assignedRoute.stops
+      : stops.length;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden h-full">
-      {/* Header */}
-      <div className="px-[18px] pt-[18px] pb-3 border-b border-gray-100">
-        <div className="text-[10px] font-bold tracking-wide text-green-700 uppercase mb-1">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white">
+      {/* HEADER */}
+      <div className="border-b border-gray-100 px-[18px] pb-3 pt-[18px]">
+        <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-green-700">
           Assigned Tasks
         </div>
 
         <button
           type="button"
-          className="text-lg font-extrabold mb-1 cursor-pointer text-left"
+          className="mb-1 cursor-pointer text-left text-lg font-extrabold"
           onClick={onDashboard}
           title="Back to Dashboard"
         >
-          Daily Schedule
+          {assignedRoute
+            ? `Route ${String(
+                assignedRoute.routeNumber,
+              ).padStart(
+                3,
+                "0",
+              )} — ${assignedRoute.name}`
+            : "Daily Schedule"}
         </button>
 
-        <div className="text-xs opacity-55">
-          14 Collections • 3.2 tons est.
+        {assignedRoute && (
+          <>
+            <div className="text-xs text-gray-500">
+              {assignedRoute.barangay}
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-500">
+              <span>
+                {assignedRoute.collectionDay}
+              </span>
+
+              <span>•</span>
+
+              <span>
+                {assignedRoute.startTime}
+              </span>
+
+              <span>•</span>
+
+              <span>
+                {assignedRoute.routeType}
+              </span>
+            </div>
+          </>
+        )}
+
+        <div className="mt-2 text-xs opacity-55">
+          {collectionCount}{" "}
+          Collection
+          {collectionCount !== 1
+            ? "s"
+            : ""}
         </div>
       </div>
 
-      {/* Task List */}
-      <div className="px-3.5 py-2.5 flex flex-col gap-2.5 overflow-y-auto flex-1">
-        {schedule.map((stop) => (
-          <MiniTaskCard
-            key={stop.stopNumber}
-            stop={stop}
-            isClickable={stop.status === "DONE"}
-            onClick={() => handleViewDetails(stop)}
-          />
-        ))}
-      </div>
-
-      {/* Actions */}
-      <div className="mt-auto p-3.5 flex flex-col gap-2.5 border-t border-gray-100">
-        {/* Complete Button */}
-        <button
-          type="button"
-          onClick={onComplete}
-          className="bg-green-400 border-none px-4 py-3.5 rounded-xl font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
-        >
-          <Icon icon={icons.check} />
-          Mark as Complete
-        </button>
-
-        {/* Report Button */}
-        <button
-          type="button"
-          onClick={onReportIssue}
-          className="bg-red-600 border-none px-4 py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
-        >
-          <Icon icon={icons.document} />
-          Report Issue at this Stop
-        </button>
+      {/* TASKS */}
+      <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-3.5 py-2.5">
+        {stops.length > 0 ? (
+          stops.map((stop) => (
+            <MiniTaskCard
+              key={stop.stopNumber}
+              stop={stop}
+              isClickable={
+                stop.status === "DONE"
+              }
+              onClick={() =>
+                handleViewDetails(
+                  stop,
+                )
+              }
+            />
+          ))
+        ) : (
+          <div className="py-6 text-center text-sm text-gray-500">
+            {assignedRoute
+              ? "No collection stop details available yet."
+              : "No assigned collection stops."}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export default AssignedTasksPanel;
+

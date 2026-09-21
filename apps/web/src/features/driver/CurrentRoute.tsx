@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "@/stores/auth-store";
+import { env } from "@/lib/env";
+import { getDistanceInMeters } from "@/lib/location";
 
 import { Sidebar } from "./shared/Sidebar";
 import { Header } from "./shared/Header";
@@ -9,173 +12,148 @@ import type { SettingsTab } from "./shared/Header";
 import { BottomNav } from "./shared/BottomNav";
 import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
-import { layout, mainWrap } from "./shared/layoutStyles";
+import {
+  layout,
+  mainWrap,
+} from "./shared/layoutStyles";
 
 import RouteMapSection from "./current-route/components/RouteMapSection";
 import AssignedTasksPanel from "./current-route/components/AssignedTasksPanel";
 import DestinationCard from "./current-route/components/DestinationCard";
 import RouteOverviewCard from "./current-route/components/RouteOverviewCard";
+import DriverRouteModals from "./current-route/components/DriverRouteModals";
 
 import { useDriverGPS } from "./hooks/useDriverGPS";
 
-import { getDistanceInMeters } from "@/lib/location";
+import {
+  useAssignedDriverRoute,
+} from "./current-route/hooks/useAssignedDriverRoute";
 
-function LogoutConfirmModal({
-  onCancel,
-  onConfirm,
-}: {
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm flex flex-col gap-4">
-        <div>
-          <div className="text-base font-bold text-slate-900">
-            Log Out?
-          </div>
+import {
+  useDriverLocationSync,
+} from "./current-route/hooks/useDriverLocationSync";
 
-          <div className="text-xs opacity-55">
-            You'll need to sign in again to access your route.
-          </div>
-        </div>
-
-        <div className="flex gap-2.5">
-          <button
-            className="flex-1 bg-white border border-gray-200 text-slate-700 rounded-xl py-2.5 font-bold text-sm"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-
-          <button
-            className="flex-1 bg-red-600 text-white rounded-xl py-2.5 font-bold text-sm"
-            onClick={onConfirm}
-          >
-            Log Out
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type Stop = {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  status: "pending" | "active" | "completed";
-};
+import {
+  useLocationPermission,
+} from "./current-route/hooks/useLocationPermission";
 
 export function CurrentRoute() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
-  const clearSession = useAuthStore(
-    (state) => state.clear
+  const clearSession =
+    useAuthStore(
+      (state) => state.clear,
+    );
+
+  const accessToken =
+    useAuthStore(
+      (state) =>
+        state.accessToken,
+    );
+
+  const isMobile =
+    useIsMobile();
+
+  const [navOpen, setNavOpen] =
+    useState(false);
+
+  const [
+    confirmOpen,
+    setConfirmOpen,
+  ] = useState(false);
+
+  const [
+    startRouteConfirmOpen,
+    setStartRouteConfirmOpen,
+  ] = useState(false);
+
+  const [
+    tooFarModalOpen,
+    setTooFarModalOpen,
+  ] = useState(false);
+
+  const [
+    distanceRemaining,
+    setDistanceRemaining,
+  ] = useState(0);
+
+  const [
+    isCollecting,
+    setIsCollecting,
+  ] = useState(
+    () =>
+      localStorage.getItem(
+        "driverRouteStarted",
+      ) === "true",
   );
 
-  const isMobile = useIsMobile();
+  const {
+    locationExplanationOpen,
+    setLocationExplanationOpen,
+    locationPermissionOpen,
+    setLocationPermissionOpen,
+    locationPermissionGranted,
+    requestLocationPermission,
+  } =
+    useLocationPermission();
 
-const [navOpen, setNavOpen] = useState(false);
-const [confirmOpen, setConfirmOpen] = useState(false);
-const [startRouteConfirmOpen, setStartRouteConfirmOpen] = useState(false);
+  const {
+    truckId,
+    assignedRoute,
+    stops,
+  } =
+    useAssignedDriverRoute(
+      accessToken,
+    );
 
-const [locationExplanationOpen, setLocationExplanationOpen] =
-  useState(true);
+  const {
+    gpsPos,
+    heading,
+  } = useDriverGPS({
+    enabled: isCollecting,
+  });
 
-const [locationPermissionOpen, setLocationPermissionOpen] =
-  useState(false);
+  useDriverLocationSync({
+    isCollecting,
+    gpsPos,
+    truckId,
+    accessToken,
+  });
 
-const [locationPermissionGranted, setLocationPermissionGranted] =
-  useState(false);
+  const routePath: [
+    number,
+    number,
+  ][] = [];
 
-const [tooFarModalOpen, setTooFarModalOpen] = useState(false);
-const [distanceRemaining, setDistanceRemaining] = useState(0);
-
-  useEffect(() => {
-  const checkLocationPermission = async () => {
-    if (!("permissions" in navigator)) return;
-
-    try {
-      const permission = await navigator.permissions.query({
-        name: "geolocation",
-      });
-
-      if (permission.state === "granted") {
-        setLocationPermissionGranted(true);
-        setLocationExplanationOpen(false);
-        setLocationPermissionOpen(false);
-      }
-
-      permission.onchange = () => {
-        if (permission.state === "granted") {
-          setLocationPermissionGranted(true);
-          setLocationExplanationOpen(false);
-          setLocationPermissionOpen(false);
-        } else {
-          setLocationPermissionGranted(false);
-        }
-      };
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  void checkLocationPermission();
-}, []);
-
-  const [stops] = useState<Stop[]>([
-    {
-      id: "1",
-      name: "Collection Point 1",
-      lat: 14.3845,
-      lng: 120.8850,
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Collection Point 2",
-      lat: 14.386,
-      lng: 120.887,
-      status: "pending",
-    },
-  ]);
-
-const [isPlanning] = useState(false);
-
-const [isCollecting, setIsCollecting] = useState(
-  () => localStorage.getItem("driverRouteStarted") === "true"
-);
-
-const {
-  gpsPos,
-  heading,
-} = useDriverGPS({
-  enabled: isCollecting,
-});
-
-
-  const routePath: [number, number][] = [];
-
-  const goTo = (key: string) => {
+  const goTo = (
+    key: string,
+  ) => {
     setNavOpen(false);
 
     switch (key) {
       case "dashboard":
-        void navigate("/driver");
+        void navigate(
+          "/driver",
+        );
         break;
 
       case "route":
-        void navigate("/driver/route");
+        void navigate(
+          "/driver/route",
+        );
         break;
 
       case "collections":
-        void navigate("/driver/collections");
+        void navigate(
+          "/driver/collections",
+        );
         break;
 
       case "report":
-        void navigate("/driver/report");
+        void navigate(
+          "/driver/report",
+        );
         break;
 
       default:
@@ -184,96 +162,179 @@ const {
   };
 
   const goToSettingsTab = (
-    tab: SettingsTab
+    tab: SettingsTab,
   ) => {
-    void navigate(`/driver/settings?tab=${tab}`);
+    void navigate(
+      `/driver/settings?tab=${tab}`,
+    );
   };
 
-  const handleLogout = () => {
-    clearSession();
-    void navigate("/login");
-  };
-
-  const handleStartRoute = () => {
-    setStartRouteConfirmOpen(true);
-  };
-
-    const confirmStartRoute = () => {
-     setStartRouteConfirmOpen(false);
-     setIsCollecting(true);
-
-     localStorage.setItem("driverRouteStarted", "true");
-};
-
- const requestLocationPermission = () => {
-  if (!navigator.geolocation) {
-    alert("Geolocation is not supported by this browser.");
-    return;
-  }
-
-  navigator.geolocation.getCurrentPosition(
+  const handleLogout =
     () => {
-     
-      setLocationPermissionGranted(true);
-      setLocationPermissionOpen(false);
-      setLocationExplanationOpen(false);
-    },
-    (error) => {
-      console.error("Location error:", error);
+      clearSession();
+      void navigate(
+        "/login",
+      );
+    };
 
-      switch (error.code) {
-        case error.PERMISSION_DENIED:
-          alert(
-            "Location permission was denied. Please enable it in your browser settings."
-          );
-          break;
+  const handleStartRoute =
+    () => {
+      setStartRouteConfirmOpen(
+        true,
+      );
+    };
 
-        case error.POSITION_UNAVAILABLE:
-          alert(
-            "Unable to get your location. Check your GPS/network."
-          );
-          break;
-
-        case error.TIMEOUT:
-          alert(
-            "Location request timed out. Try again."
-          );
-          break;
-
-        default:
-          alert("Unknown location error.");
+  const confirmStartRoute =
+    async () => {
+      if (!truckId) {
+        console.error(
+          "Cannot start route: no assigned truck.",
+        );
+        return;
       }
 
-      setLocationPermissionGranted(false);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    }
-  );
-};
+      try {
+        const response =
+          await fetch(
+            `${env.VITE_API_URL}/trucks/${truckId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type":
+                  "application/json",
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify(
+                {
+                  status:
+                    "Active",
+                },
+              ),
+            },
+          );
+
+        const json =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !json.success
+        ) {
+          console.error(
+            "Failed to start route:",
+            json,
+          );
+          return;
+        }
+
+        setStartRouteConfirmOpen(
+          false,
+        );
+
+        setIsCollecting(
+          true,
+        );
+
+        localStorage.setItem(
+          "driverRouteStarted",
+          "true",
+        );
+      } catch (error) {
+        console.error(
+          "Failed to start route:",
+          error,
+        );
+      }
+    };
+
+  const activeStop =
+    stops.find(
+      (stop) =>
+        stop.status ===
+        "NOW",
+    ) ?? null;
+
+  const handleComplete =
+    () => {
+      if (!gpsPos) {
+        console.warn(
+          "No GPS position available.",
+        );
+        return;
+      }
+
+      if (!activeStop) {
+        console.warn(
+          "No active stop found.",
+        );
+        return;
+      }
+
+      const distance =
+        getDistanceInMeters(
+          gpsPos[0],
+          gpsPos[1],
+          activeStop.lat,
+          activeStop.lng,
+        );
+
+      if (distance > 50) {
+        setDistanceRemaining(
+          Math.round(
+            distance,
+          ),
+        );
+
+        setTooFarModalOpen(
+          true,
+        );
+
+        return;
+      }
+
+      /*
+       * Stop completion will be
+       * connected to the database
+       * in the next step.
+       */
+    };
 
   return (
-    <div className={layout}>
+    <div
+      className={layout}
+    >
       <Sidebar
         activeKey="route"
         isMobile={isMobile}
         navOpen={navOpen}
         onNavigate={goTo}
-        onClose={() => setNavOpen(false)}
+        onClose={() =>
+          setNavOpen(
+            false,
+          )
+        }
       />
 
-      <div className={mainWrap}>
+      <div
+        className={mainWrap}
+      >
         <Header
           isMobile={isMobile}
           title="Route & Assigned Tasks"
           onToggleNav={() =>
-            setNavOpen((v) => !v)
+            setNavOpen(
+              (value) =>
+                !value,
+            )
           }
-          onSelectSettingsTab={goToSettingsTab}
+          onSelectSettingsTab={
+            goToSettingsTab
+          }
           onLogout={() =>
-            setConfirmOpen(true)
+            setConfirmOpen(
+              true,
+            )
           }
         />
 
@@ -288,7 +349,7 @@ const {
             className={
               isMobile
                 ? "flex flex-col gap-4"
-                : "grid gap-4 items-start"
+                : "grid items-start gap-4"
             }
             style={
               !isMobile
@@ -300,16 +361,29 @@ const {
             }
           >
             {/* LEFT SIDE */}
-
-            <div className="flex flex-col gap-4 min-w-0">
+            <div className="flex min-w-0 flex-col gap-4">
               <RouteMapSection
                 gpsPos={gpsPos}
                 heading={heading}
                 stops={stops}
-                isPlanning={isPlanning}
-                isCollecting={isCollecting}
-                routePath={routePath}
-                locationPermissionGranted={locationPermissionGranted}
+                isPlanning={false}
+                isCollecting={
+                  isCollecting
+                }
+                routePath={
+                  routePath
+                }
+                locationPermissionGranted={
+                  locationPermissionGranted
+                }
+                onMarkComplete={
+                  handleComplete
+                }
+                onReportIssue={() =>
+                  void navigate(
+                    "/driver/report",
+                  )
+                }
               />
 
               <div
@@ -319,68 +393,49 @@ const {
                     : "grid grid-cols-2 gap-4"
                 }
               >
-                <RouteOverviewCard />
+                <RouteOverviewCard
+                  stops={stops}
+                  gpsPos={gpsPos}
+                />
 
-                <DestinationCard />
+                <DestinationCard
+                  stop={
+                    activeStop
+                  }
+                />
               </div>
             </div>
 
             {/* RIGHT SIDE */}
-
             <AssignedTasksPanel
-              onDashboard={() => {
-                void navigate("/driver");
-              }}
-              onComplete={() => {
-  if (!gpsPos) {
-    console.warn("No GPS position available.");
-    return;
-  }
-
-  const activeStop = stops.find(
-    (stop) => stop.status === "active"
-  );
-
-  if (!activeStop) {
-    console.warn("No active stop found.");
-    return;
-  }
-
-  const distance = getDistanceInMeters(
-    gpsPos[0], // latitude ✅
-    gpsPos[1], // longitude ✅
-    activeStop.lat,
-    activeStop.lng
-  );
-
-  if (distance > 50) {
-    setDistanceRemaining(Math.round(distance));
-    setTooFarModalOpen(true);
-    return;
-  }
-
-  // Driver is close enough
-
-}}
-              onReportIssue={() =>
-                void navigate("/driver/report")
+              stops={stops}
+              assignedRoute={
+                assignedRoute
               }
+              onDashboard={() => {
+                void navigate(
+                  "/driver",
+                );
+              }}
             />
 
-            {locationPermissionGranted && !isCollecting && (
-             <button
-                type="button"
-                onClick={handleStartRoute}
-                className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700"
-              >
-                Start Route
-              </button>
-            )}
+            {locationPermissionGranted &&
+              !isCollecting && (
+                <button
+                  type="button"
+                  onClick={
+                    handleStartRoute
+                  }
+                  className="fixed bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg hover:bg-emerald-700"
+                >
+                  Start Route
+                </button>
+              )}
           </div>
         </main>
       </div>
 
-            {isMobile && (
+      {isMobile && (
         <BottomNav
           activeKey="route"
           onNavigate={goTo}
@@ -393,128 +448,59 @@ const {
         />
       )}
 
-      {locationExplanationOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">
-              Location Access
-            </h2>
+      <DriverRouteModals
+        locationExplanationOpen={
+          locationExplanationOpen
+        }
+        locationPermissionOpen={
+          locationPermissionOpen
+        }
+        startRouteConfirmOpen={
+          startRouteConfirmOpen
+        }
+        confirmOpen={
+          confirmOpen
+        }
+        tooFarModalOpen={
+          tooFarModalOpen
+        }
+        distanceRemaining={
+          distanceRemaining
+        }
+        onLocationExplanationContinue={() => {
+          setLocationExplanationOpen(
+            false,
+          );
 
-            <p className="mt-3 text-sm leading-5 text-slate-500">
-              Bazoora needs access to your location while you are using
-              the driver route feature. Your location helps the app show
-              your position on the route map and provide accurate route
-              tracking.
-            </p>
-
-            <p className="mt-3 text-sm leading-5 text-slate-500">
-              Please understand that location access is required before
-              you can view and use the route map.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setLocationExplanationOpen(false);
-                setLocationPermissionOpen(true);
-              }}
-              className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700"
-            >
-              I Understand
-            </button>
-          </div>
-        </div>
-      )}
-
-      {locationPermissionOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-lg font-bold text-slate-900">
-              Allow Location Access
-            </h2>
-
-            <p className="mt-3 text-sm leading-5 text-slate-500">
-              Allow Bazoora to access your location so your position can
-              be displayed on the route map.
-            </p>
-
-            <button
-              type="button"
-              onClick={requestLocationPermission}
-              className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white hover:bg-emerald-700"
-            >
-              Allow Location Access
-            </button>
-          </div>
-        </div>
-      )}
-
-    {startRouteConfirmOpen && (
-      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 px-4">
-        <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-          <h2 className="text-lg font-bold text-slate-900">
-            Start Route?
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-500">
-            Starting the route will enable GPS tracking and allow Bazoora
-            to provide your route directions and estimated arrival time.
-          </p>
-
-          <div className="mt-6 flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStartRouteConfirmOpen(false)}
-              className="flex-1 rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-slate-700"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={confirmStartRoute}
-              className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white"
-            >
-              Start Route
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-
-      {confirmOpen && (
-        <LogoutConfirmModal
-          onCancel={() =>
-            setConfirmOpen(false)
-          }
-          onConfirm={handleLogout}
-        />
-      )}
-
-      {tooFarModalOpen && (
-  <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 px-4">
-    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-      <h2 className="text-lg font-bold">
-        You're not at the collection point
-      </h2>
-
-      <p className="mt-3 text-sm text-slate-500">
-        Move closer before marking this stop as complete.
-      </p>
-
-      <p className="mt-2 text-sm font-medium">
-        Distance remaining: {distanceRemaining} m
-      </p>
-
-      <button
-        className="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-white"
-        onClick={() => setTooFarModalOpen(false)}
-      >
-        OK
-      </button>
-    </div>
-  </div>
-)}
+          setLocationPermissionOpen(
+            true,
+          );
+        }}
+        onRequestLocation={
+          requestLocationPermission
+        }
+        onStartRouteCancel={() =>
+          setStartRouteConfirmOpen(
+            false,
+          )
+        }
+        onStartRouteConfirm={
+          confirmStartRoute
+        }
+        onLogoutCancel={() =>
+          setConfirmOpen(
+            false,
+          )
+        }
+        onLogoutConfirm={
+          handleLogout
+        }
+        onTooFarClose={() =>
+          setTooFarModalOpen(
+            false,
+          )
+        }
+      />
     </div>
   );
 }
