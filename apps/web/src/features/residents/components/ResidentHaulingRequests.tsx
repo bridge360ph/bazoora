@@ -41,7 +41,7 @@ export default function ResidentHaulingRequests(): React.ReactNode {
   const [activeTab, setActiveTab] = useState<RequestTab>("new");
 
   return (
-    <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-[#f5f6f5] p-5">
+    <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
       <div className="mx-auto flex h-full w-full max-w-350 flex-col">
         <section
           className={`rounded-xl border border-gray-200 bg-white shadow-sm ${
@@ -106,7 +106,7 @@ function NewRequest(): React.ReactNode {
           Request ID
         </label>
 
-        <div className="mt-1.5 flex h-9 items-center rounded-md border border-[#dce9e2] bg-[#f8fbf9] px-3 text-xs text-[#5d806e]">
+        <div className="mt-1.5 flex h-9 items-center rounded-md border border-surface-border bg-[#f8fbf9] px-3 text-xs text-surface-muted">
           REQ-20260413-001 (auto)
         </div>
       </div>
@@ -121,9 +121,9 @@ function NewRequest(): React.ReactNode {
           type="button"
           className="mt-1.5 flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white transition hover:bg-gray-50"
         >
-          <Camera className="h-6 w-6 text-[#5d806e]" />
+          <Camera className="h-6 w-6 text-surface-muted" />
 
-          <span className="mt-2 text-[10px] font-medium text-[#5d806e]">
+          <span className="mt-2 text-[10px] font-medium text-surface-muted">
             Tap to upload/capture issue photo
           </span>
 
@@ -139,7 +139,7 @@ function NewRequest(): React.ReactNode {
           Waste Type
         </label>
 
-        <div className="mt-1.5 flex h-9 items-center justify-between rounded-md border border-[#dce9e2] bg-white px-3 text-xs text-[#5d806e]">
+        <div className="mt-1.5 flex h-9 items-center justify-between rounded-md border border-surface-border bg-white px-3 text-xs text-surface-muted">
           <span>Select type...</span>
           <ChevronDown className="h-4 w-4" />
         </div>
@@ -153,7 +153,7 @@ function NewRequest(): React.ReactNode {
 
         <textarea
           placeholder="Describe your request..."
-          className="mt-1.5 h-25 w-full resize-none rounded-md border border-[#dce9e2] bg-white px-3 py-2 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
+          className="mt-1.5 h-25 w-full resize-none rounded-md border border-surface-border bg-white px-3 py-2 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
         />
       </div>
 
