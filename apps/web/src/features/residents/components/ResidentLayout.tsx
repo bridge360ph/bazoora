@@ -131,14 +131,14 @@ export default function ResidentLayout() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-[#0a1811] border-b border-[#0a1811] px-8 flex items-center justify-between shrink-0">
+        <header className="relative h-16 bg-[#0a1811] border-b border-[#0a1811] px-8 flex items-center justify-between shrink-0">
           <h2 className="absolute left-1/2 -translate-x-1/2 font-inter text-base font-bold text-white!">
             {activeLabel}
           </h2>
           <div className="ml-auto flex items-center gap-4">
             <NavLink
               to="/resident/notifications"
-              className="relative p-2 rounded-lg hover:bg-gray-50 text-gray-500 hover:text-gray-700 dark:hover:bg-slate-800 dark:text-gray-400 dark:hover:text-white cursor-pointer"
+              className="relative p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer"
               aria-label="Notifications"
             >
               <Bell className="w-4 h-4" />

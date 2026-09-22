@@ -59,7 +59,7 @@ export default function ResidentSchedule(): React.ReactNode {
   ];
 
   return (
-    <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-[#f5f6f5] p-5">
+    <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
       <div className="mx-auto w-full max-w-350">
         {/* Next scheduled collection */}
         <section className="rounded-xl bg-brand-dark px-6 py-5 text-white shadow-sm">
