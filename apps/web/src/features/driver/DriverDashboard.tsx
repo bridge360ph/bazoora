@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "@/stores/auth-store";
 
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
 import { Header } from "./shared/Header";
+import type { SettingsTab } from "./shared/Header";
 import { BottomNav } from "./shared/BottomNav";
 import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
@@ -22,99 +24,75 @@ import {
   pillGreenSmall,
 } from "./shared/layoutStyles";
 
-/* ---------------- DATA ---------------- */
-
-const routeStops = [
-  {
-    name: "Sitio Malakas, Brgy. San Rafael",
-    date: "OCT 24, 2023 • 14:22",
-    subtitle: "12 households • Residential Area",
-    status: "COMPLETED",
-  },
-  {
-    name: "Purok 7, Brgy. San Rafael",
-    date: "OCT 24, 2023 • 14:22",
-    subtitle: "Industrial Park • Warehouse A",
-    status: "REPORTED",
-  },
-  {
-    name: "Purok 12, Brgy. Mangahan",
-    date: "OCT 24, 2023 • 14:22",
-    subtitle: "8 households • Commercial Strip",
-    status: "PENDING",
-  },
-  {
-    name: "Sitio Pag-asa, Brgy. Biela",
-    date: "OCT 24, 2023 • 14:22",
-    subtitle: "20 households • Village Block",
-    status: "PENDING",
-  },
-];
-
-const stripColor: Record<string, string> = {
-  COMPLETED: "bg-green-500",
-  REPORTED: "bg-red-500",
-  PENDING: "bg-amber-500",
-};
-
-const pillClass: Record<string, string> = {
-  COMPLETED: "bg-green-100 text-green-800",
-  REPORTED: "bg-red-100 text-red-800",
-  PENDING: "bg-orange-100 text-orange-800",
-};
-
-/* ---------------- COMPONENT ---------------- */
+import { useDriverDashboardData } from "./hooks/useDriverDashboardData";
+import DashboardStopItem from "./components/DashboardStopItem";
+import DriverLogoutConfirmModal from "./components/DriverLogoutConfirmModal";
 
 function DriverDashboard() {
   const navigate = useNavigate();
-
-  const completed = 8;
-  const total = 14;
-  const progress = (completed / total) * 100;
-
-  const activeKey = "dashboard";
-  const activeMobileKey = "dashboard";
-
+  const clearSession = useAuthStore((state) => state.clear);
   const isMobile = useIsMobile();
+
   const [navOpen, setNavOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const {
+    assignedRoute,
+    stops,
+    truck,
+    truckLoading,
+    gpsActive,
+    taskToShow,
+    hasActiveTask,
+    totalStops,
+    completedCount,
+    remainingCount,
+    progress,
+  } = useDriverDashboardData();
 
   const goTo = (key: string) => {
     setNavOpen(false);
 
-    switch (key) {
-      case "route":
-        void navigate("/driver/route");
-        break;
+    const routes: Record<string, string> = {
+      dashboard: "/driver",
+      route: "/driver/route",
+      collections: "/driver/collections",
+      report: "/driver/report",
+      settings: "/driver/settings",
+    };
 
-      case "collections":
-        void navigate("/driver/collections");
-        break;
+    const path = routes[key];
 
-      case "report":
-        void navigate("/driver/report");
-        break;
-
-      case "messages":
-        void navigate("/driver/messages");
-        break;
-
-      case "settings":
-        void navigate("/driver/settings");
-        break;
-
-      case "dashboard":
-        void navigate("/driver");
-        break;
-
-      default:
-        break;
+    if (path) {
+      void navigate(path);
     }
   };
+
+  const goToSettingsTab = (tab: SettingsTab) => {
+    void navigate(`/driver/settings?tab=${tab}`);
+  };
+
+  const handleLogout = () => {
+    clearSession();
+    void navigate("/login");
+  };
+
+  const routeNumber = assignedRoute
+    ? String(assignedRoute.routeNumber).padStart(3, "0")
+    : null;
+
+  const taskLabel = hasActiveTask
+    ? "CURRENT STOP"
+    : "NEXT TASK";
+
+  const taskStatus = hasActiveTask
+    ? "IN PROGRESS"
+    : "UP NEXT";
 
   return (
     <div className={layout}>
       <Sidebar
-        activeKey={activeKey}
+        activeKey="dashboard"
         isMobile={isMobile}
         navOpen={navOpen}
         onNavigate={goTo}
@@ -125,180 +103,199 @@ function DriverDashboard() {
         <Header
           isMobile={isMobile}
           title="Dashboard"
-          onToggleNav={() => setNavOpen((v) => !v)}
-          onAvatarClick={() => goTo("settings")}
+          onToggleNav={() => setNavOpen((value) => !value)}
+          onSelectSettingsTab={goToSettingsTab}
+          onLogout={() => setConfirmOpen(true)}
         />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           <div className={isMobile ? topCardsMobile : topCards}>
             <div className={`${smallCard} ${isMobile ? "col-span-2" : ""}`}>
               <div className={smallLabel}>Today's Route</div>
-              <div className={smallValue}>Route 1</div>
+
+              <div className={smallValue}>
+                {routeNumber ? `Route ${routeNumber}` : "No Route"}
+              </div>
+
+              {assignedRoute && (
+                <div className="mt-1 truncate text-xs text-gray-500">
+                  {assignedRoute.name}
+                </div>
+              )}
             </div>
 
-            <div
-              className={`${smallCardRow} ${
-                isMobile ? "flex-col items-start gap-2" : ""
-              }`}
-            >
+            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
               <div className="min-w-0">
                 <div className={smallLabel}>Stops Completed</div>
                 <div className={smallValue}>
-                  {completed}/{total}
+                  {completedCount}/{totalStops}
                 </div>
               </div>
 
-              <div className={pillOrangeSmall}>IN PROGRESS</div>
+              <div className={pillOrangeSmall}>
+                {hasActiveTask
+                  ? "IN PROGRESS"
+                  : totalStops > 0
+                    ? "READY"
+                    : "NO TASKS"}
+              </div>
             </div>
 
-            <div
-              className={`${smallCardRow} ${
-                isMobile ? "flex-col items-start gap-2" : ""
-              }`}
-            >
+            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
               <div className="min-w-0">
                 <div className={smallLabel}>Assigned Truck</div>
-                <div className={smallValue}>BT-04</div>
+
+                <div className={smallValue}>
+                  {truckLoading
+                    ? "Loading..."
+                    : truck?.plateNumber || "No Truck"}
+                </div>
               </div>
 
-              <div className={pillGreenSmall}>ACTIVE • GPS ON</div>
+              <div
+                className={
+                  gpsActive
+                    ? pillGreenSmall
+                    : "rounded-full bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600"
+                }
+              >
+                {gpsActive
+                  ? "ACTIVE • GPS ON"
+                  : truck
+                    ? "GPS OFF"
+                    : "NO TRUCK"}
+              </div>
             </div>
           </div>
 
-          <div
-            className={
-              isMobile ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"
-            }
-          >
-            {/* CURRENT STOP */}
-
+          <div className={isMobile ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"}>
             <div
-              className="bg-[#003d1f] text-white rounded-2xl px-[22px] py-[18px] flex flex-col justify-between gap-4"
-              style={{ height: isMobile ? "auto" : 260 }}
+              className="flex flex-col justify-between gap-4 rounded-2xl bg-[#003d1f] px-[22px] py-[18px] text-white"
+              style={{ minHeight: isMobile ? "auto" : 260 }}
             >
               <div className="flex flex-col gap-2.5">
-                <div className="flex justify-between items-center">
-                  <div className="text-[13px] opacity-80">
-                    CURRENT STOP
-                  </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[13px] opacity-80">{taskLabel}</div>
 
-                  <div className="bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-xs font-bold">
-                    IN PROGRESS
+                  <div className="rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-800">
+                    {taskStatus}
                   </div>
                 </div>
 
-                <div className="text-[22px] font-extrabold leading-tight">
-                  Sitio Malaya — Stop 9
-                </div>
+                {taskToShow ? (
+                  <>
+                    <div className="text-[22px] font-extrabold leading-tight">
+                      {taskToShow.name} — Stop {taskToShow.stopNumber}
+                    </div>
 
-                <div className="opacity-85 text-[13px] leading-relaxed">
-                  Purok 3, Barangay Poblacion • Biodegradable
-                </div>
+                    <div className="text-[13px] leading-relaxed opacity-85">
+                      {taskToShow.address} • {taskToShow.barangay} •{" "}
+                      {taskToShow.wasteType}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[22px] font-extrabold leading-tight">
+                      No collection task
+                    </div>
+
+                    <div className="text-[13px] leading-relaxed opacity-85">
+                      There are no active or upcoming collection stops on
+                      this route.
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="flex flex-col gap-2.5">
-                <button className="bg-green-400 px-4 py-3.5 rounded-xl font-bold text-sm cursor-pointer flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void navigate("/driver/route")}
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-green-400 px-4 py-3.5 text-sm font-bold text-slate-900"
+                >
                   <Icon icon={icons.check} />
-                  Mark as Complete
+                  View Route
                 </button>
 
-                <button
-                  className="bg-red-600 px-4 py-3.5 rounded-xl text-white font-bold text-sm cursor-pointer flex items-center justify-center gap-2"
-                  onClick={() => goTo("route")}
-                >
-                  <Icon icon={icons.document} />
-                  Report Issue at this Stop
-                </button>
+                {taskToShow && (
+                  <button
+                    type="button"
+                    onClick={() => void navigate("/driver/report")}
+                    className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white"
+                  >
+                    <Icon icon={icons.document} />
+                    Report Issue
+                  </button>
+                )}
               </div>
             </div>
 
-
-            {/* ROUTE PROGRESS */}
-
             <div
-              className="bg-white rounded-[18px] border border-gray-200 flex flex-col overflow-hidden"
-              style={{ height: isMobile ? "auto" : 260 }}
+              className="flex flex-col overflow-hidden rounded-[18px] border border-gray-200 bg-white"
+              style={{ minHeight: isMobile ? "auto" : 260 }}
             >
-              <div className="px-[18px] pt-[18px] pb-3 bg-white border-b border-gray-100">
-                <div
-                  className="text-lg font-bold mb-3 cursor-pointer"
-                  onClick={() => goTo("route")}
+              <div className="border-b border-gray-100 px-[18px] pb-3 pt-[18px]">
+                <button
+                  type="button"
+                  onClick={() => void navigate("/driver/route")}
+                  className="mb-3 cursor-pointer text-lg font-bold"
                 >
                   Route Progress
-                </div>
+                </button>
 
-                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
                   <div
-                    className="h-full bg-blue-900"
+                    className="h-full bg-blue-900 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
 
-                <div className="flex justify-between text-[13px] mt-2">
-                  <span>{completed} Completed</span>
-                  <span>{total - completed} Remaining</span>
+                <div className="mt-2 flex justify-between text-[13px]">
+                  <span>{completedCount} Completed</span>
+                  <span>{remainingCount} Remaining</span>
                 </div>
               </div>
 
-
-              <div className="px-[18px] overflow-y-auto flex-1">
-                {routeStops.map((s, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-3 py-3.5 border-b border-gray-100"
-                  >
-                    <div
-                      className={`w-1 self-stretch rounded ${stripColor[s.status]}`}
+              <div className="flex-1 overflow-y-auto px-[18px]">
+                {stops.length > 0 ? (
+                  stops.map((stop) => (
+                    <DashboardStopItem
+                      key={stop.stopNumber}
+                      stop={stop}
+                      onDetails={() =>
+                        void navigate("/driver/route")
+                      }
                     />
-
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold opacity-45">
-                        {s.date}
-                      </div>
-
-                      <div className="font-semibold text-sm">
-                        {s.name}
-                      </div>
-
-                      <div className="text-xs opacity-60">
-                        {s.subtitle}
-                      </div>
-                    </div>
-
-
-                    <div className="flex flex-col items-end gap-1.5">
-                      <div
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${pillClass[s.status]}`}
-                      >
-                        {s.status}
-                      </div>
-
-                      <div
-                        className="text-xs font-bold opacity-70 cursor-pointer"
-                        onClick={() => goTo("route")}
-                      >
-                        Details ›
-                      </div>
-                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-gray-500">
+                    No collection stops are currently assigned.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
         </main>
       </div>
 
-
       {isMobile && (
         <BottomNav
-          activeKey={activeMobileKey}
+          activeKey="dashboard"
           onNavigate={goTo}
         />
       )}
 
       {isMobile && <Fab onNavigate={goTo} />}
+
+      {confirmOpen && (
+        <DriverLogoutConfirmModal
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={handleLogout}
+        />
+      )}
     </div>
   );
 }
 
 export default DriverDashboard;
+
