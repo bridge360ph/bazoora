@@ -8,11 +8,14 @@ import { getNextSequence } from "../lib/counter.js";
 /**
  * Get all hauling requests
  */
-export async function getHaulingRequests() {
+export async function getHaulingRequests(
+  userId?: string,
+) {
   const requests =
     await prisma.haulingRequest.findMany({
       where: {
         archived: false,
+        ...(userId && { userId }),
       },
       orderBy: {
         createdAt: "desc",

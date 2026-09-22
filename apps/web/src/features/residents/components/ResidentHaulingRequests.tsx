@@ -1,44 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Camera,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { listMyHaulingRequests } from "@/features/hauling-requests/api";
 
 type RequestTab = "new" | "history";
 
-const requestHistory = [
-  {
-    date: "APR 15, 2026 · 14:22",
-    title: "Recyclable Waste Pickup",
-    id: "REQ-20260415-278",
-    status: "ACCEPTED",
-    statusClass: "bg-emerald-100 text-emerald-700",
-    borderClass: "border-l-2 border-l-emerald-400",
-  },
-  {
-    date: "APR 14, 2026 · 09:05",
-    title: "Residual Waste Pickup",
-    id: "REQ-20260414-154",
-    status: "PENDING",
-    statusClass: "bg-orange-100 text-orange-700",
-    borderClass: "border-l-2 border-l-orange-400",
-  },
-  {
-    date: "APR 13, 2026 · 18:40",
-    title: "Biodegradable Waste Pickup",
-    id: "REQ-20260413-532",
-    status: "UNRESOLVED",
-    statusClass: "bg-red-100 text-red-700",
-    borderClass: "border-l-2 border-l-red-400",
-  },
-];
-
 export default function ResidentHaulingRequests(): React.ReactNode {
-  const [activeTab, setActiveTab] = useState<RequestTab>("new");
+  const [activeTab, setActiveTab] =
+    useState<RequestTab>("new");
+
+  const [requests, setRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+
+    listMyHaulingRequests()
+      .then(setRequests)
+      .catch((error) => {
+        console.error(
+          "Failed to load hauling requests:",
+          error,
+        );
+      });
+  }, [activeTab]);
 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
@@ -88,7 +78,7 @@ export default function ResidentHaulingRequests(): React.ReactNode {
             {activeTab === "new" ? (
               <NewRequest />
             ) : (
-              <RequestHistory />
+              <RequestHistory requests={requests} />
             )}
           </div>
         </section>
@@ -107,7 +97,7 @@ function NewRequest(): React.ReactNode {
         </label>
 
         <div className="mt-1.5 flex h-9 items-center rounded-md border border-surface-border bg-[#f8fbf9] px-3 text-xs text-surface-muted">
-          REQ-20260413-001 (auto)
+          Generated automatically
         </div>
       </div>
 
@@ -169,31 +159,35 @@ function NewRequest(): React.ReactNode {
   );
 }
 
-function RequestHistory(): React.ReactNode {
+function RequestHistory({
+  requests,
+}: {
+  requests: any[];
+}): React.ReactNode {
   return (
     <div className="px-6 pb-6 pt-5">
       <div className="space-y-3">
-        {requestHistory.map((request) => (
+        {requests.map((request) => (
           <div
-            key={request.id}
-            className={`flex min-h-20 items-center justify-between rounded-md border border-gray-200 bg-white px-5 ${request.borderClass}`}
+            key={request.requestId}
+            className="flex min-h-20 items-center justify-between rounded-md border border-gray-200 bg-white px-5"
           >
             <div className="min-w-0">
-              <p className="text-[7px] text-gray-400">{request.date}</p>
+              <p className="text-[7px] text-gray-400">
+                {new Date(request.pickupDate).toLocaleDateString()}
+              </p>
 
               <p className="mt-0.5 text-sm font-bold text-gray-800">
-                {request.title}
+                {request.wasteType}
               </p>
 
               <p className="text-[10px] text-gray-500">
-                ID: {request.id}
+                ID: {request.requestNumber}
               </p>
             </div>
 
             <div className="flex shrink-0 flex-col items-end gap-1">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[7px] font-bold ${request.statusClass}`}
-              >
+              <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[7px] font-bold text-orange-700">
                 {request.status}
               </span>
 
@@ -206,6 +200,12 @@ function RequestHistory(): React.ReactNode {
             </div>
           </div>
         ))}
+
+        {requests.length === 0 && (
+          <p className="py-8 text-center text-xs text-gray-400">
+            No hauling requests yet.
+          </p>
+        )}
       </div>
 
       {/* Pagination */}

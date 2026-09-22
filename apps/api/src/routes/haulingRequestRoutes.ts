@@ -41,6 +41,19 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
     },
   );
 
+  app.get(
+  "/me",
+  {
+    preHandler: [
+      authGuard,
+      requireRole("RESIDENT", "BUSINESS"),
+    ],
+  },
+  async (request) => {
+    return await getHaulingRequests(request.user.sub);
+  },
+);
+
   app.post(
     "/",
     {

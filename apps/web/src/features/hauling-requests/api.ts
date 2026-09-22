@@ -8,6 +8,14 @@ export async function listHaulingRequests(): Promise<PublicHaulingRequest[]> {
   return data.data;
 }
 
+export async function listMyHaulingRequests() {
+  const { data } = await apiClient.get(
+    "/hauling-requests/me",
+  );
+
+  return data.data;
+}
+
 export async function createHaulingRequest(
   input: CreateHaulingRequestInput,
 ): Promise<PublicHaulingRequest> {
