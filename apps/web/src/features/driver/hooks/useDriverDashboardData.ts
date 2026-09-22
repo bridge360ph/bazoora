@@ -4,24 +4,64 @@ import {
   useState,
 } from "react";
 
-import { env } from "@/lib/env";
 import { useAuthStore } from "@/stores/auth-store";
 
-import {
-  useAssignedDriverRoute,
-} from "../current-route/hooks/useAssignedDriverRoute";
+import type {
+  DashboardRoute,
+  DashboardStop,
+  DashboardTruck,
+} from "../driverDashboard.types";
 
-import type { Stop } from "../current-route/types";
+interface TrucksMeResponse {
+  success?: boolean;
+  data?: DashboardTruck;
+}
 
-interface DriverTruck {
-  id: string;
-  plateNumber?: string | null;
-  status?: string | null;
-  currentLocation?: {
-    lat: number;
-    lng: number;
-    timestamp?: string;
-  } | null;
+function mapStops(
+  route: DashboardRoute | null,
+): DashboardStop[] {
+  if (!route?.routeStops) {
+    return [];
+  }
+
+  return route.routeStops.map(
+    (stop, index) => {
+      const completed =
+        stop.status === "DONE" ||
+        Boolean(stop.completedAt);
+
+      const active =
+        !completed &&
+        index === 0;
+
+      return {
+        stopNumber: String(
+          stop.stopNumber,
+        ).padStart(2, "0"),
+
+        name:
+          `Collection Stop ${stop.stopNumber}`,
+
+        address:
+          stop.address,
+
+        barangay:
+          route.barangay ||
+          "Assigned Area",
+
+        wasteType:
+          route.wasteType ||
+          "Residual",
+
+        status:
+          completed
+            ? "DONE"
+            : active
+              ? "NOW"
+              : "UPCOMING",
+      };
+    },
+  );
 }
 
 export function useDriverDashboardData() {
@@ -31,136 +71,131 @@ export function useDriverDashboardData() {
         state.accessToken,
     );
 
-  const {
-    assignedRoute,
-    stops,
-  } =
-    useAssignedDriverRoute(
-      accessToken,
-    );
-
-  const [truck, setTruck] =
-    useState<DriverTruck | null>(
+  const [
+    truck,
+    setTruck,
+  ] =
+    useState<DashboardTruck | null>(
       null,
     );
 
   const [
-    truckLoading,
-    setTruckLoading,
+    loading,
+    setLoading,
   ] = useState(true);
 
   useEffect(() => {
     if (!accessToken) {
       setTruck(null);
-      setTruckLoading(false);
+      setLoading(false);
       return;
     }
 
     let cancelled = false;
 
-    const loadTruck =
-      async () => {
-        setTruckLoading(true);
+    async function loadDashboardData() {
+      setLoading(true);
 
-        try {
-          const response =
-            await fetch(
-              `${env.VITE_API_URL}/trucks/me`,
-              {
-                headers: {
-                  Authorization:
-                    `Bearer ${accessToken}`,
-                },
+      try {
+        const apiUrl =
+          import.meta.env
+            .VITE_API_URL;
+
+        const response =
+          await fetch(
+            `${apiUrl}/trucks/me`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
               },
-            );
-
-          const result =
-            (await response.json()) as {
-              success?: boolean;
-              data?: DriverTruck;
-            };
-
-          if (
-            cancelled
-          ) {
-            return;
-          }
-
-          if (
-            !response.ok ||
-            !result.success ||
-            !result.data
-          ) {
-            setTruck(null);
-            return;
-          }
-
-          setTruck(
-            result.data,
+            },
           );
-        } catch (error) {
-          if (!cancelled) {
-            console.error(
-              "Failed to load driver truck:",
-              error,
-            );
 
-            setTruck(null);
-          }
-        } finally {
-          if (!cancelled) {
-            setTruckLoading(
-              false,
-            );
-          }
+        const result =
+          (await response.json()) as TrucksMeResponse;
+
+        if (
+          cancelled
+        ) {
+          return;
         }
-      };
 
-    void loadTruck();
+        if (
+          !response.ok ||
+          !result.success ||
+          !result.data
+        ) {
+          setTruck(null);
+          return;
+        }
+
+        setTruck(
+          result.data,
+        );
+      } catch (error) {
+        if (!cancelled) {
+          console.error(
+            "Failed to load Driver Dashboard data:",
+            error,
+          );
+
+          setTruck(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadDashboardData();
 
     return () => {
       cancelled = true;
     };
   }, [accessToken]);
 
-  const completedStops =
+  const assignedRoute =
+    truck?.plannedRoute ??
+    null;
+
+  const stops =
     useMemo(
       () =>
-        stops.filter(
-          (stop) =>
-            stop.status ===
-            "DONE",
+        mapStops(
+          assignedRoute,
         ),
-      [stops],
+      [assignedRoute],
     );
+
+  const completedCount =
+    stops.filter(
+      (stop) =>
+        stop.status ===
+        "DONE",
+    ).length;
 
   const currentStop =
-    useMemo(
-      () =>
-        stops.find(
-          (stop) =>
-            stop.status ===
-            "NOW",
-        ) ?? null,
-      [stops],
-    );
+    stops.find(
+      (stop) =>
+        stop.status ===
+        "NOW",
+    ) ?? null;
 
   const nextStop =
-    useMemo(
-      () =>
-        stops.find(
-          (stop) =>
-            stop.status ===
-            "UPCOMING",
-        ) ?? null,
-      [stops],
-    );
+    stops.find(
+      (stop) =>
+        stop.status ===
+        "UPCOMING",
+    ) ?? null;
+
+  const taskToShow =
+    currentStop ??
+    nextStop;
 
   const totalStops =
     stops.length;
-
-  const completedCount =
-    completedStops.length;
 
   const remainingCount =
     Math.max(
@@ -178,49 +213,29 @@ export function useDriverDashboardData() {
         )
       : 0;
 
-  const taskToShow =
-    currentStop ??
-    nextStop;
-
-  const hasActiveTask =
-    Boolean(currentStop);
-
-  const truckStatus =
-    truck?.status
-      ?.toLowerCase() ?? "";
-
-  const gpsActive =
-    Boolean(
-      truck?.currentLocation,
-    );
-
   return {
     assignedRoute,
     stops,
-
     truck,
-    truckLoading,
-    truckStatus,
-    gpsActive,
+    loading,
 
-    completedStops,
     currentStop,
     nextStop,
     taskToShow,
-    hasActiveTask,
+    hasActiveTask:
+      Boolean(
+        currentStop,
+      ),
 
     totalStops,
     completedCount,
     remainingCount,
     progress,
+
+    gpsActive:
+      Boolean(
+        truck?.currentLocation,
+      ),
   };
 }
-
-export type DriverDashboardData =
-  ReturnType<
-    typeof useDriverDashboardData
-  >;
-
-export type DashboardStop =
-  Stop;
 

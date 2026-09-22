@@ -1,52 +1,40 @@
-import type { Stop } from "../current-route/types";
+import type { DashboardStop } from "../driverDashboard.types";
 
 interface DashboardStopItemProps {
-  stop: Stop;
+  stop: DashboardStop;
   onDetails: () => void;
 }
 
-function getStripClass(
-  status: Stop["status"],
-) {
+function getStripClass(status: DashboardStop["status"]) {
   switch (status) {
     case "DONE":
       return "bg-green-500";
-
     case "NOW":
       return "bg-orange-500";
-
     case "UPCOMING":
     default:
       return "bg-amber-500";
   }
 }
 
-function getPillClass(
-  status: Stop["status"],
-) {
+function getPillClass(status: DashboardStop["status"]) {
   switch (status) {
     case "DONE":
       return "bg-green-100 text-green-800";
-
     case "NOW":
       return "bg-orange-100 text-orange-800";
-
     case "UPCOMING":
     default:
       return "bg-amber-100 text-amber-800";
   }
 }
 
-function getStatusLabel(
-  status: Stop["status"],
-) {
+function getStatusLabel(status: DashboardStop["status"]) {
   switch (status) {
     case "DONE":
       return "COMPLETED";
-
     case "NOW":
       return "IN PROGRESS";
-
     case "UPCOMING":
     default:
       return "PENDING";
@@ -60,9 +48,7 @@ export function DashboardStopItem({
   return (
     <div className="flex items-center gap-3 border-b border-gray-100 py-3.5">
       <div
-        className={`w-1 self-stretch rounded ${getStripClass(
-          stop.status,
-        )}`}
+        className={`w-1 self-stretch rounded ${getStripClass(stop.status)}`}
       />
 
       <div className="min-w-0 flex-1">
@@ -70,9 +56,7 @@ export function DashboardStopItem({
           STOP {stop.stopNumber}
         </div>
 
-        <div className="truncate text-sm font-semibold">
-          {stop.name}
-        </div>
+        <div className="truncate text-sm font-semibold">{stop.name}</div>
 
         <div className="truncate text-xs opacity-60">
           {stop.address} • {stop.barangay}
@@ -101,4 +85,3 @@ export function DashboardStopItem({
 }
 
 export default DashboardStopItem;
-
