@@ -71,6 +71,7 @@ export const driverNavItems: NavItem[] = [
 
 export const ecoAideNavItems: NavItem[] = [
   { to: "/eco-aide/route", label: "Hauling Route" },
+  { to: "/eco-aide/collections", label: "Collections" },
 ];
 
 export const residentNavItems: NavItem[] = [
