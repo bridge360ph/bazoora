@@ -285,7 +285,7 @@ export default function EcoAideRoute(): React.ReactNode {
       <LocationPermissionModal onAllow={detectGps} />
 
       {/* MAP VIEWPORT CONTAINER WITH EXPLICIT DIMENSIONS */}
-      <div className="relative h-[50vh] w-full flex-1 lg:h-full lg:min-h-0">
+      <div className="relative h-[55vh] min-h-[400px] w-full shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
         <SmartMap
           center={mapCenter}
           zoom={15}

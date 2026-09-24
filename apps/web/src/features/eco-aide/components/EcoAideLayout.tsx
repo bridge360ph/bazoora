@@ -8,9 +8,11 @@ import {
   Settings,
   LogOut,
   Bell,
+  Archive,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { ecoAideNavItems } from "../../../routes/navigation";
+import EcoAideMobileNav from "./EcoAideMobileNav";
 
 export default function EcoAideLayout() {
   const user = useAuthStore((s) => s.user);
@@ -25,13 +27,15 @@ export default function EcoAideLayout() {
     ? `${user.firstName} ${user.lastName}`
     : "Tomas Masipag";
 
-  // Helper to map route paths to icons
+  // HELPER TO MAP ROUTE PATHS TO ICONS
   const getIcon = (label: string) => {
     switch (label) {
       case "Dashboard":
         return LayoutGrid;
       case "Hauling Route":
         return MapPin;
+      case "Collections":
+        return Archive;
       case "Tasks & Queue":
         return ClipboardList;
       case "Settings":
@@ -41,17 +45,18 @@ export default function EcoAideLayout() {
     }
   };
 
-  // Get active route label for display
-  const activeLabel = ecoAideNavItems.find(item => {
-    if (item.end) return location.pathname === item.to;
-    return location.pathname.startsWith(item.to);
-  })?.label || "Portal";
+  // GET ACTIVE ROUTE LABEL FOR DISPLAY
+  const activeLabel =
+    ecoAideNavItems.find((item) => {
+      if (item.end) return location.pathname === item.to;
+      return location.pathname.startsWith(item.to);
+    })?.label || "Portal";
 
   return (
     <div className="flex h-full w-full overflow-hidden font-sans bg-gray-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#0a1811] flex flex-col shrink-0 text-gray-300">
-        {/* Brand */}
+      {/* DESKTOP SIDEBAR */}
+      <aside className="hidden md:flex w-64 bg-[#0a1811] flex-col shrink-0 text-gray-300">
+        {/* BRAND */}
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-emerald-500 text-xl font-black">▣</span>
@@ -66,7 +71,7 @@ export default function EcoAideLayout() {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* NAVIGATION */}
         <nav className="flex-1 py-4 space-y-1">
           {ecoAideNavItems.map((item) => {
             const Icon = getIcon(item.label);
@@ -85,7 +90,11 @@ export default function EcoAideLayout() {
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className={`w-4 h-4 ${isActive ? "text-emerald-500" : "text-gray-400"}`} />
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isActive ? "text-emerald-500" : "text-gray-400"
+                      }`}
+                    />
                     <span>{item.label}</span>
                   </>
                 )}
@@ -94,13 +103,15 @@ export default function EcoAideLayout() {
           })}
         </nav>
 
-        {/* Profile Footer */}
+        {/* PROFILE FOOTER */}
         <div className="p-4 border-t border-white/5 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center font-black text-sm text-[#0a1811] shrink-0">
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-bold truncate">{userFullName}</div>
+            <div className="text-white text-xs font-bold truncate">
+              {userFullName}
+            </div>
             <div className="text-[10px] text-gray-550 truncate">Eco Aide</div>
           </div>
           <NavLink
@@ -120,10 +131,10 @@ export default function EcoAideLayout() {
         </div>
       </aside>
 
-      {/* Main Container */}
+      {/* MAIN CONTAINER */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-8 flex items-center justify-between shrink-0">
+        {/* HEADER */}
+        <header className="h-16 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 md:px-8 flex items-center justify-between shrink-0">
           <h2 className="text-sm font-black text-gray-800 dark:text-white uppercase tracking-widest">
             {activeLabel}
           </h2>
@@ -138,11 +149,14 @@ export default function EcoAideLayout() {
           </div>
         </header>
 
-        {/* Content Panel */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        {/* CONTENT PANEL */}
+        <div className="flex-1 overflow-hidden flex flex-col pb-16 md:pb-0">
           <Outlet />
         </div>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <EcoAideMobileNav />
     </div>
   );
 }
