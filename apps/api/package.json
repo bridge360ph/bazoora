@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:super-admin": "tsx src/scripts/seedSuperAdmin.ts",
-    "seed:eco-aide": "tsx src/scripts/seedEcoAide.ts"
+    "seed:eco-aide": "tsx src/scripts/seedEcoAide.ts",
+    "seed:resident": "tsx src/scripts/seedResident.ts"
   },
   "keywords": [],
   "author": "",
