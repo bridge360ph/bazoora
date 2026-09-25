@@ -530,10 +530,31 @@ function RequestHistory({
   requests: HaulingRequest[];
   onSelectRequest: (request: HaulingRequest) => void;
 }): React.ReactNode {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [slidingDirection, setSlideDirection] = useState<
+    "left" | "right"
+  >("left");
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(
+    requests.length / itemsPerPage,
+  );
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedRequests = requests.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
   return (
     <div className="px-6 pb-6 pt-5">
-      <div className="space-y-3">
-        {requests.map((request) => (
+      <div 
+        key={currentPage}
+        className={`space-y-3 ${
+          slidingDirection === "left"
+            ? "page-slide-left"
+            : "page-slide-right"
+          }`}
+        >
+        {paginatedRequests.map((request) => (
           <div
             key={request.requestId}
             className="flex min-h-20 items-center justify-between rounded-md border border-gray-200 bg-white px-5"
@@ -587,6 +608,12 @@ function RequestHistory({
       <div className="mt-3 flex items-center justify-center gap-4">
         <button
           type="button"
+          onClick={() => {
+            setSlideDirection("right");
+            setCurrentPage((page) =>
+              Math.min(page - 1, 1),
+            );
+          }}
           className="text-gray-500 hover:text-gray-800"
           aria-label="Previous page"
         >
@@ -594,16 +621,24 @@ function RequestHistory({
         </button>
 
         <span className="flex h-7 w-7 items-center justify-center bg-blue-100 text-xs text-blue-700">
-          1
+          {currentPage}
         </span>
 
         <button
           type="button"
+          onClick={() => {
+            setSlideDirection("left");
+            setCurrentPage((page) =>
+              Math.min(page + 1, totalPages),
+            );
+          }}
+            
           className="text-gray-500 hover:text-gray-800"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
+
       </div>
     </div>
   );
