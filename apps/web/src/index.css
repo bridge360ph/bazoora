@@ -28,9 +28,40 @@
   --color-surface-muted: #5d806e; /* Muted green body text on resident surfaces */
 }
 
-/* Slide animation for sidebar navigation */
+/* Slide animation for residents */
 .report-slide-in {
   animation: report-slide-in 300ms ease-out;
+}
+@keyframes pageSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pageSlideRight {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.page-slide-left {
+  animation: pageSlideLeft 0.3s ease-out;
+}
+
+.page-slide-right {
+  animation: pageSlideRight 0.3s ease-out;
 }
 
 @keyframes report-slide-in {

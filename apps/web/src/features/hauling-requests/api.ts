@@ -1,5 +1,9 @@
 import { apiClient } from "@/lib/api-client";
-import type { CreateHaulingRequestInput, PublicHaulingRequest } from "./schemas";
+import type {
+  CreateHaulingRequestInput,
+  HaulingRequest,
+} from "@bazoora/shared";
+import type { PublicHaulingRequest } from "./schemas";
 
 export async function listHaulingRequests(): Promise<PublicHaulingRequest[]> {
   const { data } = await apiClient.get<{ success: boolean; data: PublicHaulingRequest[] }>(
@@ -8,12 +12,12 @@ export async function listHaulingRequests(): Promise<PublicHaulingRequest[]> {
   return data.data;
 }
 
-export async function listMyHaulingRequests() {
-  const { data } = await apiClient.get(
+export async function listMyHaulingRequests(): Promise<HaulingRequest[]> {
+  const { data } = await apiClient.get<HaulingRequest[]>(
     "/hauling-requests/me",
   );
 
-  return data.data;
+  return data;
 }
 
 export async function createHaulingRequest(
@@ -24,6 +28,18 @@ export async function createHaulingRequest(
     input,
   );
   return data.data;
+}
+
+export async function createResidentHaulingRequest(
+  input: CreateHaulingRequestInput,
+): Promise<HaulingRequest> {
+  const { data } =
+    await apiClient.post<HaulingRequest>(
+      "/hauling-requests",
+      input,
+    );
+
+  return data;
 }
 
 // fix: update input type to accept all updatable fields, not just status
