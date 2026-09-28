@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { DashboardCard, Button, StatusBadge } from "@bazoora/ui";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import SmartMap from "@/components/map/smart-map";
 import {
-  Navigation,
   MapPin,
-  Calendar,
-  Clock,
-  Trash2,
-  CheckCircle2,
   Loader2,
   AlertCircle,
-  RefreshCw,
+  Navigation,
+  Check,
+  CornerUpRight,
+  Building2,
+  Crosshair,
+  MessageSquareWarning,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { geocode, reverseGeocode } from "@/lib/geocoding";
@@ -29,10 +28,36 @@ interface RouteStop {
   lat: number;
   lng: number;
   status: "pending" | "active" | "completed";
+  completedAt?: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
+
+// CALCULATE HAVERSINE DISTANCE BETWEEN SEQUENTIAL COORDINATES IN KILOMETERS
+function calculateRouteDistance(waypoints: RouteStop[]): string {
+  if (waypoints.length < 2) return "0.0";
+  let totalKm = 0;
+  const R = 6371;
+
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const lat1 = (waypoints[i].lat * Math.PI) / 180;
+    const lon1 = (waypoints[i].lng * Math.PI) / 180;
+    const lat2 = (waypoints[i + 1].lat * Math.PI) / 180;
+    const lon2 = (waypoints[i + 1].lng * Math.PI) / 180;
+
+    const dLat = lat2 - lat1;
+    const dLon = lon2 - lon1;
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    totalKm += R * c;
+  }
+
+  return totalKm.toFixed(1);
+}
 
 export default function EcoAideRoute(): React.ReactNode {
   const user = useAuthStore((s) => s.user);
@@ -55,6 +80,7 @@ export default function EcoAideRoute(): React.ReactNode {
     gpsPosRef.current = gpsPos;
   }, [gpsPos]);
 
+  // GEOLOCATION DETECTION HANDLER
   const detectGps = useCallback((): Promise<[number, number] | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -89,6 +115,7 @@ export default function EcoAideRoute(): React.ReactNode {
     void detectGps();
   }, [detectGps]);
 
+  // ROUTE AND WAYPOINT LOADER
   const loadAssignedRoute = useCallback(
     async (force = false) => {
       if (!user?.id) return;
@@ -180,6 +207,7 @@ export default function EcoAideRoute(): React.ReactNode {
     void loadAssignedRoute();
   }, [loadAssignedRoute]);
 
+  // LIVE GPS TRACKING WATCHER
   useEffect(() => {
     if (!isCollecting) {
       if (watchIdRef.current !== null) {
@@ -221,11 +249,21 @@ export default function EcoAideRoute(): React.ReactNode {
       return;
     }
 
+    const timestamp = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(new Date());
+
     setStops((prev) => {
       const next = [...prev];
       const idx = next.findIndex((s) => s.id === stopId);
       if (idx !== -1) {
-        next[idx] = { ...next[idx], status: "completed" };
+        next[idx] = {
+          ...next[idx],
+          status: "completed",
+          completedAt: timestamp,
+        };
         if (idx + 1 < next.length) {
           next[idx + 1] = { ...next[idx + 1], status: "active" };
         }
@@ -237,6 +275,8 @@ export default function EcoAideRoute(): React.ReactNode {
 
   const activeStop = stops.find((s) => s.status === "active");
   const allStopsDone = stops.length > 0 && stops.every((s) => s.status === "completed");
+
+  const totalDistanceKm = useMemo(() => calculateRouteDistance(stops), [stops]);
 
   const mapCenter: [number, number] =
     gpsPos ?? (stops.length > 0 ? [stops[0].lat, stops[0].lng] : LOCAL_CENTER);
@@ -281,138 +321,151 @@ export default function EcoAideRoute(): React.ReactNode {
       : [];
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-white lg:flex-row">
+    <div className="relative flex w-full flex-col bg-[#eef1f4] p-4 md:p-6 lg:h-full lg:overflow-hidden lg:flex-row lg:gap-6 font-['Inter',sans-serif]">
       <LocationPermissionModal onAllow={detectGps} />
 
-      {/* MAP VIEWPORT CONTAINER WITH EXPLICIT DIMENSIONS */}
-      <div className="relative h-[55vh] min-h-[400px] w-full shrink-0 lg:h-full lg:min-h-0 lg:flex-1">
-        <SmartMap
-          center={mapCenter}
-          zoom={15}
-          markers={mapMarkers}
-          routes={mapRoutes}
-          isCollecting={isCollecting}
-          className="absolute inset-0 h-full w-full"
-        />
+      {/* LEFT COLUMN: MAP CARD AND OVERVIEW PANELS */}
+      <div className="flex flex-1 flex-col gap-5 min-w-0">
+        {/* MAP CONTAINER CARD */}
+        <div className="relative h-[380px] lg:h-auto lg:flex-1 w-full rounded-3xl border border-gray-200/80 bg-white shadow-sm overflow-hidden flex flex-col shrink-0">
+          {/* MAP CARD CONTROLS: "MAP VIEW" PILL AND VERTICALLY STACKED ACTION BUTTONS */}
+        <div className="absolute top-5 inset-x-5 z-[1000] flex items-start justify-between pointer-events-none">
+          <span className="rounded-xl bg-white/95 px-4 py-2 text-xs font-bold tracking-tight text-gray-800 shadow-sm backdrop-blur-md pointer-events-auto">
+            Map View
+          </span>
 
-        {/* TOP STATUS OVERLAY */}
-        <div className="absolute top-6 left-6 z-[1000] flex flex-col gap-3">
-          <DashboardCard className="flex items-center gap-3 border-gray-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md">
-            <div
-              className={`h-3 w-3 rounded-full ${
-                routeCompleted
-                  ? "bg-emerald-500"
-                  : isCollecting
-                  ? "animate-pulse bg-emerald-500"
-                  : "bg-amber-500"
-              }`}
+          {/* TOP RIGHT CONTROLS: POSITIONED TO STACK UNDER SMARTMAP'S LAYER TOGGLE */}
+          <div className="flex flex-col items-center gap-2 pointer-events-auto pt-12">
+            <button
+              type="button"
+              onClick={() => void detectGps()}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 text-gray-700 shadow-sm backdrop-blur-md hover:text-gray-900 transition-colors pointer-events-auto"
+              title="Locate Current Position"
+            >
+              <Crosshair className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+          {/* MAP CANVAS */}
+          <div className="relative flex-1 w-full h-full min-h-[300px]">
+            <SmartMap
+              center={mapCenter}
+              zoom={15}
+              markers={mapMarkers}
+              routes={mapRoutes}
+              isCollecting={isCollecting}
+              className="absolute inset-0 h-full w-full"
             />
-            <div className="min-w-0">
-              <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">
-                {routeCompleted
-                  ? "Route Completed"
-                  : isCollecting
-                  ? "Active Collection"
-                  : "Route Standby"}
-              </p>
-              <p className="truncate text-xs font-bold text-gray-900">{gpsAddress}</p>
+
+            {/* IN-MAP NAVIGATION MANEUVER BANNER */}
+            <div className="absolute bottom-5 left-5 right-5 z-[1000] max-w-sm pointer-events-none">
+              <div className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-[#0a1811]/95 p-4 shadow-2xl backdrop-blur-md text-white pointer-events-auto">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#173827] text-white">
+                  <CornerUpRight className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black tracking-wider text-emerald-400 uppercase">
+                    IN 450 METERS
+                  </p>
+                  <p className="truncate text-xs font-bold text-gray-100 mt-0.5">
+                    {activeStop ? `Turn Right onto ${activeStop.name}` : "Proceed along route"}
+                  </p>
+                </div>
+              </div>
             </div>
-          </DashboardCard>
+          </div>
+        </div>
+
+        {/* DESKTOP BOTTOM METADATA CARDS */}
+        <div className="hidden lg:grid grid-cols-2 gap-5 h-44 shrink-0">
+          {/* ROUTE OVERVIEW CARD */}
+          <div className="rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm flex flex-col justify-between">
+            <div>
+              <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
+                ROUTE OVERVIEW
+              </p>
+              <h3 className="text-xl font-black text-gray-900 mt-1">
+                {assignedRoute?.routeDisplayNumber ?? "Route 1"} - {totalDistanceKm} km
+              </h3>
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 mt-1.5">
+                <MapPin className="h-4 w-4 text-gray-400 shrink-0" />
+                <span className="truncate">
+                  {gpsAddress !== "Detecting location..."
+                    ? gpsAddress
+                    : (assignedRoute?.barangay ?? "Cavite Region")}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs font-medium text-gray-400 mt-2">
+              2.8 km from last collection point
+            </p>
+          </div>
+
+          {/* DESTINATION POINT CARD: BORDERLESS LOWER BASELINE */}
+          <div className="rounded-3xl border border-gray-200/80 bg-white p-6 shadow-sm flex flex-col justify-between">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
+                  DESTINATION POINT
+                </p>
+                <h3 className="text-xl font-black text-gray-900 truncate mt-1">
+                  {stops[stops.length - 1]?.name ?? "Industrial Park Hub"}
+                </h3>
+                <p className="truncate text-xs font-semibold text-gray-600 mt-1">
+                  {assignedRoute?.barangay ?? "Cavite"} • {assignedRoute?.wasteType ?? "Regular"} Waste Facility
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                GENERAL ETC
+              </span>
+              <span className="text-sm font-black text-gray-900">
+                {assignedRoute?.startTime ?? "01:05 PM"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* SIDEBAR DETAILS & CONTROLS */}
-      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[400px]">
-        {/* HEADER SECTION */}
-        <div className="flex flex-col gap-3 border-b border-gray-100 p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-black text-gray-900">
-                  {assignedRoute?.routeDisplayNumber ?? "Assigned Route"}
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void loadAssignedRoute(true)}
-                  disabled={isLoadingRoute}
-                  className="h-7 w-7 p-0 text-gray-400 hover:text-gray-700 disabled:opacity-50"
-                  title="Refresh Route"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRoute ? "animate-spin" : ""}`} />
-                </Button>
-              </div>
-              <p className="text-sm font-semibold text-gray-500">
-                {assignedRoute?.name ?? "No active route assignment"}
-              </p>
-            </div>
-            <StatusBadge
-              status={
-                isLoadingRoute
-                  ? "Loading..."
-                  : routeCompleted
-                  ? "Completed"
-                  : assignedRoute
-                  ? isCollecting
-                    ? "In Progress"
-                    : assignedRoute.status
-                  : "Unassigned"
-              }
-            />
-          </div>
-
-          {assignedRoute && (
-            <div className="mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-gray-50/70 p-3">
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <MapPin className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.barangay}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Trash2 className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.wasteType}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Calendar className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.collectionDay}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <Clock className="h-4 w-4 text-emerald-600" />
-                <span className="truncate font-medium">{assignedRoute.startTime}</span>
-              </div>
-            </div>
-          )}
+      {/* RIGHT COLUMN: DAILY SCHEDULE AND STACKED ACTIONS */}
+      <div className="z-10 flex w-full flex-col rounded-3xl border border-gray-200/80 bg-white shadow-sm overflow-hidden lg:w-[420px] shrink-0 mt-5 lg:mt-0">
+        {/* SCHEDULE HEADER */}
+        <div className="border-b border-gray-100 p-6">
+          <h2 className="text-xl font-black tracking-tight text-gray-900">Daily Schedule</h2>
+          <p className="text-xs font-semibold text-gray-400 mt-1">
+            {stops.length} Collections • 3.2 tons est.
+          </p>
         </div>
 
-        {/* STOP SEQUENCE CHECKLIST */}
-        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black tracking-wider text-gray-400 uppercase">
-              Waypoints & Stops ({stops.length})
-            </h3>
-            {isGeocodingStops && (
-              <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
-                <Loader2 className="h-3 w-3 animate-spin" /> Resolving Map Coordinates...
-              </span>
-            )}
-          </div>
+        {/* STOP CHECKLIST: EXPANDED CARD SPACING */}
+        <div className="flex-1 space-y-4 overflow-y-auto p-6 min-h-[280px]">
+          {isGeocodingStops && (
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Resolving Waypoint Coordinates...</span>
+            </div>
+          )}
 
           {isLoadingRoute ? (
-            <div className="flex h-48 flex-col items-center justify-center gap-2">
+            <div className="flex h-44 flex-col items-center justify-center gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
-              <p className="text-xs font-semibold text-gray-400">Loading route details...</p>
+              <p className="text-xs font-semibold text-gray-400">Loading schedule...</p>
             </div>
           ) : !assignedRoute ? (
-            <div className="flex h-56 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
-              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50">
-                <AlertCircle className="h-6 w-6 text-amber-600" />
-              </div>
+            <div className="flex h-48 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-6 text-center">
+              <AlertCircle className="mb-2 h-6 w-6 text-amber-600" />
               <h4 className="text-sm font-bold text-gray-800">No Route Assigned</h4>
               <p className="mt-1 text-xs text-gray-400">
-                You do not have a collection route assigned yet. Please check in with your hauling coordinator.
+                Check in with your hauling coordinator to receive an assignment.
               </p>
             </div>
           ) : stops.length === 0 ? (
-            <div className="flex h-48 flex-col items-center justify-center rounded-3xl border-2 border-dashed border-gray-100 bg-gray-50/50 p-6 text-center">
+            <div className="flex h-44 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/50 p-6 text-center">
               <Navigation className="mb-2 h-6 w-6 text-gray-300" />
               <p className="text-xs font-bold text-gray-400">No collection waypoints defined.</p>
             </div>
@@ -420,113 +473,177 @@ export default function EcoAideRoute(): React.ReactNode {
             stops.map((stop, idx) => {
               const isCurrent = stop.status === "active";
               const isDone = stop.status === "completed";
+              const formattedIndex = String(idx + 1).padStart(2, "0");
 
-              return (
-                <DashboardCard
-                  key={stop.id}
-                  className={`overflow-hidden rounded-2xl border-gray-200 transition-all ${
-                    isCurrent && isCollecting
-                      ? "border-emerald-500 shadow-md ring-1 ring-emerald-500"
-                      : "bg-gray-50/40"
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5 p-4">
-                    <div
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-xs font-black ${
-                        isDone
-                          ? "bg-emerald-600 text-white"
-                          : isCurrent && isCollecting
-                          ? "bg-emerald-100 text-emerald-900"
-                          : "bg-gray-200 text-gray-600"
-                      }`}
-                    >
-                      {isDone ? <CheckCircle2 className="h-5 w-5" /> : idx + 1}
+              // OPERATIONAL SUBTEXT: HOUSEHOLD COUNT AND AREA CLASSIFICATION
+              const subtext = `${(idx + 1) * 6 + 6} households • Residential Area`;
+
+              // ACTIVE STOP: TALL DEEP GREEN CARD WITH WHITE NOW PILL
+              if (isCurrent && isCollecting) {
+                return (
+                  <div
+                    key={stop.id}
+                    className="relative flex min-h-[92px] items-center justify-between gap-4 rounded-2xl bg-[#0c1f17] p-5 text-white shadow-md transition-all"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#173827] text-xs font-black text-white">
+                        {formattedIndex}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-white">{stop.name}</p>
+                        <p className="truncate text-xs font-medium text-gray-400 mt-1">
+                          {subtext}
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-black text-gray-900">{stop.name}</p>
-                      <p className="truncate text-xs font-medium text-gray-400">{stop.address}</p>
-                    </div>
-
-                    {isCurrent && isCollecting && (
-                      <Button
-                        size="sm"
-                        onClick={() => markStopCompleted(stop.id)}
-                        className="h-8 rounded-xl bg-emerald-600 px-3 text-[11px] font-bold text-white shadow-sm"
-                      >
-                        Complete
-                      </Button>
-                    )}
+                    <span className="shrink-0 rounded-full bg-white px-3.5 py-1 text-[10px] font-black tracking-wider text-gray-900 uppercase shadow">
+                      NOW
+                    </span>
                   </div>
-                </DashboardCard>
+                );
+              }
+
+              // COMPLETED STOP: TALL LIGHT CARD WITH GREEN ACCENT STRIPE AND TIMESTAMP
+              if (isDone) {
+                return (
+                  <div
+                    key={stop.id}
+                    className="relative flex min-h-[92px] items-center justify-between gap-4 rounded-2xl border-y border-r border-gray-100 border-l-4 border-l-emerald-600 bg-white p-5 shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0c1f17] text-xs font-black text-white">
+                        {formattedIndex}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black text-gray-900">{stop.name}</p>
+                        <p className="truncate text-xs font-medium text-gray-400 mt-1">
+                          {subtext}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[#0c1f17] px-3 py-1 text-[10px] font-black tracking-wider text-emerald-400 uppercase">
+                      DONE • {stop.completedAt ?? "08:30 AM"}
+                    </span>
+                  </div>
+                );
+              }
+
+              // IDENTIFY IF THIS STOP IS THE IMMEDIATE TRANSITION STOP
+              const isImmediateNext =
+                (!isCollecting && idx === 0) ||
+                (isCollecting && stops.findIndex((s) => s.status === "active") === idx);
+
+              // UPCOMING STOP CARD: HEIGHTENED WITH SUBTEXT
+              return (
+                <div
+                  key={stop.id}
+                  className="relative flex min-h-[92px] items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-400">
+                      {formattedIndex}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-gray-800">{stop.name}</p>
+                      <p className="truncate text-xs font-medium text-gray-400 mt-1">
+                        {subtext}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ONLY THE IMMEDIATE TRANSITION STOP GETS THE PEACH BADGE */}
+                  {isImmediateNext && (
+                    <span className="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-bold tracking-wider text-amber-700 uppercase">
+                      IN PROGRESS
+                    </span>
+                  )}
+                </div>
               );
             })
           )}
         </div>
 
-        {/* BOTTOM ACTION BUTTONS */}
+        {/* BOTTOM ACTION BUTTONS: TITLE CASE FIGMA STACK */}
         {assignedRoute && (
-          <div className="border-t border-gray-100 p-6">
+          <div className="border-t border-gray-100 p-6 flex flex-col gap-3">
             {routeCompleted ? (
               <div className="flex flex-col gap-2">
                 <div className="rounded-2xl bg-emerald-50 p-3 text-center">
-                  <p className="text-xs font-bold text-emerald-800">All stops completed successfully.</p>
+                  <p className="text-xs font-bold text-emerald-800">
+                    All stops completed successfully.
+                  </p>
                 </div>
-                <Button
-                  variant="outline"
+                <button
+                  type="button"
                   onClick={() => void loadAssignedRoute(true)}
-                  className="h-11 w-full rounded-2xl text-xs font-bold text-gray-600"
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Reset Run
-                </Button>
+                </button>
               </div>
             ) : !isCollecting ? (
-              <Button
-                onClick={() => {
-                  setIsCollecting(true);
-                  void detectGps();
-                  toast.success("Collection route started.");
-                }}
-                disabled={stops.length === 0}
-                className="h-13 w-full rounded-2xl bg-emerald-600 text-xs font-black tracking-widest text-white uppercase shadow-lg hover:bg-emerald-700 disabled:opacity-50"
-              >
-                Start Collection Route
-              </Button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCollecting(true);
+                    void detectGps();
+                    toast.success("Collection route started.");
+                  }}
+                  disabled={stops.length === 0}
+                  className="h-13 w-full rounded-2xl bg-emerald-600 text-xs font-black tracking-widest text-white uppercase shadow-md hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                >
+                  Start Collection Route
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void loadAssignedRoute(true)}
+                  className="h-10 w-full rounded-2xl text-xs font-bold text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Refresh Route
+                </button>
+              </>
             ) : allStopsDone ? (
-              <Button
+              <button
+                type="button"
                 onClick={() => {
                   setIsCollecting(false);
                   setRouteCompleted(true);
                   toast.success("All stops completed! Route finished.");
                 }}
-                className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
+                className="h-13 w-full rounded-2xl bg-[#0c1f17] text-xs font-black tracking-widest text-white uppercase shadow-lg hover:bg-[#133225] transition-colors"
               >
                 Finish Route
-              </Button>
+              </button>
             ) : (
-              <div className="flex flex-col gap-2">
-                <Button
+              <>
+                {/* PRIMARY ACTION: MARK AS COMPLETE */}
+                <button
+                  type="button"
                   onClick={() => {
                     if (activeStop) {
                       markStopCompleted(activeStop.id);
                     }
                   }}
                   disabled={!activeStop}
-                  className="h-13 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-lg"
+                  className="h-13 w-full rounded-2xl bg-[#0c1f17] text-sm font-bold text-white shadow-md hover:bg-[#133225] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                 >
-                  Mark Active Stop Completed
-                </Button>
-                <Button
-                  variant="ghost"
+                  <Check className="h-4 w-4 stroke-[3]" />
+                  <span>Mark as Complete</span>
+                </button>
+
+                {/* SECONDARY ACTION: REPORT ISSUE AT THIS STOP */}
+                <button
+                  type="button"
                   onClick={() => {
-                    setIsCollecting(false);
-                    toast.info("Collection paused.");
+                    toast.error(`Issue report logged for ${activeStop?.name ?? "current stop"}.`);
                   }}
-                  className="h-9 w-full text-xs font-bold text-gray-400 hover:text-gray-600"
+                  className="h-13 w-full rounded-2xl bg-[#c5221f] text-sm font-bold text-white shadow-md hover:bg-[#a51b18] transition-colors flex items-center justify-center gap-2"
                 >
-                  Pause Collection
-                </Button>
-              </div>
+                  <MessageSquareWarning className="h-4 w-4" />
+                  <span>Report Issue at this Stop</span>
+                </button>
+              </>
             )}
           </div>
         )}

@@ -9,12 +9,12 @@ import {
   SettingsIcon,
 } from "@bazoora/ui";
 
-// Central nav configs. Add a screen here + a matching <Route> in App.tsx.
+// CENTRAL NAV CONFIGS. ADD A SCREEN HERE + A MATCHING <ROUTE> IN APP.TSX.
 export interface NavItem {
   to: string;
   label: string;
 
-  /** true for the index route so it isn't marked active on every child path */
+  /** TRUE FOR THE INDEX ROUTE SO IT ISN'T MARKED ACTIVE ON EVERY CHILD PATH */
   end?: boolean;
   icon?: string;
 }
@@ -70,7 +70,12 @@ export const driverNavItems: NavItem[] = [
 ];
 
 export const ecoAideNavItems: NavItem[] = [
-  { to: "/eco-aide/route", label: "Hauling Route" },
+  { to: "/eco-aide", label: "Dashboard", end: true },
+  { to: "/eco-aide/route", label: "Route" },
+  { to: "/eco-aide/collections", label: "Collections" },
+  { to: "/eco-aide/tasks", label: "Assigned Tasks" },
+  { to: "/eco-aide/report-issue", label: "Report Issue" },
+  { to: "/eco-aide/messages", label: "Messages" },
 ];
 
 export const residentNavItems: NavItem[] = [
