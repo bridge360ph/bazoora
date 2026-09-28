@@ -1,200 +1,181 @@
 "use client";
 
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import {
-  LayoutGrid,
-  MapPin,
-  ClipboardList,
-  Settings,
-  LogOut,
-  Bell,
-  Archive,
-  AlertOctagon,
-  MessageSquare,
-  Truck,
-  Menu,
-} from "lucide-react";
+import { useState } from "react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Truck, ArrowLeft, Bell, X } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { ecoAideNavItems } from "../../../routes/navigation";
 import EcoAideMobileNav from "./EcoAideMobileNav";
-import { toast } from "sonner";
+
+interface DispatchAlert {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  priority: "high" | "normal";
+  read: boolean;
+}
 
 export default function EcoAideLayout() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const isSettingsPage = location.pathname.startsWith("/eco-aide/settings");
+
+  // MOCK DISPATCH ALERTS MATCHING PROPOSAL 2 SAMPLES
+  const [alertsList, setAlertsList] = useState<DispatchAlert[]>([
+    {
+      id: "alert-001",
+      title: "Alley Obstruction on Mendoza St",
+      message: "Utility repairs blocking heavy vehicle lane. Use alternate pass.",
+      time: "2 mins ago",
+      priority: "high",
+      read: false,
+    },
+    {
+      id: "alert-002",
+      title: "Reroute Advisory: San Agustin",
+      message: "Secondary market area cleared for waste collection.",
+      time: "15 mins ago",
+      priority: "normal",
+      read: false,
+    },
+  ]);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+
+  const unreadCount = alertsList.filter((a) => !a.read).length;
 
   const userInitials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
     : "BE";
 
-  const userFullName = user
-    ? `${user.firstName} ${user.lastName}`
-    : "Brian Eco-Aide";
+  // RETRIEVE CURRENT VIEW LABEL BASED ON ACTIVE ROUTE PATH
+  const activeLabel = isSettingsPage
+    ? "Settings"
+    : ecoAideNavItems.find((item) => {
+        if (item.end) return location.pathname === item.to;
+        return location.pathname.startsWith(item.to);
+      })?.label || "Route";
 
-  // MAP ROUTE LABELS TO FIGMA WIREFRAME ICONS
-  const getIcon = (label: string) => {
-    switch (label) {
-      case "Dashboard":
-        return LayoutGrid;
-      case "Route":
-      case "Hauling Route":
-        return MapPin;
-      case "Collections":
-        return Archive;
-      case "Assigned Tasks":
-        return ClipboardList;
-      case "Report Issue":
-        return AlertOctagon;
-      case "Messages":
-        return MessageSquare;
-      case "Settings":
-        return Settings;
-      default:
-        return LayoutGrid;
-    }
+  const handleDismissAlerts = () => {
+    setAlertsList((prev) => prev.map((a) => ({ ...a, read: true })));
+    setIsAlertsOpen(false);
   };
 
-  // GET ACTIVE ROUTE LABEL FOR TOP HEADER DISPLAY
-  const activeLabel =
-    ecoAideNavItems.find((item) => {
-      if (item.end) return location.pathname === item.to;
-      return location.pathname.startsWith(item.to);
-    })?.label || "Route";
-
   return (
-    <div className="flex h-full w-full overflow-hidden font-['Inter',sans-serif] bg-[#f4f6f8] text-slate-800">
-      {/* DESKTOP SIDEBAR MATCHING FIGMA */}
-      <aside className="hidden md:flex w-64 bg-[#0a1811] flex-col shrink-0 text-gray-300">
-        {/* BRAND HEADER */}
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
-              <Truck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="font-black text-white text-base tracking-wider leading-none">
-                BAZOORA
-              </div>
-              <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-                ECO-AIDE
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* NAVIGATION LIST */}
-        <nav className="flex-1 py-4 space-y-1 overflow-y-auto px-3">
-          {ecoAideNavItems.map((item) => {
-            const Icon = getIcon(item.label);
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                onClick={(e) => {
-                  // PREVENT UNMERGED ROUTES FROM THROWING 404 DURING DEMO
-                  if (item.to !== "/eco-aide/route") {
-                    e.preventDefault();
-                    toast.info(`${item.label} module is queued in PR review.`);
-                  }
-                }}
-                className={({ isActive }) =>
-                  `flex items-center gap-3.5 w-full px-4 py-3 text-xs font-bold rounded-xl transition-all ${
-                    isActive
-                      ? "bg-white/10 text-white font-extrabold shadow-sm"
-                      : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon
-                      className={`w-4 h-4 ${
-                        isActive ? "text-emerald-400" : "text-gray-400"
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
-
-        {/* PROFILE FOOTER */}
-        <div className="p-4 border-t border-white/5 flex items-center gap-3 bg-[#07130d]">
-          <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center font-black text-xs text-[#0a1811] shrink-0">
-            {userInitials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-white text-xs font-bold truncate">
-              {userFullName}
-            </div>
-            <div className="text-[10px] text-gray-400 truncate">Unit #4029</div>
-          </div>
-          <NavLink
-            to="/eco-aide/settings"
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer"
-            aria-label="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </NavLink>
+    <div className="flex h-screen w-full flex-col overflow-hidden font-['Inter',sans-serif] bg-[#f0f3f6] text-slate-900">
+      {/* NATIVE APP TOP BAR */}
+      <header className="relative h-14 bg-[#0a1811] border-b border-emerald-950/60 px-4 flex items-center justify-between shrink-0 text-white z-30 shadow-sm">
+        {/* LEFT CONTROL: SWITCHES TO BACK NAVIGATION ON SETTINGS */}
+        {isSettingsPage ? (
           <button
             type="button"
-            onClick={() => clearSession()}
-            className="text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
-            aria-label="Sign Out"
+            onClick={() => navigate("/eco-aide/route")}
+            className="flex items-center gap-1.5 text-xs font-bold text-gray-300 hover:text-white transition-colors cursor-pointer"
+            aria-label="Back to Route"
           >
-            <LogOut className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <span>Back</span>
           </button>
-        </div>
-      </aside>
-
-      {/* MAIN CONTAINER */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* TOP HEADER: CONTINUOUS DARK FIGMA STYLE WITH HAMBURGER & CENTERED TITLE */}
-        <header className="relative h-16 bg-[#0a1811] border-b border-white/10 px-4 md:px-8 flex items-center justify-between shrink-0 text-white">
+        ) : (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => toast.info("Navigation drawer")}
-              className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-              aria-label="Open menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
+              <Truck className="w-4 h-4" />
+            </div>
+            <span className="font-black text-sm tracking-wider text-white">BAZOORA</span>
           </div>
+        )}
 
-          <h2 className="text-sm font-bold text-white tracking-wider absolute left-1/2 -translate-x-1/2 pointer-events-none">
-            {activeLabel}
-          </h2>
+        {/* ACTIVE SCREEN TITLE */}
+        <h2 className="text-xs font-black tracking-widest uppercase text-gray-200 absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          {activeLabel}
+        </h2>
 
-          <div className="flex items-center gap-3">
-            {/* THICKENED NOTIFICATION BELL ICON */}
-            <button
-              type="button"
-              onClick={() => toast.info("No unread alerts.")}
-              className="relative p-2 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5 stroke-[2.25]" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </button>
-            <div className="w-8 h-8 rounded-full bg-emerald-500 text-[#0a1811] flex items-center justify-center text-xs font-black">
-              {userInitials}
+        {/* PROFILE AVATAR: DIRECT NAVIGATION TO SETTINGS */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!isSettingsPage) {
+              navigate("/eco-aide/settings");
+            }
+          }}
+          className={`relative flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500 text-[#0a1811] text-xs font-black ring-2 ring-emerald-400/30 active:scale-95 transition-transform cursor-pointer ${
+            isSettingsPage ? "ring-white/40 opacity-80 cursor-default" : ""
+          }`}
+          aria-label="Account Settings"
+        >
+          {userInitials}
+          <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-300 ring-2 ring-[#0a1811]" />
+        </button>
+      </header>
+
+      {/* PRIMARY SCROLLABLE VIEWPORT CONTAINER */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col pb-24">
+        <Outlet />
+      </main>
+
+      {/* PERSISTENT 3-TAB BOTTOM NAVIGATION */}
+      <EcoAideMobileNav
+        unreadCount={unreadCount}
+        onOpenNotifications={() => setIsAlertsOpen(true)}
+      />
+
+      {/* ALERTS AND DISPATCHES BOTTOM SHEET: EDGE-TO-EDGE FLUSH AT BOTTOM AND SIDES */}
+      {isAlertsOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col justify-end"
+          onClick={handleDismissAlerts}
+        >
+          <div
+            className="w-full max-h-[80vh] flex flex-col rounded-t-[28px] bg-white border-t border-slate-200 p-5 pb-8 text-slate-900 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* TACTILE GRAB PILL */}
+            <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto -mt-1 mb-4 shrink-0" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-amber-500" />
+                <h3 className="text-sm font-black uppercase tracking-wide">
+                  Live Dispatch Feed
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissAlerts}
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-3 py-4">
+              {alertsList.map((alert) => (
+                <div
+                  key={alert.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+                      {alert.priority} Priority
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {alert.time}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-800">
+                    {alert.title}
+                  </h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    {alert.message}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-        </header>
-
-        {/* SCROLLABLE OUTLET CONTAINER */}
-        <div className="flex-1 overflow-y-auto lg:overflow-hidden flex flex-col pb-16 md:pb-0">
-          <Outlet />
         </div>
-      </div>
-
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <EcoAideMobileNav />
+      )}
     </div>
   );
 }
