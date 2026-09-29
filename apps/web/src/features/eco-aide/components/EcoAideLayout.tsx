@@ -4,7 +4,6 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Truck, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { ecoAideNavItems } from "../../../routes/navigation";
-import EcoAideMobileNav from "./EcoAideMobileNav";
 
 export default function EcoAideLayout() {
   const user = useAuthStore((s) => s.user);
@@ -12,6 +11,11 @@ export default function EcoAideLayout() {
   const navigate = useNavigate();
 
   const isSettingsPage = location.pathname.startsWith("/eco-aide/settings");
+  const isCollectionsPage = location.pathname.startsWith("/eco-aide/collections");
+  const isSubpage = isSettingsPage || isCollectionsPage;
+  const isRoutePage =
+    location.pathname === "/eco-aide/route" ||
+    location.pathname === "/eco-aide";
 
   const userInitials = user
     ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
@@ -29,8 +33,8 @@ export default function EcoAideLayout() {
     <div className="flex h-screen w-full flex-col overflow-hidden font-['Inter',sans-serif] bg-[#f0f3f6] text-slate-900">
       {/* NATIVE APP TOP BAR */}
       <header className="relative h-14 bg-[#0a1811] border-b border-emerald-950/60 px-4 flex items-center justify-between shrink-0 text-white z-20 shadow-sm">
-        {/* LEFT CONTROL: SWITCHES TO BACK NAVIGATION ON SETTINGS */}
-        {isSettingsPage ? (
+        {/* LEFT CONTROL: SWITCHES TO BACK NAVIGATION ON SUBPAGES */}
+        {isSubpage ? (
           <button
             type="button"
             onClick={() => navigate("/eco-aide/route")}
@@ -45,7 +49,9 @@ export default function EcoAideLayout() {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400">
               <Truck className="w-4 h-4" />
             </div>
-            <span className="font-black text-sm tracking-wider text-white">BAZOORA</span>
+            <span className="font-black text-sm tracking-wider text-white">
+              BAZOORA
+            </span>
           </div>
         )}
 
@@ -72,13 +78,14 @@ export default function EcoAideLayout() {
         </button>
       </header>
 
-      {/* PRIMARY SCROLLABLE VIEWPORT CONTAINER */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col pb-20">
+      {/* PRIMARY VIEWPORT: FULL HEIGHT ON ROUTE, COMFORTABLE SCROLLING ON SUBPAGES */}
+      <main
+        className={`flex-1 relative flex flex-col ${
+          isRoutePage ? "overflow-hidden pb-0" : "overflow-y-auto pb-6"
+        }`}
+      >
         <Outlet />
       </main>
-
-      {/* PERSISTENT 3-TAB BOTTOM NAVIGATION */}
-      <EcoAideMobileNav />
     </div>
   );
 }
