@@ -1,10 +1,12 @@
 /* eslint-disable */
 
 import type { FastifyPluginAsync } from "fastify";
-import { prisma } from "@bazoora/db";
-import crypto from "node:crypto";
-import { verifyAccessToken } from "../lib/jwt.js";
 
+import { prisma } from "@bazoora/db";
+
+import crypto from "node:crypto";
+
+import { verifyAccessToken } from "../lib/jwt.js";
 
 function hashPassword(password: string): string {
   return crypto
@@ -13,7 +15,6 @@ function hashPassword(password: string): string {
     .digest("hex");
 }
 
-
 function comparePassword(
   password: string,
   hash: string
@@ -21,14 +22,11 @@ function comparePassword(
   return hashPassword(password) === hash;
 }
 
-
 export const authRoutes: FastifyPluginAsync = async (app) => {
-
   // ============================
   // POST /auth/register
   // ============================
   app.post("/register", async (req, reply) => {
-
     const {
       email,
       password,
@@ -39,18 +37,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       role: string;
     };
 
-
     const cleanEmail = email
       .toLowerCase()
       .trim();
-
 
     const existing = await prisma.user.findUnique({
       where: {
         email: cleanEmail,
       },
     });
-
 
     if (existing) {
       reply.status(400);
@@ -60,7 +55,6 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         message: "Email already registered",
       };
     }
-
 
     const user = await prisma.user.create({
       data: {
@@ -75,20 +69,62 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-
     return {
       success: true,
       data: user,
     };
   });
 
+  // ============================
+  // GET /auth/drivers
+  // ============================
+  app.get("/drivers", async (_req, reply) => {
+    try {
+      const drivers = await prisma.user.findMany({
+        where: {
+          role: "DRIVER",
+        },
 
+        select: {
+          id: true,
+          userNumber: true,
+          name: true,
+          email: true,
+
+          assignedTruck: {
+            select: {
+              id: true,
+              plateNumber: true,
+            },
+          },
+        },
+
+        orderBy: {
+          name: "asc",
+        },
+      });
+
+      return reply.send({
+        success: true,
+        data: drivers,
+      });
+    } catch (error) {
+      app.log.error(
+        error,
+        "Failed to fetch drivers"
+      );
+
+      return reply.status(500).send({
+        success: false,
+        message: "Failed to fetch drivers",
+      });
+    }
+  });
 
   // ============================
   // POST /auth/login
   // ============================
   app.post("/login", async (req, reply) => {
-
     const {
       email,
       password,
@@ -97,12 +133,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       password?: string;
     };
 
-
     const cleanEmail = email
       .toLowerCase()
       .trim();
-
-
 
     // Demo accounts
     const mockAccounts = [
@@ -124,14 +157,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       },
     ];
 
-
-
     const matchMock = mockAccounts.find(
       (account) =>
         account.email === cleanEmail
     );
-
-
 
     let user = await prisma.user.findUnique({
       where: {
@@ -139,11 +168,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       },
     });
 
-
-
     // Create demo account automatically
     if (!user && matchMock) {
-
       user = await prisma.user.create({
         data: {
           email: cleanEmail,
@@ -155,13 +181,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           role: matchMock.role as any,
         },
       });
-
     }
 
-
-
     if (!user) {
-
       reply.status(401);
 
       return {
@@ -170,18 +192,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       };
     }
 
-
-
     if (password) {
-
       const valid = comparePassword(
         password,
         user.password
       );
 
-
       if (!valid) {
-
         reply.status(401);
 
         return {
@@ -191,218 +208,125 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-
-
     // Mock JWT payload
     const tokenPayload = {
-
       sub: user.id,
-
       role: user.role.toLowerCase(),
-
       organizationId: "org-1",
-
     };
-
-
 
     const token = Buffer
       .from(JSON.stringify(tokenPayload))
       .toString("base64");
 
-
-
     return {
-
       success: true,
 
       data: {
-
         accessToken:
           "mock-" + token,
 
-
         user: {
-
           id: user.id,
 
           email: user.email,
-
 
           firstName:
             user.email.split("@")[0] ??
             "User",
 
-
           lastName: "",
-
 
           role:
             user.role.toLowerCase(),
 
-
           organizationId:
             "org-1",
-
         },
-
       },
-
     };
-
   });
-
-
-
-
 
   // ============================
   // GET /auth/me
   // ============================
   app.get("/me", async (req, reply) => {
-
-
     const authHeader =
       req.headers.authorization;
 
-
-
     if (!authHeader?.startsWith("Bearer ")) {
-
       reply.status(401);
 
-
       return {
-
         success: false,
-
         message: "Unauthorized",
-
       };
-
     }
-
-
 
     const token =
       authHeader.split(" ")[1];
 
-
-
     // FIX: token can be undefined
     if (!token) {
-
       reply.status(401);
 
-
       return {
-
         success: false,
-
-        message: "Invalid authorization token",
-
+        message:
+          "Invalid authorization token",
       };
-
     }
 
-
-
     try {
-
-
       const payload =
         verifyAccessToken(token);
 
-
-
       const user =
         await prisma.user.findUnique({
-
           where: {
-
             id: payload.sub,
-
           },
-
         });
 
-
-
       if (!user) {
-
         reply.status(401);
 
-
         return {
-
           success: false,
-
           message: "User not found",
-
         };
-
       }
 
-
-
       return {
-
-
         success: true,
 
-
         data: {
-
-
           id: user.id,
 
-
           email: user.email,
-
 
           firstName:
             user.email.split("@")[0] ??
             "User",
 
-
           lastName: "",
-
 
           role:
             user.role.toLowerCase(),
 
-
           organizationId:
             "org-1",
-
-
         },
-
       };
-
-
-
     } catch {
-
-
       reply.status(401);
 
-
       return {
-
-
         success: false,
-
 
         message:
           "Invalid or expired session",
-
-
       };
-
     }
-
-
   });
-
 };

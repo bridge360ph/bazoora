@@ -21,11 +21,7 @@ import { TruckStatusPill } from "./components/TruckStatusPill";
 import { TruckFormModal } from "./components/TruckFormModal";
 import { AssignTruckModal } from "./components/AssignTruckModal";
 
-type ModalMode =
-  | "register"
-  | "edit"
-  | "assign"
-  | null;
+type ModalMode = "register" | "edit" | "assign" | null;
 
 const TRUCKS_PAGE_SIZE = 5;
 
@@ -68,10 +64,10 @@ export function AdminFleetManagementPage() {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [routes, setRoutes] = useState<FleetRoute[]>([]);
-
   const [loading, setLoading] = useState(true);
-  const [loadingDrivers, setLoadingDrivers] = useState(false);
-  const [loadingRoutes, setLoadingRoutes] = useState(false);
+
+  const [, setLoadingDrivers] = useState(false);
+  const [, setLoadingRoutes] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -79,7 +75,6 @@ export function AdminFleetManagementPage() {
     useState<TruckStatusFilter>("All");
 
   const [searchValue, setSearchValue] = useState("");
-
   const [page, setPage] = useState(1);
 
   const [modalMode, setModalMode] =
@@ -88,14 +83,14 @@ export function AdminFleetManagementPage() {
   const [selectedTruck, setSelectedTruck] =
     useState<Truck | null>(null);
 
-  /*
+  /**
    * Assigned Driver textbox.
    * The user enters the driver's registered email.
    */
   const [assignedDriverName, setAssignedDriverName] =
     useState("");
 
-  /*
+  /**
    * Assigned Route.
    *
    * This stores the displayed route option,
@@ -111,9 +106,7 @@ export function AdminFleetManagementPage() {
     useState(ECO_AIDE_OPTIONS[0]);
 
   const [truckForm, setTruckForm] =
-    useState<TruckFormValue>(
-      emptyTruckForm,
-    );
+    useState<TruckFormValue>(emptyTruckForm);
 
   // ============================
   // Fetch Trucks
@@ -146,18 +139,14 @@ export function AdminFleetManagementPage() {
       const formattedTrucks: Truck[] =
         apiTrucks.map((truck) => ({
           id: truck.id,
-
-          plateNumber:
-            truck.plateNumber,
-
+          databaseId: truck.id,
+          plateNumber: truck.plateNumber,
           model:
             truck.model ||
             "Unspecified Model",
-
           capacity:
             truck.capacity ||
             "0 kg",
-
           status:
             truck.status ===
             "Under Maintenance"
@@ -165,11 +154,9 @@ export function AdminFleetManagementPage() {
               : truck.status === "Active"
                 ? "Active"
                 : "Idle",
-
           assignedDriver:
             truck.assignedDriver ||
             "Unassigned",
-
           registeredDate:
             truck.registeredDate
               ? new Date(
@@ -386,12 +373,8 @@ export function AdminFleetManagementPage() {
   // ============================
 
   function openRegisterModal() {
-    setTruckForm(
-      emptyTruckForm,
-    );
-
+    setTruckForm(emptyTruckForm);
     setSelectedTruck(null);
-
     setModalMode("register");
   }
 
@@ -403,19 +386,15 @@ export function AdminFleetManagementPage() {
     setTruckForm({
       plateNumber:
         truck.plateNumber,
-
       model:
         truck.model,
-
       capacity:
         truck.capacity.replace(
           / kg$/,
           "",
         ),
-
       status:
         truck.status,
-
       assignedDriver:
         truck.assignedDriver ===
         "Unassigned"
@@ -431,7 +410,7 @@ export function AdminFleetManagementPage() {
   ) {
     setSelectedTruck(truck);
 
-    /*
+    /**
      * Keep the currently assigned driver
      * in the textbox.
      */
@@ -442,7 +421,7 @@ export function AdminFleetManagementPage() {
         : truck.assignedDriver,
     );
 
-    /*
+    /**
      * Reset route selection.
      *
      * The route list comes directly from
@@ -458,7 +437,7 @@ export function AdminFleetManagementPage() {
 
     setModalMode("assign");
 
-    /*
+    /**
      * Refresh driver and route lists
      * whenever the Assign modal opens.
      */
@@ -468,11 +447,8 @@ export function AdminFleetManagementPage() {
 
   function closeModal() {
     setSelectedTruck(null);
-
     setAssignedDriverName("");
-
     setAssignedRoute("");
-
     setModalMode(null);
   }
 
@@ -489,25 +465,20 @@ export function AdminFleetManagementPage() {
           `${API_URL}/trucks`,
           {
             method: "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               plateNumber:
                 truckForm.plateNumber.trim() ||
                 "NEW-0000",
-
               model:
                 truckForm.model.trim() ||
                 "Unspecified Model",
-
               capacity:
                 truckForm.capacity.trim() ||
                 "0 kg",
-
               status:
                 truckForm.status,
             }),
@@ -525,7 +496,6 @@ export function AdminFleetManagementPage() {
       }
 
       await fetchTrucks();
-
       closeModal();
     } catch (err) {
       console.error(
@@ -558,22 +528,17 @@ export function AdminFleetManagementPage() {
           `${API_URL}/trucks/${selectedTruck.id}`,
           {
             method: "PATCH",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               plateNumber:
                 truckForm.plateNumber.trim(),
-
               model:
                 truckForm.model.trim(),
-
               capacity:
                 truckForm.capacity.trim(),
-
               status:
                 truckForm.status,
             }),
@@ -591,7 +556,6 @@ export function AdminFleetManagementPage() {
       }
 
       await fetchTrucks();
-
       closeModal();
     } catch (err) {
       console.error(
@@ -619,9 +583,7 @@ export function AdminFleetManagementPage() {
     const driverInput =
       assignedDriverName.trim();
 
-    // ============================
     // Find selected driver
-    // ============================
 
     let selectedDriver:
       | Driver
@@ -652,7 +614,7 @@ ${drivers
         return;
       }
 
-      /*
+      /**
        * Prevent assigning a driver who
        * already belongs to another truck.
        */
@@ -669,9 +631,7 @@ ${drivers
       }
     }
 
-    // ============================
     // Find selected route
-    // ============================
 
     const selectedRoute =
       routes.find(
@@ -693,7 +653,7 @@ ${drivers
       return;
     }
 
-    /*
+    /**
      * Prevent assigning a route that is
      * already assigned to another truck.
      */
@@ -712,21 +672,17 @@ ${drivers
     try {
       setError("");
 
-      // ============================
       // Save Driver Assignment
-      // ============================
 
       const truckResponse =
         await fetch(
           `${API_URL}/trucks/${selectedTruck.id}`,
           {
             method: "PATCH",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               assignedDriverId:
                 selectedDriver?.id ??
@@ -750,9 +706,7 @@ ${drivers
         return;
       }
 
-      // ============================
       // Save Route Assignment
-      // ============================
 
       if (selectedRoute) {
         const routeResponse =
@@ -760,12 +714,10 @@ ${drivers
             `${API_URL}/routes/${selectedRoute.id}`,
             {
               method: "PATCH",
-
               headers: {
                 "Content-Type":
                   "application/json",
               },
-
               body: JSON.stringify({
                 assignedTruckId:
                   selectedTruck.id,
@@ -793,9 +745,7 @@ ${drivers
         }
       }
 
-      // ============================
       // Refresh Data
-      // ============================
 
       await fetchTrucks();
       await fetchDrivers();
@@ -842,12 +792,10 @@ ${drivers
           `${API_URL}/trucks/${truck.id}`,
           {
             method: "PATCH",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
               assignedDriverId: null,
             }),
@@ -1279,47 +1227,36 @@ ${drivers
             truck={
               selectedTruck
             }
-
             assignedDriverName={
               assignedDriverName
             }
-
             setAssignedDriverName={
               setAssignedDriverName
             }
-
             assignedRoute={
               assignedRoute
             }
-
             setAssignedRoute={
               setAssignedRoute
             }
-
             assignedEcoAide={
               assignedEcoAide
             }
-
             setAssignedEcoAide={
               setAssignedEcoAide
             }
-
             drivers={
               drivers
             }
-
             routeOptions={
               routeOptions
             }
-
             ecoAideOptions={
               ECO_AIDE_OPTIONS
             }
-
             onSave={
               saveTruckAssignment
             }
-
             onClose={
               closeModal
             }
@@ -1328,4 +1265,3 @@ ${drivers
     </div>
   );
 }
-

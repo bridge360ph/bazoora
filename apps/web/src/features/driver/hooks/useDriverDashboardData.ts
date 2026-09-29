@@ -8,13 +8,28 @@ import { useAuthStore } from "@/stores/auth-store";
 
 import type {
   DashboardRoute,
+  DashboardRouteStop,
   DashboardStop,
+  DashboardStopStatus,
   DashboardTruck,
 } from "../driverDashboard.types";
 
 interface TrucksMeResponse {
   success?: boolean;
   data?: DashboardTruck;
+}
+
+interface AssignedRouteResponse {
+  success?: boolean;
+  data?: {
+    id: string;
+    routeNumber: number;
+    name: string;
+    barangay: string;
+    wasteType: string;
+    status?: string | null;
+    routeStops?: DashboardRouteStop[];
+  } | null;
 }
 
 function mapStops(
@@ -24,20 +39,40 @@ function mapStops(
     return [];
   }
 
-  return route.routeStops.map(
-    (stop, index) => {
+  const sortedStops = [
+    ...route.routeStops,
+  ].sort(
+    (a, b) =>
+      a.stopNumber -
+      b.stopNumber,
+  );
+
+  let nextIncompleteFound = false;
+
+  return sortedStops.map(
+    (stop) => {
       const completed =
         stop.status === "DONE" ||
         Boolean(stop.completedAt);
 
-      const active =
-        !completed &&
-        index === 0;
+      let status: DashboardStopStatus;
+
+      if (completed) {
+        status = "DONE";
+      } else if (
+        !nextIncompleteFound
+      ) {
+        status = "NOW";
+        nextIncompleteFound = true;
+      } else {
+        status = "UPCOMING";
+      }
 
       return {
-        stopNumber: String(
-          stop.stopNumber,
-        ).padStart(2, "0"),
+        stopNumber:
+          String(
+            stop.stopNumber,
+          ).padStart(2, "0"),
 
         name:
           `Collection Stop ${stop.stopNumber}`,
@@ -53,12 +88,7 @@ function mapStops(
           route.wasteType ||
           "Residual",
 
-        status:
-          completed
-            ? "DONE"
-            : active
-              ? "NOW"
-              : "UPCOMING",
+        status,
       };
     },
   );
@@ -80,6 +110,14 @@ export function useDriverDashboardData() {
     );
 
   const [
+    assignedRoute,
+    setAssignedRoute,
+  ] =
+    useState<DashboardRoute | null>(
+      null,
+    );
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -87,6 +125,7 @@ export function useDriverDashboardData() {
   useEffect(() => {
     if (!accessToken) {
       setTruck(null);
+      setAssignedRoute(null);
       setLoading(false);
       return;
     }
@@ -94,14 +133,12 @@ export function useDriverDashboardData() {
     let cancelled = false;
 
     async function loadDashboardData() {
-      setLoading(true);
-
       try {
         const apiUrl =
           import.meta.env
             .VITE_API_URL;
 
-        const response =
+        const truckResponse =
           await fetch(
             `${apiUrl}/trucks/me`,
             {
@@ -112,27 +149,88 @@ export function useDriverDashboardData() {
             },
           );
 
-        const result =
-          (await response.json()) as TrucksMeResponse;
+        const truckResult =
+          (await truckResponse.json()) as TrucksMeResponse;
 
-        if (
-          cancelled
-        ) {
+        if (cancelled) {
           return;
         }
 
         if (
-          !response.ok ||
-          !result.success ||
-          !result.data
+          !truckResponse.ok ||
+          !truckResult.success ||
+          !truckResult.data
         ) {
           setTruck(null);
+          setAssignedRoute(null);
           return;
         }
 
+        const currentTruck =
+          truckResult.data;
+
         setTruck(
-          result.data,
+          currentTruck,
         );
+
+        if (!currentTruck.id) {
+          setAssignedRoute(null);
+          return;
+        }
+
+        const routeResponse =
+          await fetch(
+            `${apiUrl}/routes/truck/${currentTruck.id}`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${accessToken}`,
+              },
+            },
+          );
+
+        const routeResult =
+          (await routeResponse.json()) as AssignedRouteResponse;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          !routeResponse.ok ||
+          !routeResult.success ||
+          !routeResult.data
+        ) {
+          setAssignedRoute(null);
+          return;
+        }
+
+        const route =
+          routeResult.data;
+
+        setAssignedRoute({
+          id:
+            route.id,
+
+          routeNumber:
+            route.routeNumber,
+
+          name:
+            route.name,
+
+          barangay:
+            route.barangay,
+
+          wasteType:
+            route.wasteType,
+
+          status:
+            route.status,
+
+          routeStops:
+            route.routeStops ??
+            [],
+        });
       } catch (error) {
         if (!cancelled) {
           console.error(
@@ -141,6 +239,7 @@ export function useDriverDashboardData() {
           );
 
           setTruck(null);
+          setAssignedRoute(null);
         }
       } finally {
         if (!cancelled) {
@@ -149,16 +248,26 @@ export function useDriverDashboardData() {
       }
     }
 
+    setLoading(true);
+
     void loadDashboardData();
+
+    const refreshInterval =
+      window.setInterval(
+        () => {
+          void loadDashboardData();
+        },
+        5000,
+      );
 
     return () => {
       cancelled = true;
+
+      window.clearInterval(
+        refreshInterval,
+      );
     };
   }, [accessToken]);
-
-  const assignedRoute =
-    truck?.plannedRoute ??
-    null;
 
   const stops =
     useMemo(
@@ -213,6 +322,22 @@ export function useDriverDashboardData() {
         )
       : 0;
 
+  const hasActiveTask =
+    Boolean(
+      currentStop,
+    );
+
+  const routeInProgress =
+    Boolean(
+      assignedRoute &&
+      (
+        truck?.status ===
+          "active" ||
+        assignedRoute.status ===
+          "In Progress"
+      ),
+    );
+
   return {
     assignedRoute,
     stops,
@@ -222,15 +347,15 @@ export function useDriverDashboardData() {
     currentStop,
     nextStop,
     taskToShow,
-    hasActiveTask:
-      Boolean(
-        currentStop,
-      ),
+
+    hasActiveTask,
 
     totalStops,
     completedCount,
     remainingCount,
     progress,
+
+    routeInProgress,
 
     gpsActive:
       Boolean(
@@ -238,4 +363,3 @@ export function useDriverDashboardData() {
       ),
   };
 }
-

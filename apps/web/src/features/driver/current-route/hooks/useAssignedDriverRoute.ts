@@ -28,12 +28,15 @@ export function useAssignedDriverRoute(
 
   useEffect(() => {
     if (!accessToken || accessToken === "null") {
+      setTruckId(null);
+      setAssignedRoute(null);
+      setStops([]);
       return;
     }
 
-    const getMyTruck = async () => {
+    const getAssignedRoute = async () => {
       try {
-        const response = await fetch(
+        const truckResponse = await fetch(
           `${env.VITE_API_URL}/trucks/me`,
           {
             headers: {
@@ -42,28 +45,52 @@ export function useAssignedDriverRoute(
           },
         );
 
-        const json = await response.json();
+        const truckJson = await truckResponse.json();
 
         if (
-          !response.ok ||
-          !json.success ||
-          !json.data
+          !truckResponse.ok ||
+          !truckJson.success ||
+          !truckJson.data
         ) {
-          console.error(
-            "Failed to fetch assigned truck:",
-            json,
-          );
-
+          setTruckId(null);
+          setAssignedRoute(null);
+          setStops([]);
           return;
         }
 
-        const truck = json.data;
+        const truck = truckJson.data;
 
         setTruckId(truck.id);
 
-        const route = truck.plannedRoute;
+        const routeResponse = await fetch(
+          `${env.VITE_API_URL}/routes/truck/${truck.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        );
 
-        if (!route || Array.isArray(route)) {
+        const routeJson = await routeResponse.json();
+
+        if (
+          !routeResponse.ok ||
+          !routeJson.success
+        ) {
+          console.error(
+            "Failed to fetch assigned route:",
+            routeJson,
+          );
+
+          setAssignedRoute(null);
+          setStops([]);
+          return;
+        }
+
+        const route =
+          routeJson.data as AssignedRoute | null;
+
+        if (!route) {
           setAssignedRoute(null);
           setStops([]);
           return;
@@ -107,11 +134,9 @@ export function useAssignedDriverRoute(
 
               address: stop.address,
 
-              lat:
-                stop.latitude as number,
+              lat: stop.latitude as number,
 
-              lng:
-                stop.longitude as number,
+              lng: stop.longitude as number,
 
               wasteType:
                 route.wasteType ===
@@ -131,16 +156,17 @@ export function useAssignedDriverRoute(
         setStops(mappedStops);
       } catch (error) {
         console.error(
-          "Failed to fetch assigned truck:",
+          "Failed to fetch assigned route:",
           error,
         );
 
+        setTruckId(null);
         setAssignedRoute(null);
         setStops([]);
       }
     };
 
-    void getMyTruck();
+    void getAssignedRoute();
   }, [accessToken]);
 
   return {
@@ -149,4 +175,3 @@ export function useAssignedDriverRoute(
     stops,
   };
 }
-

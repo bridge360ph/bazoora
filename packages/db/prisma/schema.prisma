@@ -14,7 +14,11 @@ model User {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   name           String?
+  authVersion    Int             @default(0)
+  userNumber     String?         @unique
   driverLocation DriverLocation?
+  RefreshToken   RefreshToken[]
+  Route          Route?
   assignedTruck  Truck?
 }
 
@@ -35,13 +39,18 @@ model ServiceRequest {
 }
 
 model Truck {
-  id               String  @id @default(cuid())
-  plateNumber      String  @unique
-  model            String
-  capacity         String
-  status           String  @default("Idle")
-  assignedDriverId String? @unique
-  assignedDriver   User?   @relation(fields: [assignedDriverId], references: [id])
+  id               String           @id @default(cuid())
+  plateNumber      String           @unique
+  model            String?
+  capacity         String?
+  status           String           @default("Active")
+  assignedDriverId String?          @unique
+  createdAt        DateTime         @default(now())
+  truckNumber      String?          @unique
+  updatedAt        DateTime
+  DriverLocation   DriverLocation[]
+  Route            Route?
+  assignedDriver   User?            @relation(fields: [assignedDriverId], references: [id])
 }
 
 model DriverLocation {
@@ -50,7 +59,84 @@ model DriverLocation {
   latitude  Float
   longitude Float
   updatedAt DateTime @updatedAt
-  driver    User     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  truckId   String?
+  driver    User     @relation(fields: [driverId], references: [id])
+  Truck     Truck?   @relation(fields: [truckId], references: [id])
+}
+
+model Counter {
+  entity   String @id
+  sequence Int    @default(0)
+}
+
+model HaulingRequest {
+  requestId      String               @id
+  requestNumber  String               @unique
+  userId         String
+  orgId          String?
+  requestAddress String
+  senderType     SenderType
+  wasteType      WasteType
+  imageUrl       String?
+  pickupDate     DateTime?
+  status         HaulingRequestStatus @default(PENDING)
+  approvedBy     String?
+  approvedAt     DateTime?
+  denialReason   String?
+  note           String?
+  archived       Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime
+}
+
+model RefreshToken {
+  id        String    @id
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+model Route {
+  id                String      @id
+  routeNumber       Int         @unique
+  name              String
+  barangay          String
+  waypoints         String
+  wasteType         String
+  collectionDay     String
+  startTime         String
+  status            String      @default("Not Started")
+  stops             Int         @default(0)
+  routeType         String
+  assignedEcoAideId String?     @unique
+  assignedTruckId   String?     @unique
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime
+  User              User?       @relation(fields: [assignedEcoAideId], references: [id])
+  Truck             Truck?      @relation(fields: [assignedTruckId], references: [id])
+  RouteStop         RouteStop[]
+}
+
+model RouteStop {
+  id         String   @id
+  routeId    String
+  stopNumber Int
+  address    String
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  Route      Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, stopNumber])
+  @@index([routeId])
 }
 
 enum UserRole {
@@ -61,4 +147,22 @@ enum UserRole {
   ECO_AIDE
   BUSINESS
   RESIDENT
+}
+
+enum HaulingRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum SenderType {
+  RESIDENT
+  BUSINESS
+}
+
+enum WasteType {
+  RESIDUAL
+  NON_BIODEGRADABLE
+  HAZARDOUS
+  BIODEGRADABLE
 }

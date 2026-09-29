@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { useAuthStore } from "@/stores/auth-store";
 
 import { Icon } from "./shared/icons";
@@ -40,7 +41,7 @@ function DriverDashboard() {
     assignedRoute,
     stops,
     truck,
-    truckLoading,
+    loading,
     gpsActive,
     taskToShow,
     hasActiveTask,
@@ -110,7 +111,11 @@ function DriverDashboard() {
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
           <div className={isMobile ? topCardsMobile : topCards}>
-            <div className={`${smallCard} ${isMobile ? "col-span-2" : ""}`}>
+            <div
+              className={`${smallCard} ${
+                isMobile ? "col-span-2" : ""
+              }`}
+            >
               <div className={smallLabel}>Today's Route</div>
 
               <div className={smallValue}>
@@ -124,9 +129,16 @@ function DriverDashboard() {
               )}
             </div>
 
-            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
+            <div
+              className={`${smallCardRow} ${
+                isMobile
+                  ? "flex-col items-start gap-2"
+                  : ""
+              }`}
+            >
               <div className="min-w-0">
                 <div className={smallLabel}>Stops Completed</div>
+
                 <div className={smallValue}>
                   {completedCount}/{totalStops}
                 </div>
@@ -141,12 +153,18 @@ function DriverDashboard() {
               </div>
             </div>
 
-            <div className={`${smallCardRow} ${isMobile ? "flex-col items-start gap-2" : ""}`}>
+            <div
+              className={`${smallCardRow} ${
+                isMobile
+                  ? "flex-col items-start gap-2"
+                  : ""
+              }`}
+            >
               <div className="min-w-0">
                 <div className={smallLabel}>Assigned Truck</div>
 
                 <div className={smallValue}>
-                  {truckLoading
+                  {loading
                     ? "Loading..."
                     : truck?.plateNumber || "No Truck"}
                 </div>
@@ -168,14 +186,24 @@ function DriverDashboard() {
             </div>
           </div>
 
-          <div className={isMobile ? "flex flex-col gap-4" : "grid grid-cols-2 gap-4"}>
+          <div
+            className={
+              isMobile
+                ? "flex flex-col gap-4"
+                : "grid grid-cols-2 gap-4"
+            }
+          >
             <div
               className="flex flex-col justify-between gap-4 rounded-2xl bg-[#003d1f] px-[22px] py-[18px] text-white"
-              style={{ minHeight: isMobile ? "auto" : 260 }}
+              style={{
+                minHeight: isMobile ? "auto" : 260,
+              }}
             >
               <div className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-[13px] opacity-80">{taskLabel}</div>
+                  <div className="text-[13px] opacity-80">
+                    {taskLabel}
+                  </div>
 
                   <div className="rounded-full bg-orange-100 px-3 py-1.5 text-xs font-bold text-orange-800">
                     {taskStatus}
@@ -185,11 +213,13 @@ function DriverDashboard() {
                 {taskToShow ? (
                   <>
                     <div className="text-[22px] font-extrabold leading-tight">
-                      {taskToShow.name} — Stop {taskToShow.stopNumber}
+                      {taskToShow.name} — Stop{" "}
+                      {taskToShow.stopNumber}
                     </div>
 
                     <div className="text-[13px] leading-relaxed opacity-85">
-                      {taskToShow.address} • {taskToShow.barangay} •{" "}
+                      {taskToShow.address} •{" "}
+                      {taskToShow.barangay} •{" "}
                       {taskToShow.wasteType}
                     </div>
                   </>
@@ -200,8 +230,8 @@ function DriverDashboard() {
                     </div>
 
                     <div className="text-[13px] leading-relaxed opacity-85">
-                      There are no active or upcoming collection stops on
-                      this route.
+                      There are no active or upcoming collection
+                      stops on this route.
                     </div>
                   </>
                 )}
@@ -210,7 +240,9 @@ function DriverDashboard() {
               <div className="flex flex-col gap-2.5">
                 <button
                   type="button"
-                  onClick={() => void navigate("/driver/route")}
+                  onClick={() =>
+                    void navigate("/driver/route")
+                  }
                   className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-green-400 px-4 py-3.5 text-sm font-bold text-slate-900"
                 >
                   <Icon icon={icons.check} />
@@ -220,7 +252,9 @@ function DriverDashboard() {
                 {taskToShow && (
                   <button
                     type="button"
-                    onClick={() => void navigate("/driver/report")}
+                    onClick={() =>
+                      void navigate("/driver/report")
+                    }
                     className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white"
                   >
                     <Icon icon={icons.document} />
@@ -232,12 +266,16 @@ function DriverDashboard() {
 
             <div
               className="flex flex-col overflow-hidden rounded-[18px] border border-gray-200 bg-white"
-              style={{ minHeight: isMobile ? "auto" : 260 }}
+              style={{
+                minHeight: isMobile ? "auto" : 260,
+              }}
             >
               <div className="border-b border-gray-100 px-[18px] pb-3 pt-[18px]">
                 <button
                   type="button"
-                  onClick={() => void navigate("/driver/route")}
+                  onClick={() =>
+                    void navigate("/driver/route")
+                  }
                   className="mb-3 cursor-pointer text-lg font-bold"
                 >
                   Route Progress
@@ -246,7 +284,9 @@ function DriverDashboard() {
                 <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
                   <div
                     className="h-full bg-blue-900 transition-all duration-300"
-                    style={{ width: `${progress}%` }}
+                    style={{
+                      width: `${progress}%`,
+                    }}
                   />
                 </div>
 
@@ -298,4 +338,3 @@ function DriverDashboard() {
 }
 
 export default DriverDashboard;
-

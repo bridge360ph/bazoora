@@ -3,24 +3,34 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuthStore } from "@/stores/auth-store";
+
 import { env } from "@/lib/env";
+
 import { getDistanceInMeters } from "@/lib/location";
 
 import { Sidebar } from "./shared/Sidebar";
+
 import { Header } from "./shared/Header";
+
 import type { SettingsTab } from "./shared/Header";
+
 import { BottomNav } from "./shared/BottomNav";
+
 import { Fab } from "./shared/Fab";
+
 import { useIsMobile } from "./shared/useIsMobile";
+
 import {
   layout,
   mainWrap,
 } from "./shared/layoutStyles";
 
 import RouteMapSection from "./current-route/components/RouteMapSection";
+
 import AssignedTasksPanel from "./current-route/components/AssignedTasksPanel";
+
 import DestinationCard from "./current-route/components/DestinationCard";
-import RouteOverviewCard from "./current-route/components/RouteOverviewCard";
+
 import DriverRouteModals from "./current-route/components/DriverRouteModals";
 
 import { useDriverGPS } from "./hooks/useDriverGPS";
@@ -38,25 +48,19 @@ import {
 } from "./current-route/hooks/useLocationPermission";
 
 export function CurrentRoute() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
-  const clearSession =
-    useAuthStore(
-      (state) => state.clear,
-    );
+  const clearSession = useAuthStore(
+    (state) => state.clear,
+  );
 
-  const accessToken =
-    useAuthStore(
-      (state) =>
-        state.accessToken,
-    );
+  const accessToken = useAuthStore(
+    (state) => state.accessToken,
+  );
 
-  const isMobile =
-    useIsMobile();
+  const isMobile = useIsMobile();
 
-  const [navOpen, setNavOpen] =
-    useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   const [
     confirmOpen,
@@ -95,25 +99,37 @@ export function CurrentRoute() {
     setLocationPermissionOpen,
     locationPermissionGranted,
     requestLocationPermission,
-  } =
-    useLocationPermission();
+  } = useLocationPermission();
 
   const {
     truckId,
     assignedRoute,
     stops,
-  } =
-    useAssignedDriverRoute(
-      accessToken,
-    );
+  } = useAssignedDriverRoute(
+    accessToken,
+  );
 
+  /*
+   * Start GPS as soon as location permission
+   * has been granted.
+   *
+   * This allows the driver's current location
+   * to appear on the map before starting a route.
+   */
   const {
     gpsPos,
     heading,
   } = useDriverGPS({
-    enabled: isCollecting,
+    enabled: locationPermissionGranted,
   });
 
+  /*
+   * Only sync the driver's location to the
+   * backend while an active route is running.
+   *
+   * GPS visibility and route tracking are
+   * therefore separate.
+   */
   useDriverLocationSync({
     isCollecting,
     gpsPos,
@@ -121,39 +137,60 @@ export function CurrentRoute() {
     accessToken,
   });
 
-  const routePath: [
-    number,
-    number,
-  ][] = [];
+  /*
+   * Preview path:
+   *
+   * Driver's current location
+   *          ↓
+   * Collection Stop 1
+   *          ↓
+   * Collection Stop 2
+   *          ↓
+   * ...
+   *
+   * This is available before the route starts.
+   */
+  const routePath: [number, number][] =
+    gpsPos && stops.length > 0
+      ? [
+          gpsPos,
+          ...stops
+            .filter(
+              (stop) =>
+                typeof stop.lat === "number" &&
+                typeof stop.lng === "number",
+            )
+            .map(
+              (stop) =>
+                [
+                  stop.lat,
+                  stop.lng,
+                ] as [
+                  number,
+                  number,
+                ],
+            ),
+        ]
+      : [];
 
-  const goTo = (
-    key: string,
-  ) => {
+  const goTo = (key: string) => {
     setNavOpen(false);
 
     switch (key) {
       case "dashboard":
-        void navigate(
-          "/driver",
-        );
+        void navigate("/driver");
         break;
 
       case "route":
-        void navigate(
-          "/driver/route",
-        );
+        void navigate("/driver/route");
         break;
 
       case "collections":
-        void navigate(
-          "/driver/collections",
-        );
+        void navigate("/driver/collections");
         break;
 
       case "report":
-        void navigate(
-          "/driver/report",
-        );
+        void navigate("/driver/report");
         break;
 
       default:
@@ -169,172 +206,154 @@ export function CurrentRoute() {
     );
   };
 
-  const handleLogout =
-    () => {
-      clearSession();
-      void navigate(
-        "/login",
-      );
-    };
+  const handleLogout = () => {
+    clearSession();
+    void navigate("/login");
+  };
 
-  const handleStartRoute =
-    () => {
-      setStartRouteConfirmOpen(
-        true,
+  const handleStartRoute = () => {
+    if (!assignedRoute) {
+      console.error(
+        "Cannot start route: no assigned route.",
       );
-    };
+      return;
+    }
 
-  const confirmStartRoute =
-    async () => {
-      if (!truckId) {
+    setStartRouteConfirmOpen(true);
+  };
+
+  const confirmStartRoute = async () => {
+    if (!truckId) {
+      console.error(
+        "Cannot start route: no assigned truck.",
+      );
+      return;
+    }
+
+    if (!assignedRoute) {
+      console.error(
+        "Cannot start route: no assigned route.",
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${env.VITE_API_URL}/trucks/${truckId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type":
+              "application/json",
+            Authorization:
+              `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            status: "Active",
+          }),
+        },
+      );
+
+      const json = await response.json();
+
+      if (
+        !response.ok ||
+        !json.success
+      ) {
         console.error(
-          "Cannot start route: no assigned truck.",
+          "Failed to start route:",
+          json,
         );
         return;
       }
 
-      try {
-        const response =
-          await fetch(
-            `${env.VITE_API_URL}/trucks/${truckId}`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type":
-                  "application/json",
-                Authorization:
-                  `Bearer ${accessToken}`,
-              },
-              body: JSON.stringify(
-                {
-                  status:
-                    "Active",
-                },
-              ),
-            },
-          );
+      setStartRouteConfirmOpen(false);
 
-        const json =
-          await response.json();
+      setIsCollecting(true);
 
-        if (
-          !response.ok ||
-          !json.success
-        ) {
-          console.error(
-            "Failed to start route:",
-            json,
-          );
-          return;
-        }
-
-        setStartRouteConfirmOpen(
-          false,
-        );
-
-        setIsCollecting(
-          true,
-        );
-
-        localStorage.setItem(
-          "driverRouteStarted",
-          "true",
-        );
-      } catch (error) {
-        console.error(
-          "Failed to start route:",
-          error,
-        );
-      }
-    };
+      localStorage.setItem(
+        "driverRouteStarted",
+        "true",
+      );
+    } catch (error) {
+      console.error(
+        "Failed to start route:",
+        error,
+      );
+    }
+  };
 
   const activeStop =
     stops.find(
       (stop) =>
-        stop.status ===
-        "NOW",
+        stop.status === "NOW",
     ) ?? null;
 
-  const handleComplete =
-    () => {
-      if (!gpsPos) {
-        console.warn(
-          "No GPS position available.",
-        );
-        return;
-      }
+  const handleComplete = () => {
+    if (!gpsPos) {
+      console.warn(
+        "No GPS position available.",
+      );
+      return;
+    }
 
-      if (!activeStop) {
-        console.warn(
-          "No active stop found.",
-        );
-        return;
-      }
+    if (!activeStop) {
+      console.warn(
+        "No active stop found.",
+      );
+      return;
+    }
 
-      const distance =
-        getDistanceInMeters(
-          gpsPos[0],
-          gpsPos[1],
-          activeStop.lat,
-          activeStop.lng,
-        );
+    const distance =
+      getDistanceInMeters(
+        gpsPos[0],
+        gpsPos[1],
+        activeStop.lat,
+        activeStop.lng,
+      );
 
-      if (distance > 50) {
-        setDistanceRemaining(
-          Math.round(
-            distance,
-          ),
-        );
+    if (distance > 50) {
+      setDistanceRemaining(
+        Math.round(distance),
+      );
 
-        setTooFarModalOpen(
-          true,
-        );
+      setTooFarModalOpen(true);
 
-        return;
-      }
+      return;
+    }
 
-      /*
-       * Stop completion will be
-       * connected to the database
-       * in the next step.
-       */
-    };
+    /*
+     * Stop completion will be connected
+     * to the database in the next step.
+     */
+  };
 
   return (
-    <div
-      className={layout}
-    >
+    <div className={layout}>
       <Sidebar
         activeKey="route"
         isMobile={isMobile}
         navOpen={navOpen}
         onNavigate={goTo}
         onClose={() =>
-          setNavOpen(
-            false,
-          )
+          setNavOpen(false)
         }
       />
 
-      <div
-        className={mainWrap}
-      >
+      <div className={mainWrap}>
         <Header
           isMobile={isMobile}
           title="Route & Assigned Tasks"
           onToggleNav={() =>
             setNavOpen(
-              (value) =>
-                !value,
+              (value) => !value,
             )
           }
           onSelectSettingsTab={
             goToSettingsTab
           }
           onLogout={() =>
-            setConfirmOpen(
-              true,
-            )
+            setConfirmOpen(true)
           }
         />
 
@@ -370,9 +389,7 @@ export function CurrentRoute() {
                 isCollecting={
                   isCollecting
                 }
-                routePath={
-                  routePath
-                }
+                routePath={routePath}
                 locationPermissionGranted={
                   locationPermissionGranted
                 }
@@ -386,24 +403,9 @@ export function CurrentRoute() {
                 }
               />
 
-              <div
-                className={
-                  isMobile
-                    ? "flex flex-col gap-3"
-                    : "grid grid-cols-2 gap-4"
-                }
-              >
-                <RouteOverviewCard
-                  stops={stops}
-                  gpsPos={gpsPos}
-                />
-
-                <DestinationCard
-                  stop={
-                    activeStop
-                  }
-                />
-              </div>
+              <DestinationCard
+                stop={activeStop}
+              />
             </div>
 
             {/* RIGHT SIDE */}
@@ -418,8 +420,9 @@ export function CurrentRoute() {
                 );
               }}
             />
-
+            
             {locationPermissionGranted &&
+              assignedRoute &&
               !isCollecting && (
                 <button
                   type="button"
@@ -458,9 +461,7 @@ export function CurrentRoute() {
         startRouteConfirmOpen={
           startRouteConfirmOpen
         }
-        confirmOpen={
-          confirmOpen
-        }
+        confirmOpen={confirmOpen}
         tooFarModalOpen={
           tooFarModalOpen
         }
@@ -471,7 +472,6 @@ export function CurrentRoute() {
           setLocationExplanationOpen(
             false,
           );
-
           setLocationPermissionOpen(
             true,
           );
@@ -488,17 +488,13 @@ export function CurrentRoute() {
           confirmStartRoute
         }
         onLogoutCancel={() =>
-          setConfirmOpen(
-            false,
-          )
+          setConfirmOpen(false)
         }
         onLogoutConfirm={
           handleLogout
         }
         onTooFarClose={() =>
-          setTooFarModalOpen(
-            false,
-          )
+          setTooFarModalOpen(false)
         }
       />
     </div>

@@ -53,6 +53,7 @@ function ManeuverIcon({
 }) {
   const maneuverType =
     type?.toLowerCase() ?? "";
+
   const maneuverModifier =
     modifier?.toLowerCase() ?? "";
 
@@ -97,42 +98,28 @@ function ManeuverIcon({
   }
 }
 
-function formatDistance(
-  meters: number,
-) {
+function formatDistance(meters: number) {
   if (meters < 1000) {
     return `${Math.round(meters)} m`;
   }
 
-  return `${(
-    meters / 1000
-  ).toFixed(1)} km`;
+  return `${(meters / 1000).toFixed(1)} km`;
 }
 
-function formatDuration(
-  seconds: number,
-) {
-  const minutes = Math.ceil(
-    seconds / 60,
-  );
+function formatDuration(seconds: number) {
+  const minutes = Math.ceil(seconds / 60);
 
   if (minutes < 60) {
     return `${minutes} min`;
   }
 
-  const hours = Math.floor(
-    minutes / 60,
-  );
-
-  const remaining =
-    minutes % 60;
+  const hours = Math.floor(minutes / 60);
+  const remaining = minutes % 60;
 
   return `${hours}h ${remaining}m`;
 }
 
-function formatEta(
-  seconds: number,
-) {
+function formatEta(seconds: number) {
   return new Date(
     Date.now() + seconds * 1000,
   ).toLocaleTimeString("en-PH", {
@@ -398,13 +385,11 @@ function distanceMeters(
   const radius = 6_371_000;
 
   const dLat =
-    ((lat2 - lat1) *
-      Math.PI) /
+    ((lat2 - lat1) * Math.PI) /
     180;
 
   const dLng =
-    ((lng2 - lng1) *
-      Math.PI) /
+    ((lng2 - lng1) * Math.PI) /
     180;
 
   const a =
@@ -523,9 +508,7 @@ function DirectionsRoute({
               ],
           );
 
-        setPath(
-          coordinates,
-        );
+        setPath(coordinates);
       })
       .catch(() => {
         setPath(
@@ -608,7 +591,7 @@ function getBounds(
 }
 
 /* -------------------------------------------------------------------------- */
-/* SmartMap                                                                  */
+/* SmartMap                                                                   */
 /* -------------------------------------------------------------------------- */
 
 export default function SmartMap({
@@ -640,6 +623,11 @@ export default function SmartMap({
     string | null
   >(null);
 
+  const [
+    isMapLoaded,
+    setIsMapLoaded,
+  ] = useState(false);
+
   const mapRef =
     useRef<MapRef>(null);
 
@@ -651,29 +639,35 @@ export default function SmartMap({
       [number, number] | null
     >(null);
 
-  const centerOnTruck =
-    () => {
-      const truck =
-        markers.find(
-          (marker) =>
-            marker.id ===
-            "truck-main",
-        );
+  const centerOnTruck = () => {
+    const truck =
+      markers.find(
+        (marker) =>
+          marker.id ===
+          "truck-main",
+      );
 
-      if (!truck) {
-        return;
-      }
+    if (!truck) {
+      return;
+    }
 
-      mapRef.current?.flyTo({
-        center: [
-          truck.position[1],
-          truck.position[0],
-        ],
-        zoom: 17,
-        duration: 800,
-      });
-    };
+    mapRef.current?.flyTo({
+      center: [
+        truck.position[1],
+        truck.position[0],
+      ],
+      zoom: 17,
+      duration: 800,
+    });
+  };
 
+  /*
+   * ------------------------------------------------------------------------
+   * Active route camera
+   *
+   * Once the driver starts the route, the map follows the driver.
+   * ------------------------------------------------------------------------
+   */
   useEffect(() => {
     if (
       !mapRef.current ||
@@ -706,10 +700,174 @@ export default function SmartMap({
     isCollecting,
   ]);
 
+  /*
+   * ------------------------------------------------------------------------
+   * Route overview camera
+   *
+   * Before the route starts:
+   *
+   *   - If assigned collection stops exist:
+   *       show the driver AND collection stops.
+   *
+   *   - If there are no assigned stops:
+   *       center on the driver.
+   *
+   * This intentionally does NOT use the `center` prop to zoom
+   * into one collection point.
+   * ------------------------------------------------------------------------
+   */
+  useEffect(() => {
+    if (
+      !isMapLoaded ||
+      isCollecting
+    ) {
+      return;
+    }
+
+    const map =
+      mapRef.current?.getMap();
+
+    if (!map) {
+      return;
+    }
+
+    const truck =
+      markers.find(
+        (marker) =>
+          marker.id ===
+          "truck-main",
+      );
+
+    const stopMarkers =
+      markers.filter(
+        (marker) =>
+          marker.id?.startsWith(
+            "stop-",
+          ),
+      );
+
+    /*
+     * No assigned tasks:
+     *
+     * Center directly on the driver.
+     */
+    if (
+      stopMarkers.length === 0
+    ) {
+      if (!truck) {
+        return;
+      }
+
+      map.flyTo({
+        center: [
+          truck.position[1],
+          truck.position[0],
+        ],
+        zoom: 16,
+        duration: 800,
+      });
+
+      return;
+    }
+
+    /*
+     * Assigned tasks exist:
+     *
+     * Fit the driver and every collection
+     * stop into the visible map.
+     */
+    const cameraMarkers =
+      truck
+        ? [
+            truck,
+            ...stopMarkers,
+          ]
+        : stopMarkers;
+
+    const coordinates =
+      cameraMarkers
+        .filter(
+          (marker) =>
+            Number.isFinite(
+              marker.position[0],
+            ) &&
+            Number.isFinite(
+              marker.position[1],
+            ),
+        )
+        .map(
+          (marker) =>
+            [
+              marker.position[0],
+              marker.position[1],
+            ] as [
+              number,
+              number,
+            ],
+        );
+
+    if (coordinates.length === 0) {
+      return;
+    }
+
+    /*
+     * Only one valid coordinate:
+     * center on it rather than calling fitBounds.
+     */
+    if (
+      coordinates.length === 1
+    ) {
+      const [lat, lng] =
+        coordinates[0];
+
+      map.flyTo({
+        center: [lng, lat],
+        zoom: 15,
+        duration: 800,
+      });
+
+      return;
+    }
+
+    const bounds =
+      getBounds(coordinates);
+
+    if (!bounds) {
+      return;
+    }
+
+    map.fitBounds(
+      bounds,
+      {
+        padding: {
+          top: 100,
+          bottom: 100,
+          left: 80,
+          right: 80,
+        },
+        maxZoom: 15,
+        duration: 1000,
+      },
+    );
+  }, [
+    isMapLoaded,
+    isCollecting,
+    markers,
+  ]);
+
+  /*
+   * ------------------------------------------------------------------------
+   * Active route initial fit
+   *
+   * This fits the active route once when the route starts.
+   * The GPS-following effect below then takes over.
+   * ------------------------------------------------------------------------
+   */
   useEffect(() => {
     if (!isCollecting) {
       fittedRef.current =
         false;
+
       return;
     }
 
@@ -762,51 +920,30 @@ export default function SmartMap({
     fittedRef.current =
       true;
 
-    map.fitBounds(bounds, {
-      padding: 80,
-      duration: 1500,
-    });
+    map.fitBounds(
+      bounds,
+      {
+        padding: 80,
+        duration: 1500,
+      },
+    );
   }, [
     isCollecting,
     routes,
   ]);
 
-  const [
-    centerLat,
-    centerLng,
-  ] = center;
-
-  useEffect(() => {
-    if (isCollecting) {
-      return;
-    }
-
-    const map =
-      mapRef.current?.getMap();
-
-    if (!map) {
-      return;
-    }
-
-    map.flyTo({
-      center: [
-        centerLng,
-        centerLat,
-      ],
-      zoom,
-      duration: 1200,
-    });
-  }, [
-    centerLat,
-    centerLng,
-    zoom,
-    isCollecting,
-  ]);
-
+  /*
+   * ------------------------------------------------------------------------
+   * Driver-following camera
+   *
+   * This only runs after Start Route.
+   * ------------------------------------------------------------------------
+   */
   useEffect(() => {
     if (!isCollecting) {
       previousCoords.current =
         null;
+
       return;
     }
 
@@ -893,6 +1030,11 @@ export default function SmartMap({
     markers,
   ]);
 
+  /*
+   * ------------------------------------------------------------------------
+   * 3D camera
+   * ------------------------------------------------------------------------
+   */
   useEffect(() => {
     const map =
       mapRef.current?.getMap();
@@ -1030,6 +1172,8 @@ export default function SmartMap({
           ]);
         }}
         onLoad={(event) => {
+          setIsMapLoaded(true);
+
           const map =
             event.target;
 
@@ -1127,7 +1271,9 @@ export default function SmartMap({
                 <MapboxLine
                   key={routeId}
                   id={routeId}
-                  path={route.path}
+                  path={
+                    route.path
+                  }
                   color={
                     route.color
                   }
@@ -1283,7 +1429,6 @@ export default function SmartMap({
         return (
           <div className="absolute bottom-5 left-1/2 z-[1000] w-[340px] -translate-x-1/2">
             <div className="overflow-hidden rounded-2xl border border-emerald-700 bg-emerald-600/95 text-white shadow-2xl backdrop-blur-md">
-              {/* Drag / toggle handle */}
               <button
                 type="button"
                 onClick={() =>
@@ -1310,7 +1455,6 @@ export default function SmartMap({
                 </span>
               </button>
 
-              {/* Always visible */}
               <div className="px-3 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
@@ -1344,7 +1488,6 @@ export default function SmartMap({
                   </div>
                 </div>
 
-                {/* Complete button remains visible when collapsed */}
                 {!etaExpanded && (
                   <button
                     type="button"
@@ -1358,7 +1501,6 @@ export default function SmartMap({
                 )}
               </div>
 
-              {/* Expandable details */}
               <div
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                   etaExpanded
@@ -1369,7 +1511,6 @@ export default function SmartMap({
                 <div className="border-t border-white/20 px-3 pb-3 pt-3">
                   {routeSummary && (
                     <>
-                      {/* ETA + remaining */}
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-[10px] font-bold tracking-widest text-emerald-100">
@@ -1400,7 +1541,6 @@ export default function SmartMap({
                         </div>
                       </div>
 
-                      {/* Progress */}
                       <div className="mt-3">
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                           <div
@@ -1415,11 +1555,9 @@ export default function SmartMap({
                           <span>
                             START
                           </span>
-
                           <span>
                             PROGRESS
                           </span>
-
                           <span>
                             END
                           </span>
@@ -1428,7 +1566,6 @@ export default function SmartMap({
                     </>
                   )}
 
-                  {/* Expanded actions */}
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1486,4 +1623,3 @@ export default function SmartMap({
     </div>
   );
 }
-

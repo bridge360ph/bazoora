@@ -3,6 +3,7 @@ import type { Truck } from "./fleet.types";
 export const INITIAL_TRUCKS: Truck[] = [
   {
     id: "FL-001",
+    databaseId: "FL-001",
     plateNumber: "GTM-5895",
     model: "Isuzu Elf",
     capacity: "7000 kg",
@@ -14,6 +15,7 @@ export const INITIAL_TRUCKS: Truck[] = [
   },
   {
     id: "FL-002",
+    databaseId: "FL-002",
     plateNumber: "FCB-1899",
     model: "Isuzu Elf",
     capacity: "5000 kg",
@@ -23,6 +25,7 @@ export const INITIAL_TRUCKS: Truck[] = [
   },
   {
     id: "FL-003",
+    databaseId: "FL-003",
     plateNumber: "LFC-1892",
     model: "Dongfeng",
     capacity: "9000 kg",
@@ -32,6 +35,7 @@ export const INITIAL_TRUCKS: Truck[] = [
   },
   {
     id: "FL-004",
+    databaseId: "FL-004",
     plateNumber: "MIT-2125",
     model: "Komatsu",
     capacity: "15000 kg",
@@ -41,6 +45,7 @@ export const INITIAL_TRUCKS: Truck[] = [
   },
   {
     id: "FL-005",
+    databaseId: "FL-005",
     plateNumber: "ASU-3852",
     model: "Komatsu",
     capacity: "10000 kg",

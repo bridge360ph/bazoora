@@ -2,13 +2,16 @@ import "dotenv/config";
 
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+
 import type { HealthResponse } from "@bazoora/shared";
 
 import { setupSocket } from "./plugins/socket.js";
-import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
-import { authRoutes } from "./routes/auth.js";
-import { trucksRoutes } from "./routes/trucks.js";
 import { config } from "./plugins/config.js";
+
+import { authRoutes } from "./routes/auth.js";
+import { haulingRequestRoutes } from "./routes/haulingRequestRoutes.js";
+import { trucksRoutes } from "./routes/trucks.js";
+import { routesRoutes } from "./routes/routes.js";
 
 const app = Fastify({ logger: true });
 
@@ -28,8 +31,14 @@ const start = async () => {
     prefix: "/hauling-requests",
   });
 
+  // Truck routes
   await app.register(trucksRoutes, {
-  prefix: "/trucks",
+    prefix: "/trucks",
+  });
+
+  // Route management routes
+  await app.register(routesRoutes, {
+    prefix: "/routes",
   });
 
   app.get("/", (): HealthResponse => {

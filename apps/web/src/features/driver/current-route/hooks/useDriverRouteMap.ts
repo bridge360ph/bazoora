@@ -33,15 +33,10 @@ interface UseDriverRouteMapProps {
   gpsPos:
     | [number, number]
     | null;
-
   heading: number;
-
   stops: Stop[];
-
   isPlanning: boolean;
-
   isCollecting: boolean;
-
   routePath?: [number, number][];
 }
 
@@ -51,6 +46,7 @@ export function useDriverRouteMap({
   stops,
   isPlanning,
   isCollecting,
+  routePath = [],
 }: UseDriverRouteMapProps) {
   const [
     navigationSteps,
@@ -70,12 +66,70 @@ export function useDriverRouteMap({
 
   /*
    * ---------------- MAP CENTER
+   *
+   * Before starting:
+   * - Collection points take priority.
+   * - Driver GPS is still shown as a marker.
+   *
+   * After starting:
+   * - Driver GPS becomes the map center.
+   *
+   * If there are no collection points:
+   * - Driver GPS is used as the center.
    */
-
   const mapCenter =
     useMemo<
       [number, number] | undefined
     >(() => {
+      const validStops =
+        stops.filter(
+          (stop) =>
+            Number.isFinite(
+              stop.lat,
+            ) &&
+            Number.isFinite(
+              stop.lng,
+            ),
+        );
+
+      /*
+       * Before the route starts,
+       * center around the assigned
+       * collection points.
+       */
+      if (
+        !isCollecting &&
+        validStops.length > 0
+      ) {
+        const totalLat =
+          validStops.reduce(
+            (sum, stop) =>
+              sum + stop.lat,
+            0,
+          );
+
+        const totalLng =
+          validStops.reduce(
+            (sum, stop) =>
+              sum + stop.lng,
+            0,
+          );
+
+        return [
+          totalLat /
+            validStops.length,
+          totalLng /
+            validStops.length,
+        ];
+      }
+
+      /*
+       * After starting the route,
+       * follow the driver's GPS.
+       *
+       * Also use GPS when there are
+       * no assigned collection points.
+       */
       if (
         gpsPos &&
         Number.isFinite(
@@ -88,40 +142,14 @@ export function useDriverRouteMap({
         return gpsPos;
       }
 
-      const activeStop =
-        stops.find(
-          (stop) =>
-            stop.status ===
-            "NOW",
-        );
-
-      if (
-        activeStop &&
-        Number.isFinite(
-          activeStop.lat,
-        ) &&
-        Number.isFinite(
-          activeStop.lng,
-        )
-      ) {
-        return [
-          activeStop.lat,
-          activeStop.lng,
-        ];
-      }
-
+      /*
+       * Fallback to the first valid
+       * collection point.
+       */
       const firstStop =
-        stops[0];
+        validStops[0];
 
-      if (
-        firstStop &&
-        Number.isFinite(
-          firstStop.lat,
-        ) &&
-        Number.isFinite(
-          firstStop.lng,
-        )
-      ) {
+      if (firstStop) {
         return [
           firstStop.lat,
           firstStop.lng,
@@ -129,12 +157,22 @@ export function useDriverRouteMap({
       }
 
       return undefined;
-    }, [gpsPos, stops]);
+    }, [
+      gpsPos,
+      stops,
+      isCollecting,
+    ]);
 
   /*
    * ---------------- MARKERS
+   *
+   * The driver's location is visible
+   * as soon as location permission is
+   * granted.
+   *
+   * Stop markers remain visible before
+   * and after starting the route.
    */
-
   const mapMarkers =
     useMemo<MapMarker[]>(() => {
       return [
@@ -167,7 +205,10 @@ export function useDriverRouteMap({
 
         ...stops.map(
           (stop, index) => ({
-            id: `stop-${stop.stopNumber || index + 1}`,
+            id: `stop-${
+              stop.stopNumber ||
+              index + 1
+            }`,
 
             position: [
               stop.lat,
@@ -205,14 +246,14 @@ export function useDriverRouteMap({
     ]);
 
   /*
-   * ---------------- ROUTE
+   * ---------------- ROUTE PREVIEW
    *
-   * One MapRoute for the complete
-   * collection route.
+   * The route is visible BEFORE
+   * Start Route is pressed.
    *
-   * While collecting:
+   * Preview:
    *
-   * Current GPS
+   * Driver GPS
    *     ↓
    * Stop 1
    *     ↓
@@ -220,9 +261,12 @@ export function useDriverRouteMap({
    *     ↓
    * Stop 3
    *
-   * Completed stops are removed.
+   * routePath uses:
+   * [latitude, longitude]
+   *
+   * SmartMap routes use:
+   * [longitude, latitude]
    */
-
   const mapRoutes =
     useMemo<MapRoute[]>(() => {
       if (
@@ -244,12 +288,64 @@ export function useDriverRouteMap({
           ? remainingStops
           : stops;
 
+      /*
+       * Use routePath when available.
+       *
+       * This allows CurrentRoute to
+       * provide:
+       *
+       * Driver → Stop 1 → Stop 2...
+       */
+      if (
+        routePath.length >= 2
+      ) {
+        const waypoints =
+          routePath
+            .filter(
+              (point) =>
+                Number.isFinite(
+                  point[0],
+                ) &&
+                Number.isFinite(
+                  point[1],
+                ),
+            )
+            .map(
+              (point) =>
+                [
+                  point[1],
+                  point[0],
+                ] as [
+                  number,
+                  number,
+                ],
+            );
+
+        if (
+          waypoints.length >= 2
+        ) {
+          return [
+            {
+              waypoints,
+              color: "green",
+              label:
+                "Driver Route",
+            },
+          ];
+        }
+      }
+
+      /*
+       * Fallback route construction.
+       *
+       * GPS is included both before
+       * and after starting the route.
+       */
       const waypoints: [
         number,
         number,
       ][] = [
-        ...(gpsPos &&
-        isCollecting
+        ...(gpsPos
           ? [
               [
                 gpsPos[1],
@@ -261,20 +357,30 @@ export function useDriverRouteMap({
             ]
           : []),
 
-        ...activeStops.map(
-          (stop) =>
-            [
-              Number(
+        ...activeStops
+          .filter(
+            (stop) =>
+              Number.isFinite(
+                stop.lat,
+              ) &&
+              Number.isFinite(
                 stop.lng,
               ),
-              Number(
-                stop.lat,
-              ),
-            ] as [
-              number,
-              number,
-            ],
-        ),
+          )
+          .map(
+            (stop) =>
+              [
+                Number(
+                  stop.lng,
+                ),
+                Number(
+                  stop.lat,
+                ),
+              ] as [
+                number,
+                number,
+              ],
+          ),
       ];
 
       if (
@@ -286,9 +392,7 @@ export function useDriverRouteMap({
       return [
         {
           waypoints,
-
           color: "green",
-
           label:
             "Driver Route",
         },
@@ -296,7 +400,7 @@ export function useDriverRouteMap({
     }, [
       gpsPos,
       stops,
-      isCollecting,
+      routePath,
     ]);
 
   /*
@@ -308,7 +412,6 @@ export function useDriverRouteMap({
    * - remaining duration
    * - turn-by-turn instructions
    */
-
   useEffect(() => {
     let cancelled = false;
 
@@ -340,24 +443,42 @@ export function useDriverRouteMap({
             gpsPos[1],
             gpsPos[0],
           ],
-          ...activeStops.map(
-            (stop) => [
-              Number(
-                stop.lng,
-              ),
-              Number(
-                stop.lat,
-              ),
-            ],
-          ),
+
+          ...activeStops
+            .filter(
+              (stop) =>
+                Number.isFinite(
+                  stop.lat,
+                ) &&
+                Number.isFinite(
+                  stop.lng,
+                ),
+            )
+            .map(
+              (stop) => [
+                Number(
+                  stop.lng,
+                ),
+                Number(
+                  stop.lat,
+                ),
+              ],
+            ),
         ];
 
-        const coords = points
-          .map(
-            (point) =>
-              point.join(","),
-          )
-          .join(";");
+        if (
+          points.length < 2
+        ) {
+          return;
+        }
+
+        const coords =
+          points
+            .map(
+              (point) =>
+                point.join(","),
+            )
+            .join(";");
 
         const accessToken =
           import.meta.env
