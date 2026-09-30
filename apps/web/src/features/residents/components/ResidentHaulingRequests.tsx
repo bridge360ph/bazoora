@@ -10,6 +10,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -69,23 +71,26 @@ export default function ResidentHaulingRequests(): React.ReactNode {
     useState(0);
 
   useEffect(() => {
-  if (activeTab !== "history") return;
+    if (activeTab !== "history") return;
 
-  async function loadRequestHistory() {
-    try {
-      const history = await listMyHaulingRequests();
-      setRequests(history);
-    } catch (error) {
-      console.error(
-        "Failed to load hauling requests:",
-        error,
-      );
-      setRequests([]);
+    async function loadRequestHistory() {
+      try {
+        const history =
+          await listMyHaulingRequests();
+
+        setRequests(history);
+      } catch (error) {
+        console.error(
+          "Failed to load hauling requests:",
+          error,
+        );
+
+        setRequests([]);
+      }
     }
-  }
 
-  void loadRequestHistory();
-}, [activeTab, refreshHistory]);
+    void loadRequestHistory();
+  }, [activeTab, refreshHistory]);
 
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
@@ -140,14 +145,19 @@ export default function ResidentHaulingRequests(): React.ReactNode {
             {activeTab === "new" ? (
               <NewRequest
                 onSubmitted={() => {
-                  setRefreshHistory((value) => value + 1);
+                  setRefreshHistory(
+                    (value) => value + 1,
+                  );
+
                   setActiveTab("history");
                 }}
               />
             ) : (
               <RequestHistory
                 requests={requests}
-                onSelectRequest={setSelectedRequest}
+                onSelectRequest={
+                  setSelectedRequest
+                }
               />
             )}
           </div>
@@ -156,7 +166,9 @@ export default function ResidentHaulingRequests(): React.ReactNode {
           {selectedRequest && (
             <RequestDetailsModal
               request={selectedRequest}
-              onClose={() => setSelectedRequest(null)}
+              onClose={() =>
+                setSelectedRequest(null)
+              }
             />
           )}
         </section>
@@ -176,8 +188,15 @@ function NewRequest({
   const [wasteType, setWasteType] =
     useState<WasteType | "">("");
 
-  const [address, setAddress] =
-    useState("");
+  /*
+   * Multiple pickup addresses.
+   *
+   * The current backend still expects one
+   * requestAddress string, so these will be
+   * combined before submission.
+   */
+  const [addresses, setAddresses] =
+    useState<string[]>([""]);
 
   const [pickupDate, setPickupDate] =
     useState("");
@@ -200,6 +219,39 @@ function NewRequest({
   const [success, setSuccess] =
     useState(false);
 
+  function handleAddressChange(
+    index: number,
+    value: string,
+  ) {
+    setAddresses((current) =>
+      current.map((address, addressIndex) =>
+        addressIndex === index
+          ? value
+          : address,
+      ),
+    );
+  }
+
+  function addAddress() {
+    setAddresses((current) => [
+      ...current,
+      "",
+    ]);
+  }
+
+  function removeAddress(index: number) {
+    setAddresses((current) => {
+      if (current.length === 1) {
+        return [""];
+      }
+
+      return current.filter(
+        (_, addressIndex) =>
+          addressIndex !== index,
+      );
+    });
+  }
+
   function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
@@ -210,18 +262,26 @@ function NewRequest({
     setError(null);
 
     if (!file.type.startsWith("image/")) {
-      setError("Please select an image file.");
+      setError(
+        "Please select an image file.",
+      );
+
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError("Photo must be smaller than 10MB.");
+      setError(
+        "Photo must be smaller than 10MB.",
+      );
+
       return;
     }
 
     setSelectedFile(file);
 
-    const url = URL.createObjectURL(file);
+    const url =
+      URL.createObjectURL(file);
+
     setPreviewUrl(url);
   }
 
@@ -247,19 +307,58 @@ function NewRequest({
     setSuccess(false);
 
     if (!wasteType) {
-      setError("Please select a waste type.");
+      setError(
+        "Please select a waste type.",
+      );
+
       return;
     }
 
-    const trimmedAddress = address.trim()
+    /*
+     * Clean up all entered addresses.
+     */
+    const trimmedAddresses =
+      addresses
+        .map((address) =>
+          address.trim(),
+        )
+        .filter(
+          (address) =>
+            address.length > 0,
+        );
 
-    if (trimmedAddress.length < 5) {
-      setError("Pickup address must be at least 5 characters.");
+    if (trimmedAddresses.length === 0) {
+      setError(
+        "Please enter at least one pickup address.",
+      );
+
+      return;
+    }
+
+    /*
+     * Every pickup address must have at least
+     * 5 characters because the current API
+     * validates requestAddress with minLength: 5.
+     */
+    const invalidAddress =
+      trimmedAddresses.find(
+        (address) =>
+          address.length < 5,
+      );
+
+    if (invalidAddress) {
+      setError(
+        "Each pickup address must be at least 5 characters.",
+      );
+
       return;
     }
 
     if (!pickupDate) {
-      setError("Please select a pickup date.");
+      setError(
+        "Please select a pickup date.",
+      );
+
       return;
     }
 
@@ -269,22 +368,57 @@ function NewRequest({
       let imageUrl: string | undefined;
 
       if (selectedFile) {
-        const base64 = await fileToBase64(selectedFile);
+        const base64 =
+          await fileToBase64(
+            selectedFile,
+          );
 
-        imageUrl = await uploadImage(
-          base64,
-          selectedFile.type,
-        );
+        imageUrl =
+          await uploadImage(
+            base64,
+            selectedFile.type,
+          );
       }
 
+      /*
+       * TEMPORARY COMPATIBILITY:
+       *
+       * The current backend expects:
+       *
+       * requestAddress: string
+       *
+       * Therefore multiple addresses are
+       * combined into one string for now.
+       *
+       * Later, when the backend is changed,
+       * this can become:
+       *
+       * pickupLocations: [...]
+       */
+      const combinedAddress =
+        trimmedAddresses
+          .map(
+            (address, index) =>
+              `Pickup ${index + 1}: ${address}`,
+          )
+          .join("\n");
+
       await createResidentHaulingRequest({
-        requestAddress: trimmedAddress,
+        requestAddress:
+          combinedAddress,
+
         senderType: "RESIDENT",
+
         wasteType,
+
         pickupDate: new Date(
           pickupDate,
         ).toISOString(),
-        ...(imageUrl && { imageUrl }),
+
+        ...(imageUrl && {
+          imageUrl,
+        }),
+
         ...(note.trim() && {
           note: note.trim(),
         }),
@@ -293,9 +427,13 @@ function NewRequest({
       setSuccess(true);
 
       setWasteType("");
-      setAddress("");
+
+      setAddresses([""]);
+
       setPickupDate("");
+
       setNote("");
+
       removePhoto();
 
       onSubmitted();
@@ -400,7 +538,8 @@ function NewRequest({
             value={wasteType}
             onChange={(event) =>
               setWasteType(
-                event.target.value as WasteType | "",
+                event.target
+                  .value as WasteType | "",
               )
             }
             className="h-9 w-full appearance-none rounded-md border border-surface-border bg-white px-3 pr-9 text-xs text-gray-700 outline-none focus:border-brand-secondary"
@@ -410,7 +549,10 @@ function NewRequest({
             </option>
 
             {wasteTypes.map((type) => (
-              <option key={type} value={type}>
+              <option
+                key={type}
+                value={type}
+              >
                 {wasteTypeLabels[type]}
               </option>
             ))}
@@ -420,25 +562,71 @@ function NewRequest({
         </div>
       </div>
 
-      {/* Pickup Address */}
+      {/* Pickup Addresses */}
       <div className="mt-4">
-        <label
-          htmlFor="pickup-address"
-          className="text-[10px] font-medium text-gray-700"
-        >
-          Pickup Address
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-medium text-gray-700">
+            Pickup Addresses
+          </label>
 
-        <input
-          id="pickup-address"
-          type="text"
-          value={address}
-          onChange={(event) =>
-            setAddress(event.target.value)
-          }
-          placeholder="Enter pickup address..."
-          className="mt-1.5 h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
-        />
+          <span className="text-[8px] text-gray-400">
+            {addresses.length}{" "}
+            {addresses.length === 1
+              ? "location"
+              : "locations"}
+          </span>
+        </div>
+
+        <div className="mt-1.5 space-y-2">
+          {addresses.map(
+            (address, index) => (
+              <div
+                key={index}
+                className="flex gap-2"
+              >
+                <div className="flex h-9 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[9px] font-bold text-gray-500">
+                  {index + 1}
+                </div>
+
+                <input
+                  id={`pickup-address-${index}`}
+                  type="text"
+                  value={address}
+                  onChange={(event) =>
+                    handleAddressChange(
+                      index,
+                      event.target.value,
+                    )
+                  }
+                  placeholder={`Enter pickup address ${index + 1}...`}
+                  className="h-9 min-w-0 flex-1 rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
+                />
+
+                {addresses.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeAddress(index)
+                    }
+                    aria-label={`Remove pickup address ${index + 1}`}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            ),
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={addAddress}
+          className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[9px] font-semibold text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          ADD ANOTHER PICKUP ADDRESS
+        </button>
       </div>
 
       {/* Pickup Date */}
@@ -455,7 +643,9 @@ function NewRequest({
           type="datetime-local"
           value={pickupDate}
           onChange={(event) =>
-            setPickupDate(event.target.value)
+            setPickupDate(
+              event.target.value,
+            )
           }
           min={getMinimumDateTime()}
           className="mt-1.5 h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none focus:border-brand-secondary"
@@ -517,7 +707,9 @@ function NewRequest({
           ? "SUBMITTING..."
           : "SUBMIT REQUEST"}
 
-        {!isSubmitting && <span>→</span>}
+        {!isSubmitting && (
+          <span>→</span>
+        )}
       </button>
     </form>
   );
@@ -528,74 +720,95 @@ function RequestHistory({
   onSelectRequest,
 }: {
   requests: HaulingRequest[];
-  onSelectRequest: (request: HaulingRequest) => void;
+  onSelectRequest: (
+    request: HaulingRequest,
+  ) => void;
 }): React.ReactNode {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [slidingDirection, setSlideDirection] = useState<
-    "left" | "right"
-  >("left");
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [slidingDirection, setSlideDirection] =
+    useState<"left" | "right">("left");
+
   const itemsPerPage = 8;
-  const totalPages = Math.ceil(
-    requests.length / itemsPerPage,
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      requests.length / itemsPerPage,
+    ),
   );
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedRequests = requests.slice(
-    startIndex,
-    startIndex + itemsPerPage,
-  );
+
+  const startIndex =
+    (currentPage - 1) * itemsPerPage;
+
+  const paginatedRequests =
+    requests.slice(
+      startIndex,
+      startIndex + itemsPerPage,
+    );
 
   return (
     <div className="px-6 pb-6 pt-5">
-      <div 
+      <div
         key={currentPage}
         className={`space-y-3 ${
           slidingDirection === "left"
             ? "page-slide-left"
             : "page-slide-right"
-          }`}
-        >
-        {paginatedRequests.map((request) => (
-          <div
-            key={request.requestId}
-            className="flex min-h-20 items-center justify-between rounded-md border border-gray-200 bg-white px-5"
-          >
-            <div className="min-w-0">
-              <p className="text-[7px] text-gray-400">
-                {new Date(
-                  request.pickupDate,
-                ).toLocaleDateString()}
-              </p>
+        }`}
+      >
+        {paginatedRequests.map(
+          (request) => (
+            <div
+              key={request.requestId}
+              className="flex min-h-20 items-center justify-between rounded-md border border-gray-200 bg-white px-5"
+            >
+              <div className="min-w-0">
+                <p className="text-[7px] text-gray-400">
+                  {new Date(
+                    request.pickupDate,
+                  ).toLocaleDateString()}
+                </p>
 
-              <p className="mt-0.5 text-sm font-bold text-gray-800">
-                {wasteTypeLabels[request.wasteType]}
-              </p>
+                <p className="mt-0.5 text-sm font-bold text-gray-800">
+                  {
+                    wasteTypeLabels[
+                      request.wasteType
+                    ]
+                  }
+                </p>
 
-              <p className="text-[10px] text-gray-500">
-                ID: {request.requestNumber}
-              </p>
+                <p className="text-[10px] text-gray-500">
+                  ID:{" "}
+                  {request.requestNumber}
+                </p>
+              </div>
+
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[7px] font-bold ${getStatusClasses(
+                    request.status,
+                  )}`}
+                >
+                  {request.status}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onSelectRequest(
+                      request,
+                    )
+                  }
+                  className="text-[8px] font-medium text-gray-700 hover:text-brand-secondary"
+                >
+                  Details ›
+                </button>
+              </div>
             </div>
-
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              <span
-                className={`rounded-full px-2 py-0.5 text-[7px] font-bold ${getStatusClasses(
-                  request.status,
-                )}`}
-              >
-                {request.status}
-              </span>
-
-              <button
-                type="button"
-                onClick={() =>
-                  onSelectRequest(request)
-                }
-                className="text-[8px] font-medium text-gray-700 hover:text-brand-secondary"
-              >
-                Details ›
-              </button>
-            </div>
-          </div>
-        ))}
+          ),
+        )}
 
         {requests.length === 0 && (
           <p className="py-8 text-center text-xs text-gray-400">
@@ -608,13 +821,16 @@ function RequestHistory({
       <div className="mt-3 flex items-center justify-center gap-4">
         <button
           type="button"
+          disabled={currentPage === 1}
           onClick={() => {
             setSlideDirection("right");
-            setCurrentPage((page) =>
-              Math.min(page - 1, 1),
+
+            setCurrentPage(
+              (page) =>
+                Math.max(page - 1, 1),
             );
           }}
-          className="text-gray-500 hover:text-gray-800"
+          className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -626,19 +842,25 @@ function RequestHistory({
 
         <button
           type="button"
+          disabled={
+            currentPage >= totalPages
+          }
           onClick={() => {
             setSlideDirection("left");
-            setCurrentPage((page) =>
-              Math.min(page + 1, totalPages),
+
+            setCurrentPage(
+              (page) =>
+                Math.min(
+                  page + 1,
+                  totalPages,
+                ),
             );
           }}
-            
-          className="text-gray-500 hover:text-gray-800"
+          className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
-
       </div>
     </div>
   );
@@ -684,7 +906,11 @@ function RequestDetailsModal({
             </p>
 
             <p className="mt-1 text-sm font-medium text-gray-800">
-              {wasteTypeLabels[request.wasteType]}
+              {
+                wasteTypeLabels[
+                  request.wasteType
+                ]
+              }
             </p>
           </div>
 
@@ -702,10 +928,10 @@ function RequestDetailsModal({
 
           <div>
             <p className="text-[9px] text-gray-400">
-              ADDRESS
+              PICKUP ADDRESSES
             </p>
 
-            <p className="mt-1 text-sm font-medium text-gray-800">
+            <p className="mt-1 whitespace-pre-line text-sm font-medium text-gray-800">
               {request.requestAddress}
             </p>
           </div>
@@ -755,40 +981,57 @@ function RequestDetailsModal({
   );
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
+function fileToBase64(
+  file: File,
+): Promise<string> {
+  return new Promise(
+    (resolve, reject) => {
+      const reader =
+        new FileReader();
 
-    reader.onload = () => {
-      const result = reader.result;
+      reader.onload = () => {
+        const result =
+          reader.result;
 
-      if (typeof result !== "string") {
+        if (
+          typeof result !== "string"
+        ) {
+          reject(
+            new Error(
+              "Failed to read image file.",
+            ),
+          );
+
+          return;
+        }
+
+        const base64 =
+          result.split(",")[1];
+
+        if (!base64) {
+          reject(
+            new Error(
+              "Invalid image data.",
+            ),
+          );
+
+          return;
+        }
+
+        resolve(base64);
+      };
+
+      reader.onerror = () => {
         reject(
-          new Error("Failed to read image file."),
+          new Error(
+            "Failed to read image file.",
+          ),
         );
-        return;
-      }
+      };
 
-      const base64 = result.split(",")[1];
-
-      if (!base64) {
-        reject(
-          new Error("Invalid image data."),
-        );
-        return;
-      }
-
-      resolve(base64);
-    };
-
-    reader.onerror = () => {
-      reject(
-        new Error("Failed to read image file."),
-      );
-    };
-
-    reader.readAsDataURL(file);
-  });
+      reader.readAsDataURL(file);
+    },
+  );
 }
 
 function getMinimumDateTime(): string {
