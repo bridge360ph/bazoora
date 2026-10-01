@@ -1,5 +1,8 @@
 "use client";
 
+import SmartMap from "@/components/map/smart-map";
+import type { MapMarker } from "@/components/map/smart-map";
+import { geocode, reverseGeocode } from "@/lib/geocoding";
 import {
   useEffect,
   useRef,
@@ -10,7 +13,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Loader2,
+  MapPin,
   Plus,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -95,13 +101,7 @@ export default function ResidentHaulingRequests(): React.ReactNode {
   return (
     <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
       <div className="mx-auto flex h-full w-full max-w-350 flex-col">
-        <section
-          className={`rounded-xl border border-gray-200 bg-white shadow-sm ${
-            activeTab === "history"
-              ? "w-full"
-              : "w-90 self-center"
-          }`}
-        >
+        <section className="w-full rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* Tabs */}
           <div className="flex justify-center gap-12 pt-6">
             <button
@@ -137,7 +137,7 @@ export default function ResidentHaulingRequests(): React.ReactNode {
             </button>
           </div>
 
-          {/* Tab content */}
+          {/* Tab Content */}
           <div
             key={activeTab}
             className="report-slide-in"
@@ -162,7 +162,7 @@ export default function ResidentHaulingRequests(): React.ReactNode {
             )}
           </div>
 
-          {/* Details modal */}
+          {/* Details Modal */}
           {selectedRequest && (
             <RequestDetailsModal
               request={selectedRequest}
@@ -188,15 +188,26 @@ function NewRequest({
   const [wasteType, setWasteType] =
     useState<WasteType | "">("");
 
-  /*
-   * Multiple pickup addresses.
-   *
-   * The current backend still expects one
-   * requestAddress string, so these will be
-   * combined before submission.
-   */
+  type PickupAddress = {
+    id: string;
+    address: string;
+    position: [number, number] | null;
+  };
+
   const [addresses, setAddresses] =
-    useState<string[]>([""]);
+    useState<PickupAddress[]>([
+      {
+        id: crypto.randomUUID(),
+        address: "",
+        position: null,
+      },
+    ]);
+
+  const [activeAddressIndex, setActiveAddressIndex] =
+    useState(0);
+
+  const [isResolvingAddress, setIsResolvingAddress] =
+    useState(false);
 
   const [pickupDate, setPickupDate] =
     useState("");
@@ -219,43 +230,276 @@ function NewRequest({
   const [success, setSuccess] =
     useState(false);
 
+  const DEFAULT_MAP_CENTER: [number, number] = [
+    14.5995,
+    120.9842,
+  ];
+
+  const activeAddress =
+    addresses[activeAddressIndex];
+
+  /*
+   * Map follows the currently selected
+   * pickup address.
+   */
+  const mapCenter: [number, number] =
+    activeAddress?.position ??
+    addresses.find(
+      (item) => item.position !== null,
+    )?.position ??
+    DEFAULT_MAP_CENTER;
+
+  /*
+   * Only resolved addresses become map markers.
+   */
+  const mapMarkers: MapMarker[] =
+    addresses.reduce<MapMarker[]>(
+      (markers, item, index) => {
+        if (!item.position) {
+          return markers;
+        }
+
+        markers.push({
+          id: item.id,
+          position: item.position,
+          label:
+            item.address ||
+            `Pickup ${index + 1}`,
+          icon: "stop",
+          stopNumber: index + 1,
+          pulse:
+            index === activeAddressIndex,
+        });
+
+        return markers;
+      },
+      [],
+    );
+
   function handleAddressChange(
     index: number,
     value: string,
   ) {
     setAddresses((current) =>
-      current.map((address, addressIndex) =>
-        addressIndex === index
-          ? value
-          : address,
+      current.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              address: value,
+              position: null,
+            }
+          : item,
       ),
     );
+
+    setActiveAddressIndex(index);
+    setError(null);
+  }
+
+  async function resolveAddress(
+    index: number,
+  ) {
+    const item = addresses[index];
+
+    if (!item?.address.trim()) {
+      return;
+    }
+
+    setActiveAddressIndex(index);
+    setIsResolvingAddress(true);
+    setError(null);
+
+    try {
+      const results = await geocode(
+        item.address.trim(),
+        {
+          limit: 1,
+          countryCodes: "ph",
+        },
+      );
+
+      const match = results?.[0];
+
+      if (
+        !match ||
+        !match.lat ||
+        !match.lon
+      ) {
+        setError(
+          "Address could not be located. Try a more specific address.",
+        );
+
+        return;
+      }
+
+      const lat = Number(match.lat);
+      const lng = Number(match.lon);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        setError(
+          "The selected address has invalid coordinates.",
+        );
+
+        return;
+      }
+
+      const resolvedAddress =
+        match.display_name?.trim() ||
+        item.address.trim();
+
+      setAddresses((current) =>
+        current.map(
+          (addressItem, itemIndex) =>
+            itemIndex === index
+              ? {
+                  ...addressItem,
+                  address:
+                    resolvedAddress,
+                  position: [
+                    lat,
+                    lng,
+                  ],
+                }
+              : addressItem,
+        ),
+      );
+    } catch (resolveError) {
+      console.error(
+        "Failed to resolve pickup address:",
+        resolveError,
+      );
+
+      setError(
+        "Unable to locate that address. Try again or select a location from the map.",
+      );
+    } finally {
+      setIsResolvingAddress(false);
+    }
+  }
+
+  async function handleMapClick(
+    position: [number, number],
+  ) {
+    const activeItem =
+      addresses[activeAddressIndex];
+
+    if (!activeItem) {
+      return;
+    }
+
+    setIsResolvingAddress(true);
+    setError(null);
+
+    try {
+      const result =
+        await reverseGeocode(
+          position[0],
+          position[1],
+        );
+
+      const resolvedAddress =
+        result?.display_name?.trim() ||
+        `${position[0].toFixed(
+          6,
+        )}, ${position[1].toFixed(6)}`;
+
+      setAddresses((current) =>
+        current.map(
+          (item, index) =>
+            index === activeAddressIndex
+              ? {
+                  ...item,
+                  address:
+                    resolvedAddress,
+                  position,
+                }
+              : item,
+        ),
+      );
+    } catch (mapError) {
+      console.error(
+        "Failed to reverse geocode map location:",
+        mapError,
+      );
+
+      setAddresses((current) =>
+        current.map(
+          (item, index) =>
+            index === activeAddressIndex
+              ? {
+                  ...item,
+                  address: `${position[0].toFixed(
+                    6,
+                  )}, ${position[1].toFixed(6)}`,
+                  position,
+                }
+              : item,
+        ),
+      );
+    } finally {
+      setIsResolvingAddress(false);
+    }
   }
 
   function addAddress() {
+    const newAddress: PickupAddress = {
+      id: crypto.randomUUID(),
+      address: "",
+      position: null,
+    };
+
     setAddresses((current) => [
       ...current,
-      "",
+      newAddress,
     ]);
+
+    setActiveAddressIndex(
+      addresses.length,
+    );
   }
 
   function removeAddress(index: number) {
     setAddresses((current) => {
       if (current.length === 1) {
-        return [""];
+        return [
+          {
+            ...current[0],
+            address: "",
+            position: null,
+          },
+        ];
       }
 
       return current.filter(
-        (_, addressIndex) =>
-          addressIndex !== index,
+        (_, itemIndex) =>
+          itemIndex !== index,
       );
+    });
+
+    setActiveAddressIndex((current) => {
+      if (current > index) {
+        return current - 1;
+      }
+
+      if (current === index) {
+        return Math.max(
+          0,
+          current - 1,
+        );
+      }
+
+      return current;
     });
   }
 
   function handleFileChange(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
-    const file = event.target.files?.[0];
+    const file =
+      event.target.files?.[0];
 
     if (!file) return;
 
@@ -269,7 +513,10 @@ function NewRequest({
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (
+      file.size >
+      10 * 1024 * 1024
+    ) {
       setError(
         "Photo must be smaller than 10MB.",
       );
@@ -277,12 +524,17 @@ function NewRequest({
       return;
     }
 
+    if (previewUrl) {
+      URL.revokeObjectURL(
+        previewUrl,
+      );
+    }
+
     setSelectedFile(file);
 
-    const url =
-      URL.createObjectURL(file);
-
-    setPreviewUrl(url);
+    setPreviewUrl(
+      URL.createObjectURL(file),
+    );
   }
 
   function removePhoto() {
@@ -314,36 +566,37 @@ function NewRequest({
       return;
     }
 
-    /*
-     * Clean up all entered addresses.
-     */
-    const trimmedAddresses =
-      addresses
-        .map((address) =>
-          address.trim(),
-        )
-        .filter(
-          (address) =>
-            address.length > 0,
-        );
+    const validAddresses =
+      addresses.filter(
+        (item) =>
+          item.address.trim().length > 0,
+      );
 
-    if (trimmedAddresses.length === 0) {
+    if (validAddresses.length === 0) {
       setError(
-        "Please enter at least one pickup address.",
+        "Please add at least one pickup address.",
       );
 
       return;
     }
 
-    /*
-     * Every pickup address must have at least
-     * 5 characters because the current API
-     * validates requestAddress with minLength: 5.
-     */
+    const unresolvedAddress =
+      validAddresses.find(
+        (item) => !item.position,
+      );
+
+    if (unresolvedAddress) {
+      setError(
+        "Please locate every pickup address using the search or map.",
+      );
+
+      return;
+    }
+
     const invalidAddress =
-      trimmedAddresses.find(
-        (address) =>
-          address.length < 5,
+      validAddresses.find(
+        (item) =>
+          item.address.trim().length < 5,
       );
 
     if (invalidAddress) {
@@ -365,7 +618,9 @@ function NewRequest({
     try {
       setIsSubmitting(true);
 
-      let imageUrl: string | undefined;
+      let imageUrl:
+        | string
+        | undefined;
 
       if (selectedFile) {
         const base64 =
@@ -381,25 +636,14 @@ function NewRequest({
       }
 
       /*
-       * TEMPORARY COMPATIBILITY:
-       *
-       * The current backend expects:
-       *
-       * requestAddress: string
-       *
-       * Therefore multiple addresses are
-       * combined into one string for now.
-       *
-       * Later, when the backend is changed,
-       * this can become:
-       *
-       * pickupLocations: [...]
+       * Backend compatibility:
+       * requestAddress is still one string.
        */
       const combinedAddress =
-        trimmedAddresses
+        validAddresses
           .map(
-            (address, index) =>
-              `Pickup ${index + 1}: ${address}`,
+            (item, index) =>
+              `Pickup ${index + 1}: ${item.address.trim()}`,
           )
           .join("\n");
 
@@ -428,7 +672,15 @@ function NewRequest({
 
       setWasteType("");
 
-      setAddresses([""]);
+      setAddresses([
+        {
+          id: crypto.randomUUID(),
+          address: "",
+          position: null,
+        },
+      ]);
+
+      setActiveAddressIndex(0);
 
       setPickupDate("");
 
@@ -456,261 +708,432 @@ function NewRequest({
       onSubmit={handleSubmit}
       className="w-full px-6 pb-6 pt-5"
     >
-      {/* Request ID */}
-      <div>
-        <label className="text-[10px] font-medium text-gray-700">
-          Request ID
-        </label>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 
-        <div className="mt-1.5 flex h-9 items-center rounded-md border border-surface-border bg-[#f8fbf9] px-3 text-xs text-surface-muted">
-          Generated automatically after submission
-        </div>
-      </div>
+        {/* =====================================================
+            LEFT COLUMN
+        ====================================================== */}
+        <div className="min-w-0">
 
-      {/* Photo Attachment */}
-      <div className="mt-4">
-        <label className="text-[10px] font-medium text-gray-700">
-          Photo Attachment (optional)
-        </label>
+          {/* Request ID */}
+          <div>
+            <label className="text-[10px] font-medium text-gray-700">
+              Request ID
+            </label>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-
-        {!previewUrl ? (
-          <button
-            type="button"
-            onClick={() =>
-              fileInputRef.current?.click()
-            }
-            className="mt-1.5 flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white transition hover:bg-gray-50"
-          >
-            <Camera className="h-6 w-6 text-surface-muted" />
-
-            <span className="mt-2 text-[10px] font-medium text-surface-muted">
-              Tap to upload/capture issue photo
-            </span>
-
-            <span className="mt-1 text-[8px] tracking-wider text-gray-400">
-              JPG, PNG, WEBP UP TO 10MB
-            </span>
-          </button>
-        ) : (
-          <div className="relative mt-1.5 overflow-hidden rounded-lg border border-surface-border">
-            <img
-              src={previewUrl}
-              alt="Selected hauling request"
-              className="h-32 w-full object-cover"
-            />
-
-            <button
-              type="button"
-              onClick={removePhoto}
-              aria-label="Remove photo"
-              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <div className="bg-white px-3 py-2 text-[9px] text-gray-500">
-              {selectedFile?.name}
+            <div className="mt-1.5 flex h-9 items-center rounded-md border border-surface-border bg-[#f8fbf9] px-3 text-xs text-surface-muted">
+              Generated automatically after submission
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Waste Type */}
-      <div className="mt-4">
-        <label
-          htmlFor="waste-type"
-          className="text-[10px] font-medium text-gray-700"
-        >
-          Waste Type
-        </label>
+          {/* Photo Attachment */}
+          <div className="mt-4">
+            <label className="text-[10px] font-medium text-gray-700">
+              Photo Attachment (optional)
+            </label>
 
-        <div className="relative mt-1.5">
-          <select
-            id="waste-type"
-            value={wasteType}
-            onChange={(event) =>
-              setWasteType(
-                event.target
-                  .value as WasteType | "",
-              )
-            }
-            className="h-9 w-full appearance-none rounded-md border border-surface-border bg-white px-3 pr-9 text-xs text-gray-700 outline-none focus:border-brand-secondary"
-          >
-            <option value="">
-              Select type...
-            </option>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
 
-            {wasteTypes.map((type) => (
-              <option
-                key={type}
-                value={type}
+            {!previewUrl ? (
+              <button
+                type="button"
+                onClick={() =>
+                  fileInputRef.current?.click()
+                }
+                className="mt-1.5 flex h-24 w-full flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-white transition hover:bg-gray-50"
               >
-                {wasteTypeLabels[type]}
-              </option>
-            ))}
-          </select>
+                <Camera className="h-6 w-6 text-surface-muted" />
 
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-muted" />
-        </div>
-      </div>
+                <span className="mt-2 text-[10px] font-medium text-surface-muted">
+                  Tap to upload/capture issue photo
+                </span>
 
-      {/* Pickup Addresses */}
-      <div className="mt-4">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-medium text-gray-700">
-            Pickup Addresses
-          </label>
-
-          <span className="text-[8px] text-gray-400">
-            {addresses.length}{" "}
-            {addresses.length === 1
-              ? "location"
-              : "locations"}
-          </span>
-        </div>
-
-        <div className="mt-1.5 space-y-2">
-          {addresses.map(
-            (address, index) => (
-              <div
-                key={index}
-                className="flex gap-2"
-              >
-                <div className="flex h-9 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-[9px] font-bold text-gray-500">
-                  {index + 1}
-                </div>
-
-                <input
-                  id={`pickup-address-${index}`}
-                  type="text"
-                  value={address}
-                  onChange={(event) =>
-                    handleAddressChange(
-                      index,
-                      event.target.value,
-                    )
-                  }
-                  placeholder={`Enter pickup address ${index + 1}...`}
-                  className="h-9 min-w-0 flex-1 rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
+                <span className="mt-1 text-[8px] tracking-wider text-gray-400">
+                  JPG, PNG, WEBP UP TO 10MB
+                </span>
+              </button>
+            ) : (
+              <div className="relative mt-1.5 overflow-hidden rounded-lg border border-surface-border">
+                <img
+                  src={previewUrl}
+                  alt="Selected hauling request"
+                  className="h-32 w-full object-cover"
                 />
 
-                {addresses.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeAddress(index)
-                    }
-                    aria-label={`Remove pickup address ${index + 1}`}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  aria-label="Remove photo"
+                  className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className="bg-white px-3 py-2 text-[9px] text-gray-500">
+                  {selectedFile?.name}
+                </div>
               </div>
-            ),
+            )}
+          </div>
+
+          {/* Waste Type */}
+          <div className="mt-4">
+            <label
+              htmlFor="waste-type"
+              className="text-[10px] font-medium text-gray-700"
+            >
+              Waste Type
+            </label>
+
+            <div className="relative mt-1.5">
+              <select
+                id="waste-type"
+                value={wasteType}
+                onChange={(event) =>
+                  setWasteType(
+                    event.target.value as
+                      | WasteType
+                      | "",
+                  )
+                }
+                className="h-9 w-full appearance-none rounded-md border border-surface-border bg-white px-3 pr-9 text-xs text-gray-700 outline-none focus:border-brand-secondary"
+              >
+                <option value="">
+                  Select type...
+                </option>
+
+                {wasteTypes.map((type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {wasteTypeLabels[type]}
+                  </option>
+                ))}
+              </select>
+
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-muted" />
+            </div>
+          </div>
+
+          {/* Pickup Date */}
+          <div className="mt-4">
+            <label
+              htmlFor="pickup-date"
+              className="text-[10px] font-medium text-gray-700"
+            >
+              Preferred Pickup Date
+            </label>
+
+            <input
+              id="pickup-date"
+              type="datetime-local"
+              value={pickupDate}
+              onChange={(event) =>
+                setPickupDate(
+                  event.target.value,
+                )
+              }
+              min={getMinimumDateTime()}
+              className="mt-1.5 h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none focus:border-brand-secondary"
+            />
+          </div>
+
+          {/* Request Details */}
+          <div className="mt-4">
+            <label
+              htmlFor="request-details"
+              className="text-[10px] font-medium text-gray-700"
+            >
+              Request Details
+            </label>
+
+            <textarea
+              id="request-details"
+              value={note}
+              onChange={(event) =>
+                setNote(event.target.value)
+              }
+              maxLength={500}
+              placeholder="Describe your request..."
+              className="mt-1.5 h-25 w-full resize-none rounded-md border border-surface-border bg-white px-3 py-2 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
+            />
+
+            <p className="mt-1 text-right text-[8px] text-gray-400">
+              {note.length}/500
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div
+              role="alert"
+              className="mt-4 rounded-md bg-red-50 px-3 py-2 text-[10px] text-red-700"
+            >
+              {error}
+            </div>
           )}
+
+          {/* Success */}
+          {success && (
+            <div
+              role="status"
+              className="mt-4 rounded-md bg-green-50 px-3 py-2 text-[10px] text-green-700"
+            >
+              Request submitted successfully.
+            </div>
+          )}
+
+          {/* Submit */}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#222] text-[10px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSubmitting
+              ? "SUBMITTING..."
+              : "SUBMIT REQUEST"}
+
+            {!isSubmitting && (
+              <span>→</span>
+            )}
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={addAddress}
-          className="mt-2 flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[9px] font-semibold text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          ADD ANOTHER PICKUP ADDRESS
-        </button>
-      </div>
+        {/* =====================================================
+            RIGHT COLUMN
+        ====================================================== */}
+        <div className="min-w-0">
 
-      {/* Pickup Date */}
-      <div className="mt-4">
-        <label
-          htmlFor="pickup-date"
-          className="text-[10px] font-medium text-gray-700"
-        >
-          Preferred Pickup Date
-        </label>
+          {/* Pickup Addresses */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-[10px] font-medium text-gray-700">
+                Pickup Addresses
+              </label>
 
-        <input
-          id="pickup-date"
-          type="datetime-local"
-          value={pickupDate}
-          onChange={(event) =>
-            setPickupDate(
-              event.target.value,
-            )
-          }
-          min={getMinimumDateTime()}
-          className="mt-1.5 h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none focus:border-brand-secondary"
-        />
-      </div>
+              <span className="text-[8px] text-gray-400">
+                {addresses.length}{" "}
+                {addresses.length === 1
+                  ? "location"
+                  : "locations"}
+              </span>
+            </div>
 
-      {/* Request Details */}
-      <div className="mt-4">
-        <label
-          htmlFor="request-details"
-          className="text-[10px] font-medium text-gray-700"
-        >
-          Request Details
-        </label>
+            <div className="space-y-2">
+              {addresses.map(
+                (item, index) => {
+                  const isActive =
+                    index ===
+                    activeAddressIndex;
 
-        <textarea
-          id="request-details"
-          value={note}
-          onChange={(event) =>
-            setNote(event.target.value)
-          }
-          maxLength={500}
-          placeholder="Describe your request..."
-          className="mt-1.5 h-25 w-full resize-none rounded-md border border-surface-border bg-white px-3 py-2 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
-        />
+                  const isResolved =
+                    item.position !== null;
 
-        <p className="mt-1 text-right text-[8px] text-gray-400">
-          {note.length}/500
-        </p>
-      </div>
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-lg border p-2.5 transition ${
+                        isActive
+                          ? "border-brand-secondary bg-[#f8fbf9]"
+                          : "border-surface-border bg-white"
+                      }`}
+                    >
+                      <div className="flex gap-2">
 
-      {/* Error */}
-      {error && (
-        <div
-          role="alert"
-          className="mt-4 rounded-md bg-red-50 px-3 py-2 text-[10px] text-red-700"
-        >
-          {error}
+                        {/* Address Number */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveAddressIndex(
+                              index,
+                            )
+                          }
+                          className={`flex h-9 w-7 shrink-0 items-center justify-center rounded-md text-[9px] font-bold ${
+                            isActive
+                              ? "bg-brand-secondary text-white"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                          aria-label={`Select pickup address ${index + 1}`}
+                        >
+                          {index + 1}
+                        </button>
+
+                        {/* Address Input */}
+                        <div className="min-w-0 flex-1">
+                          <input
+                            id={`pickup-address-${index}`}
+                            type="text"
+                            value={
+                              item.address
+                            }
+                            onFocus={() =>
+                              setActiveAddressIndex(
+                                index,
+                              )
+                            }
+                            onChange={(
+                              event,
+                            ) =>
+                              handleAddressChange(
+                                index,
+                                event.target
+                                  .value,
+                              )
+                            }
+                            onKeyDown={(
+                              event,
+                            ) => {
+                              if (
+                                event.key ===
+                                "Enter"
+                              ) {
+                                event.preventDefault();
+
+                                void resolveAddress(
+                                  index,
+                                );
+                              }
+                            }}
+                            placeholder={`Enter pickup address ${index + 1}...`}
+                            className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary"
+                          />
+
+                          <div className="mt-1 flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void resolveAddress(
+                                  index,
+                                )
+                              }
+                              disabled={
+                                isResolvingAddress ||
+                                !item.address.trim()
+                              }
+                              className="flex items-center gap-1 text-[8px] font-semibold text-gray-500 hover:text-brand-secondary disabled:opacity-40"
+                            >
+                              {isResolvingAddress &&
+                              isActive ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Search className="h-3 w-3" />
+                              )}
+
+                              FIND ON MAP
+                            </button>
+
+                            <span
+                              className={`text-[8px] ${
+                                isResolved
+                                  ? "text-green-600"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {isResolved
+                                ? "Location selected"
+                                : "Not located"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Remove Address */}
+                        {addresses.length >
+                          1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeAddress(
+                                index,
+                              )
+                            }
+                            aria-label={`Remove pickup address ${index + 1}`}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+
+              {/* Add Address */}
+              <button
+                type="button"
+                onClick={addAddress}
+                className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[9px] font-semibold text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                ADD ANOTHER PICKUP ADDRESS
+              </button>
+
+              <p className="text-[8px] leading-relaxed text-gray-400">
+                Select a pickup address, then
+                click the map to choose its
+                location.
+              </p>
+            </div>
+          </div>
+
+          {/* =================================================
+              MAP
+          ================================================== */}
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-[10px] font-medium text-gray-700">
+                Pickup Map
+              </label>
+
+              <span className="text-[8px] text-gray-400">
+                Click map to set location
+              </span>
+            </div>
+
+            <div className="relative h-85 w-full overflow-hidden rounded-lg border border-surface-border bg-gray-100">
+              <SmartMap
+                center={mapCenter}
+                zoom={
+                  activeAddress?.position
+                    ? 16
+                    : 12
+                }
+                markers={mapMarkers}
+                onMapClick={handleMapClick}
+                className="h-full w-full"
+              />
+
+              {/* Active Pickup Indicator */}
+              <div className="pointer-events-none absolute left-3 top-3 z-1000">
+                <div className="flex items-center gap-2 rounded-md bg-white/95 px-3 py-2 text-[9px] font-semibold text-gray-700 shadow-md backdrop-blur">
+                  <MapPin className="h-3.5 w-3.5 text-brand-secondary" />
+
+                  {activeAddress
+                    ? `Pickup ${activeAddressIndex + 1}`
+                    : "Pickup Location"}
+                </div>
+              </div>
+
+              {/* Loading Indicator */}
+              {isResolvingAddress && (
+                <div className="pointer-events-none absolute bottom-3 left-1/2 z-1000 -translate-x-1/2">
+                  <div className="flex items-center gap-2 rounded-md bg-black/75 px-3 py-2 text-[8px] font-medium text-white shadow-md">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Locating...
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* Success */}
-      {success && (
-        <div
-          role="status"
-          className="mt-4 rounded-md bg-green-50 px-3 py-2 text-[10px] text-green-700"
-        >
-          Request submitted successfully.
-        </div>
-      )}
-
-      {/* Submit */}
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md bg-[#222] text-[10px] font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isSubmitting
-          ? "SUBMITTING..."
-          : "SUBMIT REQUEST"}
-
-        {!isSubmitting && (
-          <span>→</span>
-        )}
-      </button>
+      </div>
     </form>
   );
 }
