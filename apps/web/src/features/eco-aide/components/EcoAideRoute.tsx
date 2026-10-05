@@ -59,6 +59,20 @@ interface ActionNotice {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
 
+// 50-METER PROXIMITY THRESHOLD FOR STOP VERIFICATION
+const PROXIMITY_THRESHOLD_M = 50;
+
+// CALCULATE HAVERSINE DISTANCE IN METERS BETWEEN TWO COORDINATE PAIRS
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // CALCULATE HAVERSINE DISTANCE BETWEEN SEQUENTIAL COORDINATES IN KILOMETERS
 function calculateRouteDistance(waypoints: RouteStop[]): string {
   if (waypoints.length < 2) return "0.0";
@@ -367,6 +381,34 @@ export default function EcoAideRoute(): React.ReactNode {
       return;
     }
 
+    const targetStop = stops.find((s) => s.id === stopId);
+    if (!targetStop) return;
+
+    // ENFORCE 50-METER PROXIMITY CHECK
+    const distMeters = gpsPos
+      ? haversineMeters(gpsPos[0], gpsPos[1], targetStop.lat, targetStop.lng)
+      : Infinity;
+
+    // LOCAL DEV OVERRIDE VIA LOCALSTORAGE FOR REMOTE TESTING
+    const bypassProximity =
+      typeof window !== "undefined" &&
+      localStorage.getItem("bazoora_bypass_proximity") === "true";
+
+    if (distMeters > PROXIMITY_THRESHOLD_M && !bypassProximity) {
+      const formattedDist =
+      distMeters === Infinity
+        ? "Unknown distance"
+        : distMeters >= 1000
+          ? `${(distMeters / 1000).toFixed(1)} km away`
+          : `${Math.round(distMeters)}m away`;
+      triggerNotice(
+        "Proximity Check Failed",
+        `Must be within 50m of ${targetStop.name} to complete collection (${formattedDist}).`,
+        "error"
+      );
+      return;
+    }
+
     const timestamp = new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -389,11 +431,10 @@ export default function EcoAideRoute(): React.ReactNode {
       return next;
     });
 
-    const completedStop = stops.find((s) => s.id === stopId);
     triggerNotice(
       "Stop Completed",
-      `Marked ${completedStop?.name ?? "checkpoint"} as collected.`,
-      "success",
+      `Marked ${targetStop.name} as collected.`,
+      "success"
     );
   };
 
@@ -628,7 +669,7 @@ export default function EcoAideRoute(): React.ReactNode {
                   {actionNotice.title}
                 </span>
               </div>
-              <p className="text-xs font-bold text-white mt-0.5 truncate">
+              <p className="text-xs font-medium text-white mt-0.5 leading-snug break-words">
                 {actionNotice.message}
               </p>
             </div>
@@ -895,27 +936,34 @@ export default function EcoAideRoute(): React.ReactNode {
             )}
           </div>
 
-          {/* SYMMETRICAL ACTION DOCK: RED REPORT + BRAND DARK HUB + GREEN ACTION BUTTON */}
-          <div className="flex items-center gap-3 pt-0.5">
-            {/* LEFT: RED REPORT BUTTON */}
+          {/* EQUAL 3-BUTTON ACTION DOCK: REPORT | MENU | ACTION */}
+          <div className="flex items-center gap-2 pt-0.5">
+            {/* 1. REPORT BUTTON */}
             <button
               type="button"
               onClick={() => setActiveSheet("report")}
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer"
+              className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-red-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer"
               aria-label="Report Incident"
               title="Report Incident"
             >
-              <AlertTriangle className="h-6 w-6 stroke-[2.2]" />
+              <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.2] shrink-0" />
+              <span className="text-xs font-black tracking-wider uppercase">
+                Report
+              </span>
             </button>
 
-            {/* CENTER: CO-PILOT COMMAND HUB */}
+            {/* 2. CENTER COMMAND MENU */}
             <button
               type="button"
               onClick={() => setIsSpeedDialOpen((prev) => !prev)}
-              className="relative flex h-14 flex-1 items-center justify-center gap-2.5 rounded-2xl bg-[#0a1811] text-white border border-emerald-950/80 shadow-lg active:scale-98 transition-all cursor-pointer"
+              className="relative flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#0a1811] text-white border border-emerald-950/80 shadow-lg active:scale-95 transition-all cursor-pointer"
+              aria-label="Toggle Menu"
+              title="Toggle Menu"
             >
-              <Layers className="h-5 w-5 text-emerald-400" />
-              <span className="text-sm font-black tracking-wider uppercase">Menu</span>
+              <Layers className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400 shrink-0" />
+              <span className="text-xs font-black tracking-wider uppercase">
+                Menu
+              </span>
               {unreadAlertsCount > 0 && !isSpeedDialOpen && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-[20px] px-1.5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-[#0a1811] ring-2 ring-white shadow">
                   {unreadAlertsCount}
@@ -923,16 +971,19 @@ export default function EcoAideRoute(): React.ReactNode {
               )}
             </button>
 
-            {/* RIGHT: SYMMETRICAL ACTION BUTTON (CYCLE: PLAY -> CHECK -> SPARKLE -> RESET) */}
+            {/* 3. PRIMARY ACTION BUTTON (START / COMPLETE / FINISH / RESET) */}
             {routeCompleted ? (
               <button
                 type="button"
                 onClick={() => void loadAssignedRoute(true)}
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-700 text-white shadow-lg active:scale-95 transition-transform cursor-pointer"
+                className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-emerald-700 text-white shadow-lg active:scale-95 transition-transform cursor-pointer"
                 aria-label="Reset Route"
                 title="Reset Route"
               >
-                <RotateCcw className="h-6 w-6 stroke-[2.2]" />
+                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.2] shrink-0" />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  Reset
+                </span>
               </button>
             ) : !isCollecting ? (
               <button
@@ -943,25 +994,31 @@ export default function EcoAideRoute(): React.ReactNode {
                   triggerNotice("Route Started", "Live GPS collection tracking active.", "success");
                 }}
                 disabled={stops.length === 0 || isResolvingRoute}
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer disabled:opacity-40"
+                className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer disabled:opacity-40"
                 aria-label="Start Collection Route"
                 title="Start Route"
               >
-                <Play className="h-6 w-6 fill-white" />
+                <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-white shrink-0" />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  Start
+                </span>
               </button>
             ) : allStopsDone ? (
               <button
                 type="button"
                 onClick={() => {
                   setIsCollecting(false);
-                  setRouteCompleted(true);
+                  setRouteCompleted(true);  
                   triggerNotice("Route Finished", "All scheduled stops completed successfully.", "success");
                 }}
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#0a1811] text-emerald-400 shadow-lg active:scale-95 transition-transform cursor-pointer"
+                className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-[#0a1811] text-emerald-400 shadow-lg active:scale-95 transition-transform cursor-pointer"
                 aria-label="Finish Route"
                 title="Finish Route"
               >
-                <Sparkles className="h-6 w-6" />
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  Finish
+                </span>
               </button>
             ) : (
               <button
@@ -970,11 +1027,14 @@ export default function EcoAideRoute(): React.ReactNode {
                   if (activeStop) markStopCompleted(activeStop.id);
                 }}
                 disabled={!activeStop}
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer disabled:opacity-40"
+                className="flex h-14 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-emerald-600 text-white shadow-lg active:scale-95 transition-transform cursor-pointer disabled:opacity-40"
                 aria-label="Complete Active Stop"
                 title="Complete Stop"
               >
-                <Check className="h-7 w-7 stroke-[3]" />
+                <Check className="h-5 w-5 sm:h-6 sm:w-6 stroke-[3] shrink-0" />
+                <span className="text-xs font-black tracking-wider uppercase">
+                  Done
+                </span>
               </button>
             )}
           </div>
