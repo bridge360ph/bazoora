@@ -40,6 +40,20 @@ interface RouteStop {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
 
+// 50-METER PROXIMITY THRESHOLD FOR STOP VERIFICATION
+const PROXIMITY_THRESHOLD_M = 50;
+
+// CALCULATE HAVERSINE DISTANCE IN METERS BETWEEN TWO COORDINATE PAIRS
+function haversineMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6_371_000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // CALCULATE HAVERSINE DISTANCE BETWEEN SEQUENTIAL COORDINATES IN KILOMETERS
 function calculateRouteDistance(waypoints: RouteStop[]): string {
   if (waypoints.length < 2) return "0.0";
@@ -265,6 +279,32 @@ export default function EcoAideRoute(): React.ReactNode {
       return;
     }
 
+    const targetStop = stops.find((s) => s.id === stopId);
+    if (!targetStop) return;
+
+    // ENFORCE 50-METER PROXIMITY CHECK
+    const distMeters = gpsPos
+      ? haversineMeters(gpsPos[0], gpsPos[1], targetStop.lat, targetStop.lng)
+      : Infinity;
+
+    // LOCAL DEV OVERRIDE VIA LOCALSTORAGE FOR REMOTE TESTING
+    const bypassProximity =
+      typeof window !== "undefined" &&
+      localStorage.getItem("bazoora_bypass_proximity") === "true";
+
+    if (distMeters > PROXIMITY_THRESHOLD_M && !bypassProximity) {
+      const formattedDist =
+        distMeters === Infinity
+          ? "Unknown distance"
+          : distMeters >= 1000
+            ? `${(distMeters / 1000).toFixed(1)} km away`
+            : `${Math.round(distMeters)}m away`;
+      toast.error(
+        `Proximity Check Failed: Must be within 50m of ${targetStop.name} to complete collection (${formattedDist}).`
+      );
+      return;
+    }
+
     const timestamp = new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
       minute: "2-digit",
@@ -286,7 +326,7 @@ export default function EcoAideRoute(): React.ReactNode {
       }
       return next;
     });
-    toast.success("Stop marked as completed.");
+    toast.success(`Marked ${targetStop.name} as collected.`);
   };
 
   // HANDLE PHOTO SELECTION AND CREATE PREVIEW OBJECT URL
