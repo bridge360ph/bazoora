@@ -36,10 +36,10 @@ export default function ResidentHaulingRequests(): ReactNode {
   }
 
   return (
-    <main className="min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
+    <main className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
       <div className="mx-auto flex h-full w-full max-w-350 flex-col">
-        <section className="w-full rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex justify-center gap-12 pt-6">
+        <section className="flex h-full min-h-0 w-full flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex shrink-0 justify-center gap-12 pt-6">
             <TabButton
               isActive={activeTab === "new"}
               onClick={() => setActiveTab("new")}
@@ -55,7 +55,10 @@ export default function ResidentHaulingRequests(): ReactNode {
             </TabButton>
           </div>
 
-          <div key={activeTab} className="report-slide-in">
+          <div
+            key={activeTab}
+            className="report-slide-in flex min-h-0 flex-auto flex-col overflow-x-hidden overflow-y-auto"
+          >
             {activeTab === "new" ? (
               <NewRequestForm onSubmitted={handleSubmitted} />
             ) : (
