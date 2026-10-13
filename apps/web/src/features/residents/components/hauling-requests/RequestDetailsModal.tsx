@@ -3,6 +3,7 @@ import type { HaulingRequest } from "@bazoora/shared";
 
 import { WASTE_TYPE_LABELS } from "./constants";
 import { StatusBadge } from "./FormUi";
+import { splitPickupAddresses } from "./utils";
 
 export default function RequestDetailsModal({
   request,
@@ -11,9 +12,11 @@ export default function RequestDetailsModal({
   request: HaulingRequest;
   onClose: () => void;
 }): ReactNode {
+  const addresses = splitPickupAddresses(request.requestAddress);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="max-h-full w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[9px] text-gray-400">REQUEST DETAILS</p>
@@ -45,10 +48,31 @@ export default function RequestDetailsModal({
             </p>
           </DetailRow>
 
-          <DetailRow label="PICKUP ADDRESSES">
-            <p className="mt-1 whitespace-pre-line text-sm font-medium text-gray-800">
-              {request.requestAddress}
-            </p>
+          <DetailRow
+            label={
+              addresses.length === 1
+                ? "PICKUP ADDRESS"
+                : `PICKUP ADDRESSES (${addresses.length})`
+            }
+          >
+            <ol className="mt-1.5 space-y-2">
+              {addresses.map((address, index) => (
+                <li
+                  key={`${index}-${address}`}
+                  className="flex items-start gap-2.5 rounded-md border border-gray-200 px-3 py-2"
+                >
+                  {addresses.length > 1 && (
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[9px] font-semibold text-gray-600">
+                      {index + 1}
+                    </span>
+                  )}
+
+                  <span className="min-w-0 wrap-break-words text-sm font-medium text-gray-800">
+                    {address}
+                  </span>
+                </li>
+              ))}
+            </ol>
           </DetailRow>
 
           <DetailRow label="STATUS">
