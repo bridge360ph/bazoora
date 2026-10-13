@@ -21,3 +21,4 @@ export const MAX_PHOTO_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_NOTE_LENGTH = 500;
 export const MIN_ADDRESS_LENGTH = 5;
 export const HISTORY_PAGE_SIZE = 8;
+export const HISTORY_PAGE_SIZE_OPTIONS = [5, 8, 10, 20] as const;
