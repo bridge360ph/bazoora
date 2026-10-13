@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { listMyHaulingRequests } from "@/features/hauling-requests/api";
+import { splitPickupAddresses } from "./hauling-requests/utils";
 import type {
   HaulingRequest,
   HaulingRequestStatus,
@@ -12,6 +13,15 @@ type CalendarDay = {
   date: Date;
   day: number;
   muted?: boolean;
+};
+
+// One pickup stop. A request with several addresses becomes several entries.
+type ScheduleEntry = {
+  key: string;
+  request: HaulingRequest;
+  address: string;
+  stopNumber: number;
+  stopCount: number;
 };
 
 const wasteTypeLabels: Record<string, string> = {
@@ -203,9 +213,9 @@ export default function ResidentSchedule(): React.ReactNode {
     };
   }, []);
 
-  // Groups visible requests by day, sorted by pickup time.
-  const requestsByDate = useMemo(() => {
-    const grouped = new Map<string, HaulingRequest[]>();
+  // Groups visible pickup stops by day, sorted by pickup time.
+  const entriesByDate = useMemo(() => {
+    const grouped = new Map<string, ScheduleEntry[]>();
 
     for (const request of requests) {
       const date = new Date(request.pickupDate);
@@ -219,31 +229,44 @@ export default function ResidentSchedule(): React.ReactNode {
       }
 
       const key = getDateKey(date);
-      const dayRequests = grouped.get(key) ?? [];
+      const dayEntries = grouped.get(key) ?? [];
+      const addresses = splitPickupAddresses(
+        request.requestAddress,
+      );
 
-      dayRequests.push(request);
-      grouped.set(key, dayRequests);
+      addresses.forEach((address, index) => {
+        dayEntries.push({
+          key: `${request.requestId}-${index}`,
+          request,
+          address,
+          stopNumber: index + 1,
+          stopCount: addresses.length,
+        });
+      });
+
+      grouped.set(key, dayEntries);
     }
 
-    for (const dayRequests of grouped.values()) {
-      dayRequests.sort(
+    // Stable sort: stops of the same request stay in their original order.
+    for (const dayEntries of grouped.values()) {
+      dayEntries.sort(
         (first, second) =>
-          new Date(first.pickupDate).getTime() -
-          new Date(second.pickupDate).getTime(),
+          new Date(first.request.pickupDate).getTime() -
+          new Date(second.request.pickupDate).getTime(),
       );
     }
 
     return grouped;
   }, [requests]);
 
-  function getRequestsForDate(
+  function getEntriesForDate(
     date: Date,
-  ): HaulingRequest[] {
-    return requestsByDate.get(getDateKey(date)) ?? [];
+  ): ScheduleEntry[] {
+    return entriesByDate.get(getDateKey(date)) ?? [];
   }
 
-  const selectedRequests =
-    getRequestsForDate(selectedDate);
+  const selectedEntries =
+    getEntriesForDate(selectedDate);
 
   const calendarDays = useMemo(() => {
     return getCalendarDays(
@@ -385,8 +408,8 @@ export default function ResidentSchedule(): React.ReactNode {
             <div className="grid grid-cols-7">
               {calendarDays.map(
                 (calendarDay, index) => {
-                  const dayRequests =
-                    getRequestsForDate(
+                  const dayEntries =
+                    getEntriesForDate(
                       calendarDay.date,
                     );
 
@@ -396,7 +419,7 @@ export default function ResidentSchedule(): React.ReactNode {
                       calendarDay.date,
                     );
 
-                  const count = dayRequests.length;
+                  const count = dayEntries.length;
                   const isScheduled = count > 0;
                   const dateLabel = formatLongDate(
                     calendarDay.date,
@@ -489,11 +512,11 @@ export default function ResidentSchedule(): React.ReactNode {
               {/* Panel header */}
               <div className="shrink-0 border-b border-white/15 px-6 py-5">
                 <p className="text-[11px] font-semibold tracking-[0.08em] text-white/70">
-                  {loading || error || selectedRequests.length === 0
+                  {loading || error || selectedEntries.length === 0
                     ? "SCHEDULE"
-                    : selectedRequests.length === 1
+                    : selectedEntries.length === 1
                       ? "SCHEDULED COLLECTION"
-                      : `${selectedRequests.length} SCHEDULED COLLECTIONS`}
+                      : `${selectedEntries.length} SCHEDULED COLLECTIONS`}
                 </p>
 
                 <h1 className="mt-2 text-2xl font-bold">
@@ -511,25 +534,39 @@ export default function ResidentSchedule(): React.ReactNode {
                   <p className="text-sm text-white/80">
                     We couldn't load your collections. Please try again later.
                   </p>
-                ) : selectedRequests.length === 0 ? (
+                ) : selectedEntries.length === 0 ? (
                   <p className="text-sm text-white/80">
                     No hauling request is scheduled for this day.
                   </p>
                 ) : (
                   <ul className="space-y-3">
-                    {selectedRequests.map((request) => (
+                    {selectedEntries.map(({
+                      key,
+                      request,
+                      address,
+                      stopNumber,
+                      stopCount,
+                    }) => (
                       <li
-                        key={request.requestId}
+                        key={key}
                         className="rounded-lg bg-white/10 p-4"
                       >
-                        <p className="text-sm font-semibold">
-                          {formatTime(
-                            new Date(request.pickupDate),
-                          )}
-                        </p>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p className="text-sm font-semibold">
+                            {formatTime(
+                              new Date(request.pickupDate),
+                            )}
+                          </p>
+
+                          <p className="shrink-0 text-[10px] text-white/60">
+                            {stopCount > 1
+                              ? `${request.requestNumber} · Pickup ${stopNumber} of ${stopCount}`
+                              : request.requestNumber}
+                          </p>
+                        </div>
 
                         <p className="mt-1 break-words text-sm text-white/80">
-                          {request.requestAddress}
+                          {address}
                         </p>
 
                         <div className="mt-3 flex flex-wrap gap-2">
