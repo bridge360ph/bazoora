@@ -56,3 +56,17 @@ export function fileToBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * The request form joins multiple pickups into one string as
+ * "Pickup 1: <address>\nPickup 2: <address>" (see combineAddresses).
+ * This splits it back into one address per stop.
+ */
+export function splitPickupAddresses(requestAddress: string): string[] {
+  const addresses = requestAddress
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*Pickup\s+\d+:\s*/i, "").trim())
+    .filter((line) => line.length > 0);
+
+  return addresses.length > 0 ? addresses : [requestAddress];
+}
