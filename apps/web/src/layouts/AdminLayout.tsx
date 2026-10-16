@@ -15,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
+import { useSignOut } from "@/features/auth/useSignOut";
 import { adminNavItems } from "../routes/navigation";
 
 // Mirrors ResidentLayout so the admin and resident portals share one look.
@@ -40,7 +41,7 @@ const roleLabels: Partial<Record<UserRole, string>> = {
 
 export function AdminLayout() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
+  const signOut = useSignOut();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -144,7 +145,7 @@ export function AdminLayout() {
           </NavLink>
           <button
             type="button"
-            onClick={() => clearSession()}
+            onClick={() => void signOut()}
             className="text-gray-500 hover:text-white transition-colors cursor-pointer shrink-0"
             aria-label="Sign Out"
           >
