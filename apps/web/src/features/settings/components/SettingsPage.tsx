@@ -17,6 +17,7 @@ import {
   updateMyPreferences,
 } from "@/features/settings/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSignOut } from "@/features/auth/useSignOut";
 import { Button } from "@bazoora/ui";
 import { PhilippineAddressFields } from "./PhilippineAddressFields";
 
@@ -95,7 +96,7 @@ function validateRequiredAddress(
 export function SettingsPage() {
   const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.user);
-  const clearSession = useAuthStore((state) => state.clear);
+  const signOut = useSignOut();
 
   const isAdmin =
     authUser?.role === "super_admin" ||
@@ -544,7 +545,7 @@ export function SettingsPage() {
       showToast("Password updated. Please log in again.");
 
       window.setTimeout(() => {
-        clearSession();
+        void signOut();
         document.documentElement.classList.remove("dark");
         void navigate("/login");
       }, 800);
@@ -903,7 +904,7 @@ export function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      clearSession();
+                      void signOut();
                       document.documentElement.classList.remove("dark");
                       void navigate("/login");
                     }}
