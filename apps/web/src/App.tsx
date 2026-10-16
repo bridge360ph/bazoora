@@ -6,6 +6,7 @@ import { LoginPage } from "@/features/auth/components/LoginPage";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
 import { useSessionBootstrap } from "@/features/auth/useSessionBootstrap";
 import { roleHome } from "@/features/auth/roles";
+import { useSignOut } from "@/features/auth/useSignOut";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -46,7 +47,7 @@ import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
+  const signOut = useSignOut();
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const bootstrapped = useSessionBootstrap();
@@ -148,7 +149,7 @@ function AppContent() {
               })}
             </div>
             <button
-              onClick={() => clearSession()}
+              onClick={() => void signOut()}
               className="ml-3 rounded-md border border-gray-300 bg-white hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 px-3 py-1 text-xs font-black text-red-500 transition-all active:scale-95 cursor-pointer"
             >
               RESET
