@@ -46,7 +46,7 @@ interface AdminNotificationCreateResponse {
   };
 }
 
-interface ResidentNotification {
+export interface ResidentNotification {
   receiptId: string;
   notificationId: string;
   type: string;
