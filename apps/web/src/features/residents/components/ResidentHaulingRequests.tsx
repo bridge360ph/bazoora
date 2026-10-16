@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { HaulingRequest } from "@bazoora/shared";
 
 import { listMyHaulingRequests } from "@/features/hauling-requests/api";
@@ -9,7 +10,11 @@ import RequestHistory from "./hauling-requests/RequestHistory";
 import type { RequestTab } from "./hauling-requests/types";
 
 export default function ResidentHaulingRequests(): ReactNode {
-  const [activeTab, setActiveTab] = useState<RequestTab>("new");
+  // ?tab=history lets other screens (dashboard, schedule) link straight to the history list.
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<RequestTab>(
+    searchParams.get("tab") === "history" ? "history" : "new",
+  );
   const [requests, setRequests] = useState<HaulingRequest[]>([]);
   const [selectedRequest, setSelectedRequest] =
     useState<HaulingRequest | null>(null);
