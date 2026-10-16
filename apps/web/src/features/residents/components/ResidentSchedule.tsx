@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { listMyHaulingRequests } from "@/features/hauling-requests/api";
 import { splitPickupAddresses } from "./hauling-requests/utils";
@@ -37,8 +38,9 @@ const statusLabels: Record<HaulingRequestStatus, string> = {
   DENIED: "Denied",
 };
 
-// Requests with these statuses are not shown on the schedule.
-const HIDDEN_STATUSES: HaulingRequestStatus[] = ["DENIED"];
+// Only confirmed pickups belong on the calendar. Pending and denied
+// requests are tracked on the dashboard and in Hauling Requests instead.
+const SCHEDULED_STATUSES: HaulingRequestStatus[] = ["APPROVED"];
 
 const MONTHS = [
   "January",
@@ -223,7 +225,7 @@ export default function ResidentSchedule(): React.ReactNode {
       if (
         Number.isNaN(date.getTime()) ||
         request.archived ||
-        HIDDEN_STATUSES.includes(request.status)
+        !SCHEDULED_STATUSES.includes(request.status)
       ) {
         continue;
       }
@@ -535,9 +537,22 @@ export default function ResidentSchedule(): React.ReactNode {
                     We couldn't load your collections. Please try again later.
                   </p>
                 ) : selectedEntries.length === 0 ? (
-                  <p className="text-sm text-white/80">
-                    No hauling request is scheduled for this day.
-                  </p>
+                  <div className="rounded-lg border border-dashed border-white/25 px-4 py-6 text-center">
+                    <p className="text-sm font-semibold text-white/90">
+                      No approved collections for this day.
+                    </p>
+                    <p className="mt-1.5 text-xs leading-5 text-white/65">
+                      Approved collections will appear here. Requests
+                      waiting for approval are in{" "}
+                      <Link
+                        to="/resident/hauling-requests?tab=history"
+                        className="font-semibold text-brand-accent underline-offset-2 hover:underline"
+                      >
+                        Hauling Requests
+                      </Link>
+                      .
+                    </p>
+                  </div>
                 ) : (
                   <ul className="space-y-3">
                     {selectedEntries.map(({
