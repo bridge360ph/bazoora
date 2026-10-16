@@ -79,6 +79,14 @@ export default function RequestDetailsModal({
             <StatusBadge status={request.status} className="mt-1 inline-flex" />
           </DetailRow>
 
+          {request.status === "DENIED" && request.denialReason && (
+            <DetailRow label="REASON FOR DENIAL">
+              <p className="mt-1 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                {request.denialReason}
+              </p>
+            </DetailRow>
+          )}
+
           {request.note && (
             <DetailRow label="NOTE">
               <p className="mt-1 text-sm text-gray-700">{request.note}</p>
