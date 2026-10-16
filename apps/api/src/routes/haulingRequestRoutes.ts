@@ -131,6 +131,7 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         const result = await denyHaulingRequest(
           id,
           denialReason,
+          request.user.sub,
         );
 
         if (!result) {
