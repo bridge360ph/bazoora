@@ -4,6 +4,38 @@ import type { CreateHaulingRequestInput } from "@bazoora/shared";
 import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
 import { generateHaulingRequestNumber } from "../lib/displayId.js";
 import { getNextSequence } from "../lib/counter.js";
+import {
+  HAULING_NOTIFICATION_TYPES,
+  createDirectNotification,
+  emitNotificationCreated,
+} from "../lib/userNotifications.js";
+
+const WASTE_TYPE_LABELS: Record<string, string> = {
+  RESIDUAL: "residual waste",
+  NON_BIODEGRADABLE: "non-biodegradable waste",
+  HAZARDOUS: "hazardous waste",
+  BIODEGRADABLE: "biodegradable waste",
+};
+
+function formatPickupDate(date: Date | null): string {
+  if (!date) return "the requested date";
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function describeRequest(request: {
+  requestNumber: string;
+  wasteType: string;
+  pickupDate: Date | null;
+}): string {
+  const waste = WASTE_TYPE_LABELS[request.wasteType] ?? "waste";
+  return `${request.requestNumber} (${waste}, pickup ${formatPickupDate(request.pickupDate)})`;
+}
 
 /**
  * Get all hauling requests
@@ -40,7 +72,7 @@ export async function createHaulingRequest(
 
     const requestNumber = generateHaulingRequestNumber(sequence);
 
-    return tx.haulingRequest.create({
+    const created = await tx.haulingRequest.create({
       data: {
         requestNumber: requestNumber,
 
@@ -63,9 +95,21 @@ export async function createHaulingRequest(
         status: HaulingRequestStatus.PENDING,
       },
     });
+
+    const notification = await createDirectNotification(tx, {
+      userId,
+      createdById: userId,
+      type: HAULING_NOTIFICATION_TYPES.pending,
+      title: "Hauling request submitted",
+      message: `${describeRequest(created)} is pending and waiting for approval.`,
+    });
+
+    return { created, notification };
   });
 
-  return mapHaulingRequest(request);
+  emitNotificationCreated(request.notification);
+
+  return mapHaulingRequest(request.created);
 }
 
 /**
@@ -92,8 +136,8 @@ export async function approveHaulingRequest(
     );
   }
 
-  const request =
-    await prisma.haulingRequest.update({
+  const { request, notification } = await prisma.$transaction(async (tx) => {
+    const updated = await tx.haulingRequest.update({
       where: {
         requestId: id,
       },
@@ -104,6 +148,19 @@ export async function approveHaulingRequest(
       },
     });
 
+    const created = await createDirectNotification(tx, {
+      userId: updated.userId,
+      createdById: approvedBy,
+      type: HAULING_NOTIFICATION_TYPES.approved,
+      title: "Hauling request approved",
+      message: `${describeRequest(updated)} has been approved. It now appears on your schedule.`,
+    });
+
+    return { request: updated, notification: created };
+  });
+
+  emitNotificationCreated(notification);
+
   return mapHaulingRequest(request);
 }
 
@@ -113,6 +170,7 @@ export async function approveHaulingRequest(
 export async function denyHaulingRequest(
   id: string,
   denialReason: string,
+  deniedBy: string,
 ) {
   const existing =
     await prisma.haulingRequest.findUnique({
@@ -139,8 +197,8 @@ export async function denyHaulingRequest(
     );
   }
 
-  const request =
-    await prisma.haulingRequest.update({
+  const { request, notification } = await prisma.$transaction(async (tx) => {
+    const updated = await tx.haulingRequest.update({
       where: {
         requestId: id,
       },
@@ -149,6 +207,19 @@ export async function denyHaulingRequest(
         denialReason: trimmedReason,
       },
     });
+
+    const created = await createDirectNotification(tx, {
+      userId: updated.userId,
+      createdById: deniedBy,
+      type: HAULING_NOTIFICATION_TYPES.denied,
+      title: "Hauling request denied",
+      message: `${describeRequest(updated)} was denied. Reason: ${trimmedReason}`,
+    });
+
+    return { request: updated, notification: created };
+  });
+
+  emitNotificationCreated(notification);
 
   return mapHaulingRequest(request);
 }
