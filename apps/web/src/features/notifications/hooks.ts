@@ -10,6 +10,7 @@ import {
   createPickupNotification,
 } from "./api";
 import type { CreateNotificationInput } from "./schemas";
+import { useAuthStore } from "@/stores/auth-store";
 
 const NOTIFICATION_KEYS = {
   all: ["notifications"] as const,
@@ -30,9 +31,14 @@ export function useNotifications(type?: string, search?: string) {
  * Resident query — lists all pickup notifications for the authenticated resident.
  */
 export function useResidentNotifications() {
+  // Keyed by user so switching accounts never shows the previous user's list,
+  // and disabled while signed out so it can't trigger a token refresh.
+  const userId = useAuthStore((state) => state.user?.id);
+
   return useQuery({
-    queryKey: NOTIFICATION_KEYS.all,
+    queryKey: [...NOTIFICATION_KEYS.all, "me", userId ?? ""],
     queryFn: listNotifications,
+    enabled: Boolean(userId),
     staleTime: 10_000,
   });
 }
