@@ -12,11 +12,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSignOut } from "@/features/auth/useSignOut";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { residentNavItems } from "../../../routes/navigation";
 
 export default function ResidentLayout() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
+  const signOut = useSignOut();
   const location = useLocation();
 
   const userInitials = user
@@ -119,7 +121,7 @@ export default function ResidentLayout() {
             <Settings className="w-4 h-4" />
           </NavLink>
           <button
-            onClick={() => clearSession()}
+            onClick={() => void signOut()}
             className="text-gray-500 hover:text-white transition-colors cursor-pointer shrink-0"
             aria-label="Sign Out"
           >
@@ -136,14 +138,7 @@ export default function ResidentLayout() {
             {activeLabel}
           </h2>
           <div className="ml-auto flex items-center gap-4">
-            <NavLink
-              to="/resident/notifications"
-              className="relative p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer"
-              aria-label="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </NavLink>
+            <NotificationBell />
             <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-gray-700 dark:text-gray-300">
               {userInitials}
             </div>
