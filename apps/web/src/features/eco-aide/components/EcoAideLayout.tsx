@@ -10,11 +10,12 @@ import {
   Bell,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSignOut } from "@/features/auth/useSignOut";
 import { ecoAideNavItems } from "../../../routes/navigation";
 
 export default function EcoAideLayout() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
+  const signOut = useSignOut();
   const location = useLocation();
 
   const userInitials = user
@@ -111,7 +112,7 @@ export default function EcoAideLayout() {
             <Settings className="w-4 h-4" />
           </NavLink>
           <button
-            onClick={() => clearSession()}
+            onClick={() => void signOut()}
             className="text-gray-500 hover:text-white transition-colors cursor-pointer shrink-0"
             aria-label="Sign Out"
           >
