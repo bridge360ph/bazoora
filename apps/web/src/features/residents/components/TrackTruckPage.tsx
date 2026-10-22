@@ -1,7 +1,6 @@
 "use client";
 
 import { Loader2, LocateFixed } from "lucide-react";
-import { DashboardCard } from "@bazoora/ui";
 import SmartMap from "@/components/map/smart-map";
 import { useTruckTracking } from "@/features/trucks/hooks";
 import { useLatestNotificationPolling } from "@/features/notifications/hooks";
@@ -199,7 +198,7 @@ export default function TrackTruckPage(): React.ReactNode {
       position: [stop.lat, stop.lng] as [number, number],
       icon: isCompleted ? ("done" as const) : ("pending" as const),
       popupContent: (
-        <div className="min-w-[200px] p-1 font-sans text-gray-900">
+        <div className="min-w-50 p-1 font-sans text-gray-900">
           <h4 className="mb-1 text-xs leading-snug font-extrabold">{stop.name}</h4>
           {isCompleted ? (
             <div className="mt-2">
@@ -293,12 +292,20 @@ export default function TrackTruckPage(): React.ReactNode {
   const isTruckInNeighborhood =
     distanceFromTruckMeters !== null && distanceFromTruckMeters <= 250;
 
-  return (
-    <div className="dark:bg-background flex h-[calc(100vh-4rem)] flex-col gap-4 overflow-hidden bg-[#F5F5F5] p-4 lg:flex-row lg:p-6">
-      <LocationPermissionModal onAllow={detectGps} />
-      {/* Map Area */}
-      <div className="relative order-1 flex min-h-[380px] flex-1 flex-col gap-4 lg:order-1">
-        <div className="relative flex-1 overflow-hidden rounded-2xl shadow-lg">
+return (
+  <div className="flex h-full min-h-0 overflow-hidden bg-surface p-5 box-border">
+    <LocationPermissionModal onAllow={detectGps} />
+
+    {/* Main content */}
+    <div className="flex min-h-0 min-w-0 flex-1 gap-5">
+      {/* LEFT / MAP SECTION */}
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
+        {/* Map */}
+        <section className="relative min-h-0 flex-1 overflow-hidden rounded-xl bg-[#dfe2e8]">
+          <div className="absolute left-3 top-3 z-1000 rounded-md bg-white px-3 py-2 text-xs font-medium text-gray-700 shadow-sm">
+            Map View
+          </div>
+
           <SmartMap
             center={mapCenter}
             zoom={16}
@@ -307,183 +314,290 @@ export default function TrackTruckPage(): React.ReactNode {
             className="h-full w-full"
           />
 
+          {/* Map controls */}
+          <div className="absolute right-3 top-3 z-1000 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={detectGps}
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-700 shadow-md transition hover:bg-gray-50"
+              aria-label="Locate me"
+            >
+              {isLocating ? (
+                <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+              ) : (
+                <LocateFixed className="h-5 w-5" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-gray-700 shadow-md"
+              aria-label="Map layers"
+            >
+              <span className="text-lg">⌬</span>
+            </button>
+          </div>
+
+          {/* Nearby notification */}
           {isTruckInNeighborhood && (
-            <div className="animate-in fade-in slide-in-from-top-4 absolute top-4 left-1/2 z-[1000] -translate-x-1/2 transform duration-300">
-              <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-slate-900/90 px-4 py-2.5 shadow-2xl backdrop-blur-md">
+            <div className="absolute left-1/2 top-4 z-1000 -translate-x-1/2">
+              <div className="flex items-center gap-3 rounded-lg bg-brand-dark/95 px-4 py-2.5 shadow-xl">
                 <span className="relative flex h-3 w-3">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+                  <span className="absolute h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative h-3 w-3 rounded-full bg-emerald-500" />
                 </span>
-                <span className="text-xs font-black tracking-wide text-white">
-                  🚛 Collection Truck Nearby! ({distanceFromTruckMeters}m away)
-                </span>
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-400 uppercase">
-                  Prepare Waste Bin
+
+                <span className="text-xs font-semibold text-white">
+                  Collection Truck Nearby ({distanceFromTruckMeters}m away)
                 </span>
               </div>
             </div>
           )}
+        </section>
 
-          <button
-            type="button"
-            onClick={detectGps}
-            className="absolute top-4 left-4 z-[1000] flex items-center gap-2 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-md transition-all hover:bg-gray-50 active:scale-95"
-          >
-            {isLocating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-500" />
-            ) : (
-              <LocateFixed className="h-3.5 w-3.5 text-emerald-500" />
-            )}
-            {isLocating ? "Locating…" : "My Location"}
-          </button>
-        </div>
+        {/* Bottom information cards */}
+        <div className="grid h-77.5 grid-cols-2 gap-5">
+          {/* Route Overview */}
+          <section className="rounded-xl border border-solid border-gray-300! bg-white p-6">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-gray-400">
+              ROUTE OVERVIEW
+            </p>
 
-        <div className="hidden grid-cols-2 gap-4 lg:grid">
-          <DashboardCard className="rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
-            <div className="p-5">
-              <p className="mb-2 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                ROUTE OVERVIEW
-              </p>
-              <p className="text-base font-bold text-gray-900 dark:text-white">
-                Active Route · {plannedStops.length} stops
-              </p>
+            <h2 className="mt-3 text-xl font-bold text-gray-800">
+              Route 1 – 12.4 km
+            </h2>
+
+            <p className="mt-3 text-xs text-gray-500">
+              <span className="mr-1">⌖</span>
+              Purok 7, Brgy. San Rafael, General Trias
+            </p>
+
+            <p className="mt-4 text-[10px] text-gray-400">
+              2.8 km from last collection point
+            </p>
+          </section>
+
+          {/* Destination */}
+          <section className="rounded-xl border border-solid border-gray-300! bg-white p-6">
+            <p className="text-[10px] font-semibold tracking-[0.16em] text-gray-400">
+              DESTINATION POINT
+            </p>
+
+            <div className="mt-4 flex items-start gap-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-border text-brand-secondary">
+                ▣
+              </div>
+
+              <div>
+                <h2 className="text-base font-bold text-gray-800">
+                  Industrial Park Hub
+                </h2>
+
+                <p className="mt-1 text-xs text-gray-500">
+                  Purok 12, Brgy. Manggahan,
+                  <br />
+                  Cavite
+                </p>
+              </div>
             </div>
-          </DashboardCard>
-          <DashboardCard className="rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
-            <div className="p-5">
-              <p className="mb-2 text-[10px] font-bold tracking-widest text-gray-400 uppercase">
-                TRACKER STATUS
-              </p>
-              <p className="flex items-center justify-between text-base font-bold text-gray-900 dark:text-white">
-                <span>{activeTruck ? activeTruck.plateNumber : "Searching…"}</span>
-                {truckEta && (
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-black text-emerald-700">
-                    {truckEta} away
-                  </span>
-                )}
-              </p>
+
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[9px] font-medium tracking-wider text-gray-400">
+                GENERAL ETC
+              </span>
+
+              <span className="text-sm font-bold text-gray-800">
+                01:05 PM
+              </span>
             </div>
-          </DashboardCard>
+          </section>
         </div>
       </div>
 
-      {/* Side Panel */}
-      <div className="order-2 flex h-full w-full flex-col gap-4 lg:order-2 lg:w-[400px] lg:overflow-hidden">
-        <DashboardCard className="flex-1 overflow-y-auto rounded-xl bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800">
-          <div className="p-5">
-            <h4 className="mb-4 text-sm font-black text-gray-900 dark:text-white">Route Stops</h4>
-            <div className="space-y-4">
-              {dynamicStops.length === 0 && (
-                <p className="text-xs text-gray-400">No active route planned.</p>
-              )}
-              {dynamicStops.map((stop: any, index: number) => (
-                <div key={stop.id} className="relative flex gap-4">
-                  <div className="mt-2 flex flex-col items-center">
+      {/* RIGHT PANEL */}
+       <div className="flex min-h-0 w-full lg:w-77.5 lg:shrink-0 flex-col gap-5">
+        {/* Truck Information */}
+        <section className="rounded-xl border border-gray-300 bg-white p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[10px] font-semibold tracking-[0.15em] text-gray-400">
+                TRUCK INFORMATION
+              </p>
+
+              <h2 className="mt-3 text-base font-bold text-gray-800">
+                John Doe
+              </h2>
+
+              <p className="mt-1 text-xs text-gray-500">
+                Truck #BT-04
+              </p>
+
+              <p className="mt-2 text-xs text-gray-500">
+                ETA: 7:20 AM
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="rounded-lg bg-[#d9f7e5] px-7 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-[#c9f0d8]"
+            >
+              Call
+            </button>
+          </div>
+        </section>
+
+        {/* Route Path */}
+        <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-solid border-gray-300! bg-white">
+          <div className="px-5 pb-3 pt-6 text-center">
+            <h2 className="text-base font-bold text-gray-800">
+              Route Path
+            </h2>
+
+            <p className="mt-3 text-xs text-gray-400">
+              Barangay Poblacion
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+            <div className="relative space-y-3">
+              {dynamicStops.length === 0 ? (
+                <p className="py-8 text-center text-xs text-gray-400">
+                  No active route planned.
+                </p>
+              ) : (
+                dynamicStops.map((stop: any, index: number) => (
+                  <div
+                    key={stop.id ?? index}
+                    className="relative flex gap-3"
+                  >
+                    {/* Timeline */}
+                    <div className="relative flex w-7 shrink-0 justify-center">
+                      {index !== dynamicStops.length - 1 && (
+                        <div className="absolute top-7 h-full w-0.5 bg-gray-200" />
+                      )}
+
+                      <div
+                        className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-[9px] font-bold ${
+                          stop.status === "now"
+                            ? "bg-brand-dark text-white"
+                            : stop.status === "done"
+                              ? "bg-surface-border text-brand-secondary"
+                              : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {stop.status === "done" ? "✓" : index + 1}
+                      </div>
+                    </div>
+
+                    {/* Stop card */}
                     <div
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${stop.status === "now" || stop.status === "done" ? "bg-[#0f2419] text-white" : "bg-gray-200 text-gray-500"}`}
+                      className={`min-w-0 flex-1 rounded-lg border p-4 ${
+                        stop.status === "now"
+                          ? "border-brand-dark bg-brand-dark text-white shadow-md"
+                          : "border-gray-200 bg-white"
+                      }`}
                     >
-                      {stop.status === "done" ? "✓" : index + 1}
+                      <div className="flex items-start justify-between gap-2">
+                        <p
+                          className={`text-xs font-bold ${
+                            stop.status === "now"
+                              ? "text-white"
+                              : "text-gray-800"
+                          }`}
+                        >
+                          {stop.name}
+                        </p>
+
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-bold ${
+                            stop.status === "done"
+                              ? "bg-surface-border text-brand-secondary"
+                              : stop.status === "now"
+                                ? "bg-white text-brand-dark"
+                                : "bg-[#e5eee9] text-[#4d6a5b]"
+                          }`}
+                        >
+                          {stop.status === "done"
+                            ? "DONE · 08:30 AM"
+                            : stop.status === "now"
+                              ? "NOW"
+                              : "IN-PROGRESS"}
+                        </span>
+                      </div>
+
+                      <p
+                        className={`mt-2 text-[10px] ${
+                          stop.status === "now"
+                            ? "text-white/70"
+                            : "text-gray-400"
+                        }`}
+                      >
+                        {stop.households
+                          ? `${stop.households} households`
+                          : "8 households"}{" "}
+                        •{" "}
+                        {stop.areaType || "Residential Area"}
+                      </p>
                     </div>
                   </div>
-                  <div
-                    className={`flex-1 rounded-xl border p-4 transition-all ${stop.status === "now" ? "border-[#0f2419] bg-[#0f2419] text-white shadow-lg" : "dark:bg-background border-gray-100 bg-white dark:border-gray-700"}`}
-                  >
-                    <p className="text-sm font-bold">{stop.name}</p>
-
-                    {stop.proofPhotoUrl && (
-                      <div className="mt-3 flex items-center gap-3 border-t border-dashed border-gray-100 pt-3">
-                        <div
-                          className="relative h-12 w-12 cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all hover:opacity-90 active:scale-95"
-                          onClick={() => {
-                            setSelectedStopForPhoto(stop);
-                          }}
-                        >
-                          <img
-                            src={`${env.NEXT_PUBLIC_SOCKET_URL}${stop.proofPhotoUrl}`}
-                            alt="Proof of Collection"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-extrabold tracking-widest text-emerald-500 uppercase">
-                            Collected ✓
-                          </p>
-                          <p
-                            className={`truncate text-[11px] font-semibold ${stop.status === "now" ? "text-white/80" : "text-gray-400"}`}
-                          >
-                            {stop.completedAt
-                              ? new Date(stop.completedAt).toLocaleTimeString("en-PH", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "Recently picked up"}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
-        </DashboardCard>
+        </section>
       </div>
+    </div>
 
-      {/* Proof Photo Fullscreen Modal Overlay */}
-      {selectedStopForPhoto && (
+    {/* Proof Photo Modal */}
+    {selectedStopForPhoto && (
+      <div
+        className="fixed inset-0 z-10000 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+        onClick={() => setSelectedStopForPhoto(null)}
+      >
         <div
-          className="animate-in fade-in fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-black/85 p-4 backdrop-blur-md duration-200"
-          onClick={() => {
-            setSelectedStopForPhoto(null);
-          }}
+          className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div
-            className="animate-in zoom-in-95 relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl duration-200"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
+          <button
+            type="button"
+            onClick={() => setSelectedStopForPhoto(null)}
+            className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white"
           >
-            {/* Close button */}
-            <button
-              onClick={() => {
-                setSelectedStopForPhoto(null);
-              }}
-              className="absolute top-4 right-4 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white transition hover:bg-black/70 active:scale-95"
-            >
-              ✕
-            </button>
+            ✕
+          </button>
 
-            {/* Photo Container */}
-            <div className="relative flex min-h-[300px] flex-1 items-center justify-center overflow-hidden bg-gray-900 md:min-h-[400px]">
-              <img
-                src={`${env.NEXT_PUBLIC_SOCKET_URL}${selectedStopForPhoto.proofPhotoUrl}`}
-                alt="Proof of Collection"
-                className="max-h-[70vh] max-w-full object-contain"
-              />
-            </div>
+          <div className="flex min-h-75 items-center justify-center overflow-hidden bg-gray-900">
+            <img
+              src={`${env.NEXT_PUBLIC_SOCKET_URL}${selectedStopForPhoto.proofPhotoUrl}`}
+              alt="Proof of Collection"
+              className="max-h-[70vh] max-w-full object-contain"
+            />
+          </div>
 
-            {/* Stop Details */}
-            <div className="dark:bg-card p-6">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                Collection Completed
-              </span>
-              <h3 className="mt-3 text-lg font-black text-gray-900 dark:text-white">
-                {selectedStopForPhoto.name}
-              </h3>
-              <p className="mt-1 text-xs font-semibold text-gray-500">
-                Collected at:{" "}
-                {selectedStopForPhoto.completedAt
-                  ? new Date(selectedStopForPhoto.completedAt).toLocaleString("en-PH", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })
-                  : "N/A"}
-              </p>
-            </div>
+          <div className="p-6">
+            <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+              Collection Completed
+            </span>
+
+            <h3 className="mt-3 text-lg font-bold text-gray-900">
+              {selectedStopForPhoto.name}
+            </h3>
+
+            <p className="mt-1 text-xs text-gray-500">
+              Collected at:{" "}
+              {selectedStopForPhoto.completedAt
+                ? new Date(
+                    selectedStopForPhoto.completedAt,
+                  ).toLocaleString("en-PH", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })
+                : "N/A"}
+            </p>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )}
+  </div>
   );
 }

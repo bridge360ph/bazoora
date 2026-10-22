@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
-import {
-  Modal,
-  Button
-} from "@bazoora/ui";
+import { X } from "lucide-react";
+
+import { AdminModalShell, BUTTON_CLASSES } from "./AdminModalShell";
 
 const DENIAL_REASON_MIN_LENGTH = 5;
 const DENIAL_REASON_MAX_LENGTH = 500;
@@ -17,8 +16,7 @@ interface DenyHaulingRequestModalProps {
 }
 
 /**
- * Confirmation modal for denying a hauling request. No mockup was supplied
- * for this state, so it mirrors the Approve modal's layout for consistency.
+ * Confirmation window for denying a hauling request.
  *
  * The API requires a denial reason, so it is collected here and validated
  * against the same bounds the backend enforces.
@@ -29,7 +27,7 @@ export function DenyHaulingRequestModal({
   onConfirm,
   isSubmitting,
   errorMessage,
-}: DenyHaulingRequestModalProps) {
+}: DenyHaulingRequestModalProps): ReactNode {
   const [denialReason, setDenialReason] = useState("");
 
   const trimmedReason = denialReason.trim();
@@ -38,55 +36,64 @@ export function DenyHaulingRequestModal({
     trimmedReason.length <= DENIAL_REASON_MAX_LENGTH;
 
   return (
-    <Modal title="Deny Request" onClose={onClose} width={420}>
-      <div className="flex flex-col gap-4">
+    <AdminModalShell
+      eyebrow="DENY REQUEST"
+      title={request.requestNumber}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting || !reasonIsValid}
+            onClick={() => onConfirm(request.requestId, trimmedReason)}
+            className={BUTTON_CLASSES.danger}
+          >
+            <X className="h-3.5 w-3.5" />
+            {isSubmitting ? "Denying..." : "Deny"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
         <p className="text-sm text-gray-600">
-          Are you sure you want to deny request{" "}
-          <span className="font-semibold text-gray-900">
-            {request.requestId}
-          </span>
-          ? This action cannot be undone.
+          This can't be undone. The requester will see your reason in their
+          request history.
         </p>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-gray-700">
-            Reason for denial
-          </span>
+        <div>
+          <label
+            htmlFor="deny-reason"
+            className="text-[10px] font-semibold tracking-wider text-gray-400"
+          >
+            REASON FOR DENIAL
+          </label>
           <textarea
+            id="deny-reason"
             value={denialReason}
             onChange={(event) => setDenialReason(event.target.value)}
             maxLength={DENIAL_REASON_MAX_LENGTH}
-            rows={3}
+            rows={4}
             disabled={isSubmitting}
             placeholder="Let the requester know why this was denied"
-            className="rounded-md border border-gray-300 p-2 text-sm focus:border-brand focus:outline-none disabled:opacity-50"
+            className="mt-1.5 w-full resize-none rounded-md border border-surface-border bg-white px-3 py-2 text-xs text-gray-700 outline-none placeholder:text-[#6d8b7b] focus:border-brand-secondary disabled:opacity-50"
           />
-          <span className="text-xs text-gray-500">
-            {trimmedReason.length}/{DENIAL_REASON_MAX_LENGTH}, at least{" "}
-            {DENIAL_REASON_MIN_LENGTH} characters
-          </span>
-        </label>
+          <p className="mt-1 flex justify-between text-[10px] text-gray-400">
+            <span>At least {DENIAL_REASON_MIN_LENGTH} characters</span>
+            <span>
+              {trimmedReason.length}/{DENIAL_REASON_MAX_LENGTH}
+            </span>
+          </p>
+        </div>
 
         {errorMessage !== undefined && errorMessage !== "" && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
             {errorMessage}
           </p>
         )}
-
-        <div className="flex justify-center gap-3 pt-2">
-          <Button
-            variant="secondary"
-            className="bg-red-900 text-white"
-            disabled={isSubmitting || !reasonIsValid}
-            onClick={() => onConfirm(request.requestId, trimmedReason)}
-          >
-            {isSubmitting ? "Denying..." : "Deny"}
-          </Button>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-        </div>
       </div>
-    </Modal>
+    </AdminModalShell>
   );
 }

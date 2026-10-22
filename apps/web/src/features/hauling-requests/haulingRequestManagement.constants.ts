@@ -47,4 +47,5 @@ export const WASTE_TYPE_FILTER_OPTIONS: {
 ];
 
 // Client-side pagination only; backend returns the full array.
-export const HAULING_REQUESTS_PAGE_SIZE = 7;
+export const HAULING_REQUESTS_PAGE_SIZE = 8;
+export const HAULING_REQUESTS_PAGE_SIZE_OPTIONS = [5, 8, 10, 20] as const;
