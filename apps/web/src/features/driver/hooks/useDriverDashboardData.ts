@@ -4,7 +4,7 @@ import {
   useState,
 } from "react";
 
-import { env } from "@/lib/env";
+import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
 import {
@@ -63,22 +63,12 @@ export function useDriverDashboardData() {
         setTruckLoading(true);
 
         try {
-          const response =
-            await fetch(
-              `${env.VITE_API_URL}/trucks/me`,
-              {
-                headers: {
-                  Authorization:
-                    `Bearer ${accessToken}`,
-                },
-              },
-            );
+          const response = await apiClient.get<{
+            success?: boolean;
+            data?: DriverTruck;
+          }>("/trucks/me");
 
-          const result =
-            (await response.json()) as {
-              success?: boolean;
-              data?: DriverTruck;
-            };
+          const result = response.data;
 
           if (
             cancelled
@@ -87,7 +77,6 @@ export function useDriverDashboardData() {
           }
 
           if (
-            !response.ok ||
             !result.success ||
             !result.data
           ) {

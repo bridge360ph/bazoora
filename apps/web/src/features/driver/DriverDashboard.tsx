@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/stores/auth-store";
 
 import { Icon } from "./shared/icons";
 import { icons } from "./shared/iconData";
 import { Sidebar } from "./shared/Sidebar";
 import { Header } from "./shared/Header";
-import type { SettingsTab } from "./shared/Header";
 import { BottomNav } from "./shared/BottomNav";
 import { Fab } from "./shared/Fab";
 import { useIsMobile } from "./shared/useIsMobile";
+
+// Tabs SettingsPage actually renders. Kept local because the driver dashboard
+// is the only screen that deep-links into them.
+type SettingsTab = "Account" | "Notifications" | "System";
 
 import {
   layout,
@@ -26,15 +28,12 @@ import {
 
 import { useDriverDashboardData } from "./hooks/useDriverDashboardData";
 import DashboardStopItem from "./components/DashboardStopItem";
-import DriverLogoutConfirmModal from "./components/DriverLogoutConfirmModal";
 
 function DriverDashboard() {
   const navigate = useNavigate();
-  const clearSession = useAuthStore((state) => state.clear);
   const isMobile = useIsMobile();
 
   const [navOpen, setNavOpen] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const {
     assignedRoute,
@@ -72,11 +71,6 @@ function DriverDashboard() {
     void navigate(`/driver/settings?tab=${tab}`);
   };
 
-  const handleLogout = () => {
-    clearSession();
-    void navigate("/login");
-  };
-
   const routeNumber = assignedRoute
     ? String(assignedRoute.routeNumber).padStart(3, "0")
     : null;
@@ -104,8 +98,7 @@ function DriverDashboard() {
           isMobile={isMobile}
           title="Dashboard"
           onToggleNav={() => setNavOpen((value) => !value)}
-          onSelectSettingsTab={goToSettingsTab}
-          onLogout={() => setConfirmOpen(true)}
+          onAvatarClick={() => goToSettingsTab("Account")}
         />
 
         <main className={isMobile ? "p-3.5 pb-24" : "p-[18px]"}>
@@ -286,13 +279,6 @@ function DriverDashboard() {
       )}
 
       {isMobile && <Fab onNavigate={goTo} />}
-
-      {confirmOpen && (
-        <DriverLogoutConfirmModal
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleLogout}
-        />
-      )}
     </div>
   );
 }

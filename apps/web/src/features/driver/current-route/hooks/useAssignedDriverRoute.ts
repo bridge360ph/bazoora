@@ -1,29 +1,41 @@
 import { useEffect, useState } from "react";
 
-import { env } from "@/lib/env";
+import { apiClient } from "@/lib/api-client";
+import { geocode } from "@/lib/geocoding";
+import type { Route } from "@bazoora/shared";
 
 import type { Stop } from "../types";
-import type {
-  AssignedRoute,
-  RouteStop,
-} from "../routeTypes";
 
 interface UseAssignedDriverRouteResult {
   truckId: string | null;
-  assignedRoute: AssignedRoute | null;
+  assignedRoute: Route | null;
   stops: Stop[];
 }
 
+interface AssignedTruckResponse {
+  success: boolean;
+  data?: { id: string } | null;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Cavite municipal centre, used to lay out stops when geocoding is unavailable
+// so the dashboard still shows the route in the right part of the map.
+const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
+
+/**
+ * Resolves the route the signed-in driver is on, and its stops.
+ *
+ * Stops come from the route's `waypoints` string, which is the only stop data
+ * the Route model carries. This mirrors what the eco-aide route screen already
+ * does: split the list, geocode each entry within the Philippines, and fall
+ * back to an offset from the municipal centre when a lookup fails.
+ */
 export function useAssignedDriverRoute(
   accessToken: string | null,
 ): UseAssignedDriverRouteResult {
-  const [truckId, setTruckId] = useState<string | null>(
-    null,
-  );
-
-  const [assignedRoute, setAssignedRoute] =
-    useState<AssignedRoute | null>(null);
-
+  const [truckId, setTruckId] = useState<string | null>(null);
+  const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
 
   useEffect(() => {
@@ -34,61 +46,29 @@ export function useAssignedDriverRoute(
       return;
     }
 
+    let cancelled = false;
+
     const getAssignedRoute = async () => {
       try {
-        const truckResponse = await fetch(
-          `${env.VITE_API_URL}/trucks/me`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
+        // The truck is still needed for location sync; the route no longer
+        // hangs off it, because /routes/me resolves the driver from the token.
+        try {
+          const truckResponse =
+            await apiClient.get<AssignedTruckResponse>("/trucks/me");
 
-        const truckJson = await truckResponse.json();
-
-        if (
-          !truckResponse.ok ||
-          !truckJson.success ||
-          !truckJson.data
-        ) {
-          setTruckId(null);
-          setAssignedRoute(null);
-          setStops([]);
-          return;
+          if (!cancelled) {
+            setTruckId(truckResponse.data.data?.id ?? null);
+          }
+        } catch {
+          if (!cancelled) {
+            setTruckId(null);
+          }
         }
 
-        const truck = truckJson.data;
+        const routeResponse = await apiClient.get<Route>("/routes/me");
+        const route = routeResponse.data;
 
-        setTruckId(truck.id);
-
-        const routeResponse = await fetch(
-          `${env.VITE_API_URL}/routes/truck/${truck.id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
-        );
-
-        const routeJson = await routeResponse.json();
-
-        if (
-          !routeResponse.ok ||
-          !routeJson.success
-        ) {
-          console.error(
-            "Failed to fetch assigned route:",
-            routeJson,
-          );
-
-          setAssignedRoute(null);
-          setStops([]);
-          return;
-        }
-
-        const route =
-          routeJson.data as AssignedRoute | null;
+        if (cancelled) return;
 
         if (!route) {
           setAssignedRoute(null);
@@ -98,80 +78,85 @@ export function useAssignedDriverRoute(
 
         setAssignedRoute(route);
 
-        const databaseStops: RouteStop[] =
-          Array.isArray(route.routeStops)
-            ? route.routeStops
-            : [];
+        const rawStops = route.waypoints
+          ? route.waypoints
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [];
 
-        const mappedStops: Stop[] =
-          databaseStops
-            .filter(
-              (stop) =>
-                typeof stop.latitude === "number" &&
-                typeof stop.longitude === "number",
-            )
-            .map((stop, index) => ({
-              stopNumber: String(
-                stop.stopNumber,
-              ).padStart(2, "0"),
+        const resolved: Stop[] = [];
 
-              status:
-                index === 0
-                  ? "NOW"
-                  : "UPCOMING",
+        for (let i = 0; i < rawStops.length; i++) {
+          if (cancelled) return;
 
-              statusLabel:
-                index === 0
-                  ? "NOW"
-                  : "UPCOMING",
+          const stopName = rawStops[i];
+          let lat = LOCAL_CENTER[0] + (i + 1) * 0.0025;
+          let lng = LOCAL_CENTER[1] + (i + 1) * 0.0025;
 
-              barangay:
-                route.barangay ||
-                "Assigned Area",
+          try {
+            // Nominatim asks for no more than one request per second.
+            if (i > 0) await sleep(1100);
 
-              name:
-                `Collection Stop ${stop.stopNumber}`,
+            let results = await geocode(`${stopName}, ${route.barangay}`, {
+              limit: 1,
+              countryCodes: "ph",
+            });
+            let match = results?.[0];
 
-              address: stop.address,
+            if (!match) {
+              results = await geocode(stopName, {
+                limit: 1,
+                countryCodes: "ph",
+              });
+              match = results?.[0];
+            }
 
-              lat: stop.latitude as number,
+            if (match?.lat && match?.lon) {
+              const parsedLat = Number(match.lat);
+              const parsedLng = Number(match.lon);
 
-              lng: stop.longitude as number,
+              if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+                lat = parsedLat;
+                lng = parsedLng;
+              }
+            }
+          } catch (err) {
+            console.error("Failed to geocode stop:", stopName, err);
+          }
 
-              wasteType:
-                route.wasteType ===
-                  "Hazardous" ||
-                route.wasteType ===
-                  "Non-Bio" ||
-                route.wasteType ===
-                  "Biodegradable"
-                  ? route.wasteType
-                  : "Residual",
+          resolved.push({
+            stopNumber: String(i + 1).padStart(2, "0"),
+            status: i === 0 ? "NOW" : "UPCOMING",
+            statusLabel: i === 0 ? "NOW" : "UPCOMING",
+            barangay: route.barangay || "Assigned Area",
+            name: stopName,
+            address: stopName,
+            lat,
+            lng,
+            wasteType: route.wasteType,
+            volume: "—",
+            priority: "Medium",
+          });
+        }
 
-              volume: "—",
-
-              priority: "Medium",
-            }));
-
-        setStops(mappedStops);
+        if (!cancelled) setStops(resolved);
       } catch (error) {
-        console.error(
-          "Failed to fetch assigned route:",
-          error,
-        );
+        console.error("Failed to fetch assigned route:", error);
 
-        setTruckId(null);
-        setAssignedRoute(null);
-        setStops([]);
+        if (!cancelled) {
+          setAssignedRoute(null);
+          setStops([]);
+        }
       }
     };
 
     void getAssignedRoute();
+
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken]);
 
-  return {
-    truckId,
-    assignedRoute,
-    stops,
-  };
+  return { truckId, assignedRoute, stops };
 }

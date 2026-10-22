@@ -11,10 +11,15 @@ export type Priority =
   | "Low";
 
 export type WasteType =
+  // Categories used by the older mock driver screens.
   | "Residual"
   | "Hazardous"
   | "Non-Bio"
-  | "Biodegradable";
+  | "Biodegradable"
+  // Categories the Route API actually returns, per @bazoora/shared.
+  | "Regular"
+  | "Recyclable"
+  | "Regular/Non-Recyclable";
 
 export type Stop = {
   stopNumber: string;

@@ -85,13 +85,33 @@ export default function RouteMapSection({
             routeSummary
           }
           className="absolute inset-0 h-full w-full"
-          onMarkComplete={
-            onMarkComplete
-          }
-          onReportIssue={
-            onReportIssue
-          }
         />
+
+        {/* SmartMap draws the map only, so the stop actions sit over it here
+            rather than being passed in as props it does not accept. */}
+        {(onMarkComplete || onReportIssue) && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[500] flex justify-center gap-2 p-4">
+            {onReportIssue && (
+              <button
+                type="button"
+                onClick={onReportIssue}
+                className="pointer-events-auto rounded-xl border border-slate-200 bg-white/95 px-4 py-2 text-sm font-semibold text-slate-700 shadow-lg backdrop-blur transition-colors hover:bg-white"
+              >
+                Report Issue
+              </button>
+            )}
+
+            {onMarkComplete && (
+              <button
+                type="button"
+                onClick={onMarkComplete}
+                className="pointer-events-auto rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-emerald-500"
+              >
+                Mark Complete
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { env } from "@/lib/env";
+import { apiClient } from "@/lib/api-client";
 
 interface UseDriverLocationSyncProps {
   isCollecting: boolean;
@@ -27,32 +27,13 @@ export function useDriverLocationSync({
 
     const sendLocation = async () => {
       try {
-        const response = await fetch(
-          `${env.VITE_API_URL}/trucks/${truckId}/location`,
+        await apiClient.post(
+          `/trucks/${truckId}/location`,
           {
-            method: "POST",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-
-              Authorization:
-                `Bearer ${accessToken}`,
-            },
-
-            body: JSON.stringify({
-              latitude: gpsPos[0],
-              longitude: gpsPos[1],
-            }),
+            latitude: gpsPos[0],
+            longitude: gpsPos[1],
           },
         );
-
-        if (!response.ok) {
-          console.error(
-            "Failed to sync driver location:",
-            response.status,
-          );
-        }
       } catch (error) {
         console.error(
           "Failed to sync driver location:",
