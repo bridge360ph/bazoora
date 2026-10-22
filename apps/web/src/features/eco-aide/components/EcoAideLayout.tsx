@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Bell,
+  Archive,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useResidentNotifications } from "@/features/notifications/hooks";
@@ -40,6 +41,8 @@ export default function EcoAideLayout() {
         return MapPin;
       case "Tasks & Queue":
         return ClipboardList;
+      case "Collections":
+        return Archive;
       case "Settings":
         return Settings;
       default:
