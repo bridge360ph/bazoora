@@ -80,7 +80,7 @@ export default function EcoAideLayout() {
                   `flex items-center gap-3.5 w-full px-6 py-3 text-sm font-semibold transition-all border-l-[3px] ${
                     isActive
                       ? "bg-white/5 text-white border-emerald-500 font-bold"
-                      : "text-gray-400 hover:text-gray-200 border-transparent hover:bg-white/[0.02]"
+                      : "text-gray-400 hover:text-gray-200 border-transparent hover:bg-white/2"
                   }`
                 }
               >

@@ -296,7 +296,7 @@ export default function EcoAideRoute(): React.ReactNode {
         />
 
         {/* TOP STATUS OVERLAY */}
-        <div className="absolute top-6 left-6 z-[1000] flex flex-col gap-3">
+        <div className="absolute top-6 left-6 z-1000 flex flex-col gap-3">
           <DashboardCard className="flex items-center gap-3 border-gray-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md">
             <div
               className={`h-3 w-3 rounded-full ${
@@ -322,7 +322,7 @@ export default function EcoAideRoute(): React.ReactNode {
       </div>
 
       {/* SIDEBAR DETAILS & CONTROLS */}
-      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-[400px]">
+      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-2xl lg:w-400px">
         {/* HEADER SECTION */}
         <div className="flex flex-col gap-3 border-b border-gray-100 p-6">
           <div className="flex items-start justify-between">
