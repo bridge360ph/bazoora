@@ -44,6 +44,7 @@ import ResidentHaulingRequests from "./features/residents/components/ResidentHau
 
 // Eco-Aide Pages
 import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
+import CollectionsLogPage from "@/features/eco-aide/components/CollectionsLogPage";
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
@@ -219,6 +220,7 @@ function AppContent() {
             <Route path="/eco-aide" element={<EcoAideLayout />}>
               <Route index element={<Navigate to="/eco-aide/route" replace />} />
               <Route path="route" element={<EcoAideRoute />} />
+              <Route path="collections" element={<CollectionsLogPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
           </Route>

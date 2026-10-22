@@ -17,3 +17,7 @@ export function generateEcoAideNumber(sequence: number) {
 export function generateRouteNumber(sequence: number) {
   return generateDisplayId("RT", sequence);
 }
+
+export function generateIncidentReportNumber(sequence: number) {
+  return generateDisplayId("RPT", sequence);
+}

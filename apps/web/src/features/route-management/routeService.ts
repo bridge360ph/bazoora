@@ -3,6 +3,8 @@ import type {
   Route,
 } from "@bazoora/shared";
 import { apiClient } from "@/lib/api-client";
+import type { RouteStatus } from "@bazoora/shared";
+
 import type {
   RouteFormValue,
 } from "./route.types.ts";
@@ -71,5 +73,21 @@ export async function updateRouteRequest(
     return response.data;
   } catch (error) {
     throw toApiError(error, "Failed to update route");
+  }
+}
+
+export async function updateRouteStatusRequest(
+  routeId: string,
+  status: RouteStatus,
+): Promise<Route> {
+  try {
+    const response = await apiClient.patch<Route>(
+      `/routes/${routeId}/status`,
+      { status },
+    );
+
+    return response.data;
+  } catch (error) {
+    throw toApiError(error, "Failed to update route status");
   }
 }

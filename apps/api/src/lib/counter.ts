@@ -4,7 +4,8 @@ type CounterEntity =
   | "hauling_request"
   | "truck"
   | "eco_aide"
-  | "route";
+  | "route"
+  | "incident_report";
 
 export async function getNextSequence(
   tx: Prisma.TransactionClient,

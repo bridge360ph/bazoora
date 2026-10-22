@@ -112,6 +112,76 @@ export async function getRoutes() {
   return routes.map(mapRouteToResponse);
 }
 
+/**
+ * Resolves who is allowed to operate a route, in one query.
+ *
+ * An eco-aide owns a route directly. A driver owns it through the truck
+ * assigned to the route, because Route has no driver column of its own.
+ * Returns null when the route does not exist.
+ */
+export async function getRouteAssignment(id: string) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      assignedEcoAideId: true,
+      assignedTruck: {
+        select: {
+          assignedDriverId: true,
+        },
+      },
+    },
+  });
+
+  if (!route) {
+    return null;
+  }
+
+  return {
+    id: route.id,
+    assignedEcoAideId: route.assignedEcoAideId,
+    assignedDriverId: route.assignedTruck?.assignedDriverId ?? null,
+  };
+}
+
+/**
+ * The route the signed-in operational user is currently on.
+ *
+ * An eco-aide is assigned to a route directly. A driver reaches one through
+ * the truck assigned to them, because Route has no driver column. Taking the
+ * subject from the token rather than a path parameter means there is no id for
+ * a caller to guess at.
+ */
+export async function getRouteForUser(userId: string, role: string) {
+  if (role === "ECO_AIDE") {
+    const route = await prisma.route.findFirst({
+      where: {
+        assignedEcoAideId: userId,
+      },
+      include: routeEcoAideInclude,
+    });
+
+    return route ? mapRouteToResponse(route) : null;
+  }
+
+  if (role === "DRIVER") {
+    const route = await prisma.route.findFirst({
+      where: {
+        assignedTruck: {
+          assignedDriverId: userId,
+        },
+      },
+      include: routeEcoAideInclude,
+    });
+
+    return route ? mapRouteToResponse(route) : null;
+  }
+
+  return null;
+}
+
 export async function getRouteById(id: string) {
   const route = await prisma.route.findUnique({
     where: {
