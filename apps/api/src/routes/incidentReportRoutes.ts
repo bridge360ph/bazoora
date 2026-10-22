@@ -8,6 +8,7 @@ import {
   createIncidentReport,
   getIncidentReportsByUser,
   generateUploadPresignedUrl,
+  UnsupportedUploadTypeError,
 } from "../services/incidentReportService.js";
 
 const allowedRoles = [
@@ -62,18 +63,24 @@ export const incidentReportRoutes: FastifyPluginCallback = (
       preHandler: [authGuard, requireRole(...allowedRoles)],
     },
     async (request, reply) => {
-      const { fileName, fileType } = request.body as PresignedUploadUrlRequest;
+      const { fileType } = request.body as PresignedUploadUrlRequest;
 
-      if (!fileName || !fileType) {
+      if (!fileType) {
         return reply.status(400).send({
-          message: "fileName and fileType are required",
+          message: "fileType is required",
         });
       }
 
       try {
-        const presignedData = await generateUploadPresignedUrl(fileName, fileType);
+        const presignedData = await generateUploadPresignedUrl(fileType);
         return reply.send(presignedData);
       } catch (error) {
+        if (error instanceof UnsupportedUploadTypeError) {
+          return reply.status(400).send({
+            message: "Only JPEG, PNG, WebP and HEIC images can be attached",
+          });
+        }
+
         request.log.error(error);
         return reply.status(500).send({
           message: "Could not generate presigned upload target",
