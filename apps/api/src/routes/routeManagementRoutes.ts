@@ -20,6 +20,7 @@ import {
   createRoute,
   getRouteAssignment,
   getRouteById,
+  getRouteForUser,
   getRoutes,
   updateRoute,
   updateRouteStatus,
@@ -60,6 +61,30 @@ export function routeManagementRoutes(
     },
     () => {
       return getRoutes();
+    },
+  );
+
+  app.get(
+    "/me",
+    {
+      preHandler: [
+        authGuard,
+        requireRole("DRIVER", "ECO_AIDE"),
+      ],
+    },
+    async (request, reply) => {
+      const route = await getRouteForUser(
+        request.user.sub,
+        request.user.role,
+      );
+
+      if (!route) {
+        return reply.status(404).send({
+          message: "No route is assigned to you",
+        });
+      }
+
+      return reply.send(route);
     },
   );
 
