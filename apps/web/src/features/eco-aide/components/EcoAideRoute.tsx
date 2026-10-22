@@ -16,9 +16,8 @@ import { LocationPermissionModal } from "@/components/ui/location-permission";
 import {
   fetchRoutes,
   updateRouteStatusRequest,
-  type RouteOperationalStatus,
 } from "@/features/route-management/routeService";
-import type { Route } from "@bazoora/shared";
+import type { Route, RouteStatus } from "@bazoora/shared";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { toast } from "sonner";
 
@@ -94,7 +93,7 @@ export default function EcoAideRoute(): React.ReactNode {
     void detectGps();
   }, [detectGps]);
 
-  const updateBackendRouteStatus = async (status: RouteOperationalStatus) => {
+  const updateBackendRouteStatus = async (status: RouteStatus) => {
     if (!assignedRoute?.id) return;
     try {
       await updateRouteStatusRequest(assignedRoute.id, status);

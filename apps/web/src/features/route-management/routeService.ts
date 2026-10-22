@@ -3,6 +3,8 @@ import type {
   Route,
 } from "@bazoora/shared";
 import { apiClient } from "@/lib/api-client";
+import type { RouteStatus } from "@bazoora/shared";
+
 import type {
   RouteFormValue,
 } from "./route.types.ts";
@@ -14,8 +16,6 @@ import type {
  * can silently refresh once on 401. The route endpoints are guarded by
  * `authGuard` + `requireRole`, so a plain `fetch` would always be rejected.
  */
-
-export type RouteOperationalStatus = "Not Started" | "In Progress" | "Completed";
 
 /**
  * Rethrows an API failure as an Error carrying the server's message when it
@@ -78,7 +78,7 @@ export async function updateRouteRequest(
 
 export async function updateRouteStatusRequest(
   routeId: string,
-  status: RouteOperationalStatus,
+  status: RouteStatus,
 ): Promise<Route> {
   try {
     const response = await apiClient.patch<Route>(
