@@ -38,7 +38,7 @@ export async function getIncidentReportsByUser(userId: string) {
  * a report could cite any URL on the internet as its photo evidence.
  */
 function resolveImageUrl(imageUrl: string | null | undefined): string | null {
-  if (!imageUrl) {
+  if (!imageUrl || typeof imageUrl !== "string") {
     return null;
   }
 
@@ -48,9 +48,29 @@ function resolveImageUrl(imageUrl: string | null | undefined): string | null {
     return null;
   }
 
-  const expectedPrefix = `https://${bucket}.s3.${config.awsRegion ?? "ap-southeast-1"}.amazonaws.com/incidents/`;
+  // A startsWith check on the prefix still admits
+  // .../incidents/../some-other-key, so compare the parsed origin and require
+  // the path to be exactly a key this endpoint could have issued. new URL()
+  // normalises traversal before the pattern is applied.
+  const expectedOrigin = `https://${bucket}.s3.${config.awsRegion ?? "ap-southeast-1"}.amazonaws.com`;
 
-  return imageUrl.startsWith(expectedPrefix) ? imageUrl : null;
+  let parsed: URL;
+
+  try {
+    parsed = new URL(imageUrl);
+  } catch {
+    return null;
+  }
+
+  if (parsed.origin !== expectedOrigin) {
+    return null;
+  }
+
+  const isIssuedKey = /^\/incidents\/[0-9a-f-]{36}\.(jpg|png|webp|heic)$/.test(
+    parsed.pathname,
+  );
+
+  return isIssuedKey ? parsed.toString() : null;
 }
 
 /**
@@ -90,12 +110,15 @@ export async function createIncidentReport(
 /**
  * GENERATE A PRESIGNED PUT URL FOR DIRECT S3 PHOTO UPLOADS
  */
-const ALLOWED_IMAGE_TYPES: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/heic": "heic",
-};
+// A Map, not an object literal: an object lookup with a caller-supplied key
+// resolves inherited members, so a fileType of "constructor" or "toString"
+// returns a truthy value and walks straight past the guard below.
+const ALLOWED_IMAGE_TYPES = new Map<string, string>([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/heic", "heic"],
+]);
 
 /**
  * Thrown when the caller asks for an upload target we will not sign.
@@ -114,13 +137,21 @@ export async function generateUploadPresignedUrl(fileType: string) {
   // as text/html from the bucket domain, which is a stored script on our own
   // origin rather than the photo evidence this endpoint advertises. Take the
   // extension from the content type we allow, and refuse anything else.
-  const extension = ALLOWED_IMAGE_TYPES[fileType];
+  const extension =
+    typeof fileType === "string"
+      ? ALLOWED_IMAGE_TYPES.get(fileType)
+      : undefined;
 
   if (!extension) {
     throw new UnsupportedUploadTypeError(
-      `Unsupported upload type: ${fileType}`,
+      `Unsupported upload type: ${String(fileType)}`,
     );
   }
+
+  // Matching the map exactly means fileType is already one of our canonical
+  // strings. Rebind it so what we sign is provably the allowlisted value and
+  // not whatever the caller sent.
+  const contentType = ALLOWED_IMAGE_TYPES.has(fileType) ? fileType : "";
 
   const uniqueId = crypto.randomUUID();
   const key = `incidents/${uniqueId}.${extension}`;
@@ -128,7 +159,7 @@ export async function generateUploadPresignedUrl(fileType: string) {
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    ContentType: fileType,
+    ContentType: contentType,
   });
 
 // URL VALID FOR 15 MINUTES (900 SECONDS)
