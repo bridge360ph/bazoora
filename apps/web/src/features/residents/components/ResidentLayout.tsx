@@ -55,7 +55,7 @@ export default function ResidentLayout() {
   const activeLabel = residentNavItems.find(item => {
     if (item.end) return location.pathname === item.to;
     return location.pathname.startsWith(item.to);
-  })?.label || "Portal";
+  })?.label ?? (location.pathname.startsWith("/resident/settings") ? "Settings" : "Portal");
 
   return (
     <div className="flex h-full w-full overflow-hidden font-sans bg-gray-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200">
