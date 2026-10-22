@@ -5,6 +5,12 @@ export interface CsvColumn<T> {
   accessor: (item: T) => string | number | boolean | null | undefined;
 }
 
+// Spreadsheet programs treat a cell starting with any of these as a formula.
+// Values here come from user-supplied route names, barangays and notes, so a
+// cell such as `=HYPERLINK(...)` would execute when the export is opened.
+// Prefixing with a single quote keeps the text readable and inert.
+const FORMULA_TRIGGERS = ["=", "+", "-", "@", "\t", "\r"];
+
 export function exportToCsv<T>(
   filename: string,
   data: T[],
@@ -13,7 +19,10 @@ export function exportToCsv<T>(
   // ESCAPE VALUES AND WRAP STRINGS CONTAINING COMMAS, NEWLINES, OR QUOTES
   const escapeCsvValue = (val: unknown): string => {
     if (val === null || val === undefined) return '""';
-    const stringVal = String(val);
+    let stringVal = String(val);
+    if (FORMULA_TRIGGERS.includes(stringVal.charAt(0))) {
+      stringVal = `'${stringVal}`;
+    }
     const escaped = stringVal.replace(/"/g, '""');
     return `"${escaped}"`;
   };
@@ -25,9 +34,9 @@ export function exportToCsv<T>(
   const dataRows = data.map((item) =>
     columns.map((col) => escapeCsvValue(col.accessor(item))).join(",")
   );
-  
+
   // PREPEND UTF-8 BOM FOR ACCURATE CHARACTER ENCODING IN EXCEL
-  const csvContent = "\uFEFF" + [headerRow, ...dataRows].join("\r\n");
+  const csvContent = "﻿" + [headerRow, ...dataRows].join("\r\n");
 
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
