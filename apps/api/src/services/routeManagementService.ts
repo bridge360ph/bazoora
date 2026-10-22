@@ -112,6 +112,40 @@ export async function getRoutes() {
   return routes.map(mapRouteToResponse);
 }
 
+/**
+ * Resolves who is allowed to operate a route, in one query.
+ *
+ * An eco-aide owns a route directly. A driver owns it through the truck
+ * assigned to the route, because Route has no driver column of its own.
+ * Returns null when the route does not exist.
+ */
+export async function getRouteAssignment(id: string) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      assignedEcoAideId: true,
+      assignedTruck: {
+        select: {
+          assignedDriverId: true,
+        },
+      },
+    },
+  });
+
+  if (!route) {
+    return null;
+  }
+
+  return {
+    id: route.id,
+    assignedEcoAideId: route.assignedEcoAideId,
+    assignedDriverId: route.assignedTruck?.assignedDriverId ?? null,
+  };
+}
+
 export async function getRouteById(id: string) {
   const route = await prisma.route.findUnique({
     where: {

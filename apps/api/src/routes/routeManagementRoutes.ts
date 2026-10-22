@@ -18,6 +18,7 @@ import {
 } from "../schemas/routeManagement.schema.js";
 import {
   createRoute,
+  getRouteAssignment,
   getRouteById,
   getRoutes,
   updateRoute,
@@ -132,19 +133,32 @@ export function routeManagementRoutes(
         id: string;
       };
 
-      const existingRoute = await getRouteById(id);
+      const assignment = await getRouteAssignment(id);
 
-      if (!existingRoute) {
+      if (!assignment) {
         return reply.status(404).send({
           message: "Route not found",
         });
       }
 
       const user = request.user;
-      const isAdmin = routeAdminRoles.includes(user.role as (typeof routeAdminRoles)[number]);
+      const isAdmin = routeAdminRoles.includes(
+        user.role as (typeof routeAdminRoles)[number],
+      );
 
+      // Operational roles may only move a route they are actually on. The
+      // owner is resolved per role and the check denies by default, so a role
+      // added to routeStatusUpdateRoles later without an ownership rule here
+      // is refused rather than waved through.
       if (!isAdmin) {
-        if (user.role === "ECO_AIDE" && existingRoute.assignedEcoAideId !== user.sub) {
+        const ownerId =
+          user.role === "ECO_AIDE"
+            ? assignment.assignedEcoAideId
+            : user.role === "DRIVER"
+              ? assignment.assignedDriverId
+              : null;
+
+        if (!ownerId || ownerId !== user.sub) {
           return reply.status(403).send({
             message: "You are not assigned to this route",
           });
