@@ -90,7 +90,8 @@ export function useMarkAllNotificationsRead(residentId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => markAllNotificationsRead(residentId!),
-    onSuccess: () => {
+    // Refresh on failure too: some notifications may have been marked.
+    onSettled: () => {
       void qc.invalidateQueries({ queryKey: NOTIFICATION_KEYS.all });
       if (residentId) {
         void qc.invalidateQueries({

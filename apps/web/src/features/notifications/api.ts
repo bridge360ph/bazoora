@@ -110,11 +110,21 @@ export async function markAllNotificationsRead(_residentId: string) {
     (notification) => notification.readAt === null,
   );
 
-  await Promise.all(
+  // allSettled, not all: one failed request must not stop the others from
+  // being marked, and the caller should still learn that some failed.
+  const results = await Promise.allSettled(
     unread.map((notification) =>
       markNotificationRead(notification.receiptId),
     ),
   );
+
+  const failed = results.filter((result) => result.status === "rejected").length;
+
+  if (failed > 0) {
+    throw new Error(
+      `Could not mark ${failed} of ${unread.length} notifications as read.`,
+    );
+  }
 }
 
 export async function createPickupNotification(
