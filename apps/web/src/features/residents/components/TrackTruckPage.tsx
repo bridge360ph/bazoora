@@ -292,6 +292,28 @@ export default function TrackTruckPage(): React.ReactNode {
   const isTruckInNeighborhood =
     distanceFromTruckMeters !== null && distanceFromTruckMeters <= 250;
 
+  /* ── Values shown in the cards (real data only, never placeholders) ── */
+  const totalStops = dynamicStops.length;
+  const collectedStops = dynamicStops.filter((s: any) => s.status === "done").length;
+  const nextStop =
+    dynamicStops.find((s: any) => s.status === "now") ??
+    dynamicStops.find((s: any) => s.status === "upcoming");
+
+  const distanceFromTruckLabel =
+    distanceFromTruckMeters === null
+      ? null
+      : distanceFromTruckMeters < 1000
+        ? `${distanceFromTruckMeters} m`
+        : `${(distanceFromTruckMeters / 1000).toFixed(1)} km`;
+
+  const formatStopTime = (value?: string | null) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+  };
+
 return (
   <div className="flex h-full min-h-0 overflow-hidden bg-surface p-5 box-border">
     <LocationPermissionModal onAllow={detectGps} />
@@ -364,23 +386,34 @@ return (
             </p>
 
             <h2 className="mt-3 text-xl font-bold text-gray-800">
-              Route 1 – 12.4 km
+              {activeTruck
+                ? totalStops > 0
+                  ? `Active Route · ${totalStops} ${totalStops === 1 ? "stop" : "stops"}`
+                  : "Truck on the road"
+                : "No active route"}
             </h2>
 
             <p className="mt-3 text-xs text-gray-500">
-              <span className="mr-1">⌖</span>
-              Purok 7, Brgy. San Rafael, General Trias
+              {activeTruck
+                ? totalStops > 0
+                  ? `${collectedStops} of ${totalStops} stops collected`
+                  : "No stops have been planned for this route yet."
+                : "The collection truck will appear here once it starts its route."}
             </p>
 
-            <p className="mt-4 text-[10px] text-gray-400">
-              2.8 km from last collection point
-            </p>
+            {activeTruck && (
+              <p className="mt-4 text-[10px] text-gray-400">
+                {distanceFromTruckLabel
+                  ? `Truck is ${distanceFromTruckLabel} from you`
+                  : "Allow location access to see how far the truck is."}
+              </p>
+            )}
           </section>
 
-          {/* Destination */}
+          {/* Next stop */}
           <section className="rounded-xl border border-solid border-gray-300! bg-white p-6">
             <p className="text-[10px] font-semibold tracking-[0.16em] text-gray-400">
-              DESTINATION POINT
+              NEXT STOP
             </p>
 
             <div className="mt-4 flex items-start gap-4">
@@ -388,26 +421,26 @@ return (
                 ▣
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-base font-bold text-gray-800">
-                  Industrial Park Hub
+                  {nextStop?.name ?? (totalStops > 0 ? "All stops collected" : "No upcoming stops")}
                 </h2>
 
-                <p className="mt-1 text-xs text-gray-500">
-                  Purok 12, Brgy. Manggahan,
-                  <br />
-                  Cavite
-                </p>
+                {nextStop && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Stop {dynamicStops.indexOf(nextStop) + 1} of {totalStops}
+                  </p>
+                )}
               </div>
             </div>
 
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[9px] font-medium tracking-wider text-gray-400">
-                GENERAL ETC
+                TRUCK ETA TO YOU
               </span>
 
               <span className="text-sm font-bold text-gray-800">
-                01:05 PM
+                {truckEta ?? "Not available"}
               </span>
             </div>
           </section>
@@ -418,32 +451,31 @@ return (
        <div className="flex min-h-0 w-full lg:w-77.5 lg:shrink-0 flex-col gap-5">
         {/* Truck Information */}
         <section className="rounded-xl border border-gray-300 bg-white p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] font-semibold tracking-[0.15em] text-gray-400">
-                TRUCK INFORMATION
-              </p>
+          <p className="text-[10px] font-semibold tracking-[0.15em] text-gray-400">
+            TRUCK INFORMATION
+          </p>
 
+          {activeTruck ? (
+            <>
               <h2 className="mt-3 text-base font-bold text-gray-800">
-                John Doe
+                {activeTruck.plateNumber}
               </h2>
 
               <p className="mt-1 text-xs text-gray-500">
-                Truck #BT-04
+                {activeTruck.status === "active" ? "On route" : "Idle"}
               </p>
 
               <p className="mt-2 text-xs text-gray-500">
-                ETA: 7:20 AM
+                {truckEta
+                  ? `ETA: ${truckEta} away`
+                  : "ETA not available yet"}
               </p>
-            </div>
-
-            <button
-              type="button"
-              className="rounded-lg bg-[#d9f7e5] px-7 py-2 text-xs font-semibold text-brand-secondary transition hover:bg-[#c9f0d8]"
-            >
-              Call
-            </button>
-          </div>
+            </>
+          ) : (
+            <p className="mt-3 text-xs text-gray-500">
+              No collection truck is on the road right now.
+            </p>
+          )}
         </section>
 
         {/* Route Path */}
@@ -453,9 +485,11 @@ return (
               Route Path
             </h2>
 
-            <p className="mt-3 text-xs text-gray-400">
-              Barangay Poblacion
-            </p>
+            {totalStops > 0 && (
+              <p className="mt-3 text-xs text-gray-400">
+                {collectedStops} of {totalStops} collected
+              </p>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
@@ -518,26 +552,31 @@ return (
                           }`}
                         >
                           {stop.status === "done"
-                            ? "DONE · 08:30 AM"
+                            ? formatStopTime(stop.completedAt)
+                              ? `DONE · ${formatStopTime(stop.completedAt)}`
+                              : "DONE"
                             : stop.status === "now"
                               ? "NOW"
-                              : "IN-PROGRESS"}
+                              : "UPCOMING"}
                         </span>
                       </div>
 
-                      <p
-                        className={`mt-2 text-[10px] ${
-                          stop.status === "now"
-                            ? "text-white/70"
-                            : "text-gray-400"
-                        }`}
-                      >
-                        {stop.households
-                          ? `${stop.households} households`
-                          : "8 households"}{" "}
-                        •{" "}
-                        {stop.areaType || "Residential Area"}
-                      </p>
+                      {(stop.households || stop.areaType) && (
+                        <p
+                          className={`mt-2 text-[10px] ${
+                            stop.status === "now"
+                              ? "text-white/70"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {[
+                            stop.households ? `${stop.households} households` : null,
+                            stop.areaType,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))
