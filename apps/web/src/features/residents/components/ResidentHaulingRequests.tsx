@@ -4,7 +4,9 @@ import type { HaulingRequest } from "@bazoora/shared";
 
 import { listMyHaulingRequests } from "@/features/hauling-requests/api";
 
-import NewRequestForm from "./hauling-requests/NewRequestForm";
+import NewRequestForm, {
+  type SubmitResult,
+} from "./hauling-requests/NewRequestForm";
 import RequestDetailsModal from "./hauling-requests/RequestDetailsModal";
 import RequestHistory from "./hauling-requests/RequestHistory";
 import type { RequestTab } from "./hauling-requests/types";
@@ -19,23 +21,45 @@ export default function ResidentHaulingRequests(): ReactNode {
   const [selectedRequest, setSelectedRequest] =
     useState<HaulingRequest | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const [loadState, setLoadState] = useState<"loading" | "error" | "ready">(
+    "loading",
+  );
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeTab !== "history") return;
 
+    let cancelled = false;
+
     async function loadRequestHistory() {
+      setLoadState("loading");
+
       try {
-        setRequests(await listMyHaulingRequests());
+        const data = await listMyHaulingRequests();
+        if (cancelled) return;
+        setRequests(data);
+        setLoadState("ready");
       } catch (error) {
         console.error("Failed to load hauling requests:", error);
-        setRequests([]);
+        // Show an error rather than an empty list, which would read as
+        // "you have no requests".
+        if (!cancelled) setLoadState("error");
       }
     }
 
     void loadRequestHistory();
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeTab, historyVersion]);
 
-  function handleSubmitted() {
+  function handleSubmitted({ photoAttached }: SubmitResult) {
+    setNotice(
+      photoAttached
+        ? null
+        : "Your request was submitted, but the photo could not be attached.",
+    );
     setHistoryVersion((value) => value + 1);
     setActiveTab("history");
   }
@@ -66,11 +90,38 @@ export default function ResidentHaulingRequests(): ReactNode {
           >
             {activeTab === "new" ? (
               <NewRequestForm onSubmitted={handleSubmitted} />
+            ) : loadState === "error" ? (
+              <div className="flex flex-auto flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                <p className="text-xs text-red-600">
+                  We couldn&apos;t load your hauling requests.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setHistoryVersion((value) => value + 1)}
+                  className="rounded-md border border-gray-200 px-4 py-1.5 text-[10px] font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : loadState === "loading" && requests.length === 0 ? (
+              <p className="px-6 py-10 text-center text-xs text-gray-400">
+                Loading your requests...
+              </p>
             ) : (
-              <RequestHistory
-                requests={requests}
-                onSelectRequest={setSelectedRequest}
-              />
+              <>
+                {notice && (
+                  <div
+                    role="status"
+                    className="mx-6 mt-5 rounded-md bg-amber-50 px-3 py-2 text-[10px] text-amber-800"
+                  >
+                    {notice}
+                  </div>
+                )}
+                <RequestHistory
+                  requests={requests}
+                  onSelectRequest={setSelectedRequest}
+                />
+              </>
             )}
           </div>
 

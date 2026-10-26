@@ -1,16 +1,10 @@
+import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 import type {
   CreateHaulingRequestInput,
   HaulingRequest,
+  PresignedUploadUrlResponse,
 } from "@bazoora/shared";
-import type { PublicHaulingRequest } from "./schemas";
-
-export async function listHaulingRequests(): Promise<PublicHaulingRequest[]> {
-  const { data } = await apiClient.get<{ success: boolean; data: PublicHaulingRequest[] }>(
-    "/hauling-requests",
-  );
-  return data.data;
-}
 
 export async function listMyHaulingRequests(): Promise<HaulingRequest[]> {
   const { data } = await apiClient.get<HaulingRequest[]>(
@@ -18,16 +12,6 @@ export async function listMyHaulingRequests(): Promise<HaulingRequest[]> {
   );
 
   return data;
-}
-
-export async function createHaulingRequest(
-  input: CreateHaulingRequestInput,
-): Promise<PublicHaulingRequest> {
-  const { data } = await apiClient.post<{ success: boolean; data: PublicHaulingRequest }>(
-    "/hauling-requests",
-    input,
-  );
-  return data.data;
 }
 
 export async function createResidentHaulingRequest(
@@ -42,27 +26,24 @@ export async function createResidentHaulingRequest(
   return data;
 }
 
-// fix: update input type to accept all updatable fields, not just status
-export async function updateHaulingRequest(
-  id: string,
-  input: {
-    status?: string;
-    proofPhotoUrl?: string | null;
-    declineReason?: string | null;
-    paymentStatus?: "unpaid" | "paid";
-  },
-): Promise<PublicHaulingRequest> {
-  const { data } = await apiClient.patch<{ success: boolean; data: PublicHaulingRequest }>(
-    `/hauling-requests/${id}/status`,
-    input,
-  );
-  return data.data;
-}
+/**
+ * Uploads a hauling request photo straight to S3 through a presigned URL and
+ * returns the file URL to send with the request. Same flow as incident
+ * report photos; the API only stores URLs it issued.
+ */
+export async function uploadHaulingRequestPhoto(file: File): Promise<string> {
+  const fileType = file.type || "image/jpeg";
 
-export async function uploadImage(base64: string, mimeType: string): Promise<string> {
-  const { data } = await apiClient.post<{ success: boolean; data: { url: string } }>(
-    "/uploads/image",
-    { base64, mimeType },
+  const { data } = await apiClient.post<PresignedUploadUrlResponse>(
+    "/hauling-requests/presigned-url",
+    { fileName: file.name, fileType },
   );
-  return data.data.url;
+
+  await axios.put(data.uploadUrl, file, {
+    headers: {
+      "Content-Type": fileType,
+    },
+  });
+
+  return data.fileUrl;
 }

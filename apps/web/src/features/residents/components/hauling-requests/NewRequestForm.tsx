@@ -3,13 +3,14 @@ import { ChevronDown } from "lucide-react";
 
 import {
   createResidentHaulingRequest,
-  uploadImage,
+  uploadHaulingRequestPhoto,
 } from "@/features/hauling-requests/api";
+import { useAuthStore } from "@/stores/auth-store";
 
 import { MAX_NOTE_LENGTH, WASTE_TYPES, WASTE_TYPE_LABELS } from "./constants";
 import type { WasteType } from "./types";
 import { FieldLabel } from "./FormUi";
-import { fileToBase64, getMinimumDateTime } from "./utils";
+import { getMinimumDateTime } from "./utils";
 import PhotoAttachmentField from "./PhotoAttachmentField";
 import PickupAddressList from "./PickupAddressList";
 import PickupMap from "./PickupMap";
@@ -24,11 +25,17 @@ import {
 const inputClassName =
   "h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-700 outline-none focus:border-brand-secondary";
 
+export type SubmitResult = {
+  /** False when a photo was chosen but could not be uploaded. */
+  photoAttached: boolean;
+};
+
 export default function NewRequestForm({
   onSubmitted,
 }: {
-  onSubmitted: () => void;
+  onSubmitted: (result: SubmitResult) => void;
 }): ReactNode {
+  const userRole = useAuthStore((s) => s.user?.role);
   const [wasteType, setWasteType] = useState<WasteType | "">("");
   const [pickupDate, setPickupDate] = useState("");
   const [note, setNote] = useState("");
@@ -67,15 +74,26 @@ export default function NewRequestForm({
     try {
       setIsSubmitting(true);
 
-      const imageUrl = photo.file
-        ? await uploadImage(await fileToBase64(photo.file), photo.file.type)
-        : undefined;
+      // A failed photo upload must never discard an otherwise valid request,
+      // so upload separately and submit without the photo if it fails.
+      let imageUrl: string | undefined;
+      let photoAttached = true;
+
+      if (photo.file) {
+        try {
+          imageUrl = await uploadHaulingRequestPhoto(photo.file);
+        } catch (uploadError) {
+          console.error("Failed to upload hauling request photo:", uploadError);
+          photoAttached = false;
+        }
+      }
 
       const trimmedNote = note.trim();
 
       await createResidentHaulingRequest({
         requestAddress: combineAddresses(getFilledAddresses(pickups.addresses)),
-        senderType: "RESIDENT",
+        // The API also derives this from the account; sent for the shared type.
+        senderType: userRole === "business" ? "BUSINESS" : "RESIDENT",
         wasteType,
         pickupDate: new Date(pickupDate).toISOString(),
         ...(imageUrl && { imageUrl }),
@@ -84,7 +102,7 @@ export default function NewRequestForm({
 
       setSuccess(true);
       resetForm();
-      onSubmitted();
+      onSubmitted({ photoAttached });
     } catch (submitError) {
       console.error("Failed to submit hauling request:", submitError);
       setError("Failed to submit your request. Please try again.");
@@ -198,6 +216,7 @@ export default function NewRequestForm({
             activeIndex={pickups.activeIndex}
             isResolving={pickups.isResolving}
             onSelect={pickups.setActiveIndex}
+            canAdd={pickups.canAddAddress}
             onChange={pickups.changeAddress}
             onResolve={(index) => void pickups.resolveAddress(index)}
             onAdd={pickups.addAddress}
