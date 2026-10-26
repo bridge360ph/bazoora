@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 
 import { WASTE_TYPE_LABELS } from "./constants";
+import { formatDateTime } from "@/features/hauling-requests/haulingRequestFormat";
 import { StatusBadge } from "./FormUi";
 import { splitPickupAddresses } from "./utils";
 
@@ -44,7 +45,7 @@ export default function RequestDetailsModal({
 
           <DetailRow label="PICKUP DATE">
             <p className="mt-1 text-sm font-medium text-gray-800">
-              {new Date(request.pickupDate).toLocaleString()}
+              {formatDateTime(request.pickupDate)}
             </p>
           </DetailRow>
 

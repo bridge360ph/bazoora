@@ -7,6 +7,7 @@ import {
   HISTORY_PAGE_SIZE_OPTIONS,
   WASTE_TYPE_LABELS,
 } from "./constants";
+import { formatDateTime } from "@/features/hauling-requests/haulingRequestFormat";
 import { StatusBadge } from "./FormUi";
 
 type SlideDirection = "left" | "right";
@@ -132,7 +133,7 @@ function RequestCard({
     <div className="flex min-h-20 shrink-0 items-center justify-between rounded-md border border-gray-200 bg-white px-5">
       <div className="min-w-0">
         <p className="text-[7px] text-gray-400">
-          {new Date(request.pickupDate).toLocaleDateString()}
+          {formatDateTime(request.pickupDate)}
         </p>
 
         <p className="mt-0.5 text-sm font-bold text-gray-800">

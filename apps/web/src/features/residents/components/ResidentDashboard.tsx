@@ -44,6 +44,7 @@ export function ResidentDashboard(): ReactNode {
 
   const [requests, setRequests] = useState<HaulingRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const notificationsQuery = useResidentNotifications();
   const markRead = useMarkNotificationRead();
@@ -57,8 +58,10 @@ export function ResidentDashboard(): ReactNode {
         const data = await listMyHaulingRequests();
         if (!cancelled) setRequests(data);
       } catch (loadError) {
-        // The collection card and counts fall back to their empty states.
+        // Shown as an error, not as zero requests, so a failed load never
+        // reads as "you have no requests".
         console.error("Failed to load hauling requests:", loadError);
+        if (!cancelled) setLoadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -113,6 +116,7 @@ export function ResidentDashboard(): ReactNode {
       <div className="mx-auto max-w-7xl space-y-6">
         <NextCollectionCard
           loading={loading}
+          loadFailed={loadFailed}
           request={nextCollection}
         />
 
@@ -123,6 +127,7 @@ export function ResidentDashboard(): ReactNode {
             hint="Waiting for the hauling team"
             count={counts.pending}
             loading={loading}
+            loadFailed={loadFailed}
             accentClass="border-l-orange-400"
             countClass="text-orange-700"
           />
@@ -131,6 +136,7 @@ export function ResidentDashboard(): ReactNode {
             hint="Upcoming collections"
             count={counts.approved}
             loading={loading}
+            loadFailed={loadFailed}
             accentClass="border-l-emerald-400"
             countClass="text-emerald-700"
           />
@@ -139,6 +145,7 @@ export function ResidentDashboard(): ReactNode {
             hint="In the last 14 days"
             count={counts.denied}
             loading={loading}
+            loadFailed={loadFailed}
             accentClass="border-l-red-400"
             countClass="text-red-700"
           />
@@ -250,11 +257,29 @@ export function ResidentDashboard(): ReactNode {
 
 function NextCollectionCard({
   loading,
+  loadFailed,
   request,
 }: {
   loading: boolean;
+  loadFailed: boolean;
   request: HaulingRequest | null;
 }): ReactNode {
+  if (loadFailed) {
+    return (
+      <section className="rounded-xl bg-brand-dark px-8 py-8 text-white">
+        <p className="text-xs font-medium tracking-wide text-gray-300">
+          NEXT SCHEDULED COLLECTION
+        </p>
+        <h1 className="mt-4 text-3xl font-bold leading-tight">
+          Couldn&apos;t load your collections
+        </h1>
+        <p className="mt-2 max-w-xl text-base text-gray-300">
+          Please refresh the page to try again.
+        </p>
+      </section>
+    );
+  }
+
   if (loading) {
     return (
       <section className="rounded-xl bg-brand-dark px-8 py-8 text-white">
@@ -343,6 +368,7 @@ function StatusCount({
   hint,
   count,
   loading,
+  loadFailed,
   accentClass,
   countClass,
 }: {
@@ -350,6 +376,7 @@ function StatusCount({
   hint: string;
   count: number;
   loading: boolean;
+  loadFailed: boolean;
   accentClass: string;
   countClass: string;
 }): ReactNode {
@@ -362,9 +389,11 @@ function StatusCount({
         {label.toUpperCase()}
       </p>
       <p className={`mt-2 text-3xl font-bold ${countClass}`}>
-        {loading ? "–" : count}
+        {loading || loadFailed ? "–" : count}
       </p>
-      <p className="mt-1 text-xs text-gray-400">{hint}</p>
+      <p className="mt-1 text-xs text-gray-400">
+        {loadFailed ? "Couldn't load" : hint}
+      </p>
     </Link>
   );
 }
