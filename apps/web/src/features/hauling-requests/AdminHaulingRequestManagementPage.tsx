@@ -476,7 +476,10 @@ function RequestCard({
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-600">
           <span className="flex min-w-0 max-w-full items-center gap-1">
             <MapPin className="h-3 w-3 shrink-0 text-gray-400" />
-            <span className="truncate" title={request.requestAddress}>
+            <span
+              className="truncate"
+              title={[firstPickup, ...otherPickups].join("\n")}
+            >
               {firstPickup}
             </span>
             {otherPickups.length > 0 && (

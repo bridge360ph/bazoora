@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
 import { useSignOut } from "@/features/auth/useSignOut";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { adminNavItems } from "../routes/navigation";
 
 // Mirrors ResidentLayout so the admin and resident portals share one look.
@@ -182,14 +183,7 @@ export function AdminLayout() {
             {activeLabel}
           </h2>
           <div className="ml-auto flex items-center gap-4">
-            <NavLink
-              to="/admin/notifications"
-              className="relative p-2 rounded-lg text-gray-400 hover:bg-white/10 hover:text-white cursor-pointer"
-              aria-label="Notifications"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-            </NavLink>
+            <NotificationBell />
             <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-xs font-black text-gray-700 dark:text-gray-300">
               {userInitials}
             </div>

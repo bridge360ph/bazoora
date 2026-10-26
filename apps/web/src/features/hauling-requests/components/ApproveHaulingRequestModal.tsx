@@ -38,9 +38,15 @@ export function ApproveHaulingRequestModal({
       eyebrow="APPROVE REQUEST"
       title={request.requestNumber}
       onClose={onClose}
+      dismissible={!isSubmitting}
       footer={
         <>
-          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className={BUTTON_CLASSES.ghost}
+          >
             Cancel
           </button>
           <button

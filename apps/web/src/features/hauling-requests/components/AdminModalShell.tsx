@@ -13,6 +13,7 @@ export function AdminModalShell({
   children,
   footer,
   maxWidthClassName = "max-w-md",
+  dismissible = true,
 }: {
   eyebrow: string;
   title: ReactNode;
@@ -20,20 +21,32 @@ export function AdminModalShell({
   children: ReactNode;
   footer?: ReactNode;
   maxWidthClassName?: string;
+  /**
+   * False while a request is in flight. Escape, the backdrop and the close
+   * button are ignored then, so closing cannot hide the outcome (or the
+   * error) of a write that is still landing.
+   */
+  dismissible?: boolean;
 }): ReactNode {
+  const requestClose = () => {
+    if (dismissible) onClose();
+  };
+
   useEffect(() => {
+    if (!dismissible) return;
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, dismissible]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         role="dialog"
@@ -53,7 +66,8 @@ export function AdminModalShell({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
+            disabled={!dismissible}
             aria-label="Close"
             className="rounded-md p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
           >
