@@ -1,14 +1,25 @@
 import { prisma } from "@bazoora/db";
+import type { Prisma } from "@bazoora/db";
 import { HaulingRequestStatus } from "@prisma/client";
 import type { CreateHaulingRequestInput } from "@bazoora/shared";
 import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
 import { generateHaulingRequestNumber } from "../lib/displayId.js";
 import { getNextSequence } from "../lib/counter.js";
 import {
+  createPresignedImageUpload,
+  resolveUploadedImageUrl,
+} from "../lib/s3ImageUpload.js";
+import {
   HAULING_NOTIFICATION_TYPES,
   createDirectNotification,
   emitNotificationCreated,
 } from "../lib/userNotifications.js";
+
+export const DENIAL_REASON_MIN_LENGTH = 5;
+export const DENIAL_REASON_MAX_LENGTH = 500;
+
+/** Thrown for a denial reason that is too short once trimmed, or too long. */
+export class InvalidDenialReasonError extends Error {}
 
 const WASTE_TYPE_LABELS: Record<string, string> = {
   RESIDUAL: "residual waste",
@@ -88,7 +99,9 @@ export async function createHaulingRequest(
 
         pickupDate: new Date(data.pickupDate),
 
-        imageUrl: data.imageUrl ?? null,
+        // Only a URL we issued for this feature is stored; anything else
+        // (another site, a javascript: URL) becomes null.
+        imageUrl: resolveUploadedImageUrl(data.imageUrl, "hauling-requests"),
 
         note: data.note ?? null,
 
@@ -113,40 +126,73 @@ export async function createHaulingRequest(
 }
 
 /**
+ * Thrown when a request exists but is no longer pending.
+ * Routes turn this into a 409 rather than a 500.
+ */
+export class HaulingRequestNotPendingError extends Error {}
+
+/**
+ * Moves a request out of PENDING inside the caller's transaction. The status
+ * check is part of the write (updateMany with status: PENDING), so when two
+ * admins act at the same moment only one write matches and the other gets a
+ * count of 0, instead of both passing a separate read and both sending a
+ * notification. Returns null when the request does not exist.
+ */
+async function decidePendingRequest(
+  tx: Prisma.TransactionClient,
+  id: string,
+  data: Prisma.HaulingRequestUpdateManyMutationInput,
+  action: "approved" | "denied",
+) {
+  const { count } = await tx.haulingRequest.updateMany({
+    where: {
+      requestId: id,
+      status: HaulingRequestStatus.PENDING,
+    },
+    data,
+  });
+
+  const request = await tx.haulingRequest.findUnique({
+    where: {
+      requestId: id,
+    },
+  });
+
+  if (!request) {
+    return null;
+  }
+
+  if (count === 0) {
+    throw new HaulingRequestNotPendingError(
+      `Only pending requests can be ${action}`,
+    );
+  }
+
+  return request;
+}
+
+/**
  * Approve a hauling request, recording which admin approved it.
  */
 export async function approveHaulingRequest(
   id: string,
   approvedBy: string,
 ) {
-  const existing =
-    await prisma.haulingRequest.findUnique({
-      where: {
-        requestId: id,
-      },
-    });
-
-  if (!existing) {
-    return null;
-  }
-
-  if (existing.status !== HaulingRequestStatus.PENDING) {
-    throw new Error(
-      "Only pending requests can be approved",
-    );
-  }
-
-  const { request, notification } = await prisma.$transaction(async (tx) => {
-    const updated = await tx.haulingRequest.update({
-      where: {
-        requestId: id,
-      },
-      data: {
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await decidePendingRequest(
+      tx,
+      id,
+      {
         status: HaulingRequestStatus.APPROVED,
         approvedBy,
         approvedAt: new Date(),
       },
-    });
+      "approved",
+    );
+
+    if (!updated) {
+      return null;
+    }
 
     const created = await createDirectNotification(tx, {
       userId: updated.userId,
@@ -159,9 +205,13 @@ export async function approveHaulingRequest(
     return { request: updated, notification: created };
   });
 
-  emitNotificationCreated(notification);
+  if (!result) {
+    return null;
+  }
 
-  return mapHaulingRequest(request);
+  emitNotificationCreated(result.notification);
+
+  return mapHaulingRequest(result.request);
 }
 
 /**
@@ -172,41 +222,33 @@ export async function denyHaulingRequest(
   denialReason: string,
   deniedBy: string,
 ) {
-  const existing =
-    await prisma.haulingRequest.findUnique({
-      where: {
-        requestId: id,
-      },
-    });
-
-  if (!existing) {
-    return null;
-  }
-
-  if (existing.status !== HaulingRequestStatus.PENDING) {
-    throw new Error(
-      "Only pending requests can be denied",
-    );
-  }
-
+  // Trim before checking the length: the route schema counts raw characters,
+  // so a reason of six spaces passes it and would store an empty reason.
   const trimmedReason = denialReason.trim();
 
-  if (trimmedReason.length > 500) {
-    throw new Error(
-      "Denial reason must not exceed 500 characters",
+  if (
+    trimmedReason.length < DENIAL_REASON_MIN_LENGTH ||
+    trimmedReason.length > DENIAL_REASON_MAX_LENGTH
+  ) {
+    throw new InvalidDenialReasonError(
+      `Denial reason must be between ${DENIAL_REASON_MIN_LENGTH} and ${DENIAL_REASON_MAX_LENGTH} characters`,
     );
   }
 
-  const { request, notification } = await prisma.$transaction(async (tx) => {
-    const updated = await tx.haulingRequest.update({
-      where: {
-        requestId: id,
-      },
-      data: {
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await decidePendingRequest(
+      tx,
+      id,
+      {
         status: HaulingRequestStatus.DENIED,
         denialReason: trimmedReason,
       },
-    });
+      "denied",
+    );
+
+    if (!updated) {
+      return null;
+    }
 
     const created = await createDirectNotification(tx, {
       userId: updated.userId,
@@ -219,7 +261,19 @@ export async function denyHaulingRequest(
     return { request: updated, notification: created };
   });
 
-  emitNotificationCreated(notification);
+  if (!result) {
+    return null;
+  }
 
-  return mapHaulingRequest(request);
+  emitNotificationCreated(result.notification);
+
+  return mapHaulingRequest(result.request);
+}
+
+/**
+ * Presigned upload target for a hauling request photo.
+ * Shares signing and validation rules with incident reports.
+ */
+export async function createHaulingRequestPhotoUpload(fileType: string) {
+  return createPresignedImageUpload("hauling-requests", fileType);
 }
