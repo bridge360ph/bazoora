@@ -6,6 +6,7 @@ import { LoginPage } from "@/features/auth/components/LoginPage";
 import { ProtectedRoute } from "@/features/auth/components/ProtectedRoute";
 import { useSessionBootstrap } from "@/features/auth/useSessionBootstrap";
 import { roleHome } from "@/features/auth/roles";
+import { useSignOut } from "@/features/auth/useSignOut";
 
 // Layout Imports
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -35,7 +36,10 @@ import { Messages } from "./features/driver/Messages";
 import { Settings } from "./features/driver/Settings";
 
 // Resident Pages
+import { ResidentDashboard } from "./features/residents/components/ResidentDashboard";
 import TrackTruckPage from "./features/residents/components/TrackTruckPage";
+import ResidentSchedule from "./features/residents/components/ResidentSchedule";
+import ResidentHaulingRequests from "./features/residents/components/ResidentHaulingRequests";
 
 // Eco-Aide Pages
 import EcoAideRoute from "./features/eco-aide/components/EcoAideRoute";
@@ -43,7 +47,7 @@ import CollectionsLogPage from "@/features/eco-aide/components/CollectionsLogPag
 
 function AppContent() {
   const user = useAuthStore((s) => s.user);
-  const clearSession = useAuthStore((s) => s.clear);
+  const signOut = useSignOut();
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const bootstrapped = useSessionBootstrap();
@@ -114,7 +118,7 @@ function AppContent() {
       {import.meta.env.DEV && (
         <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-black tracking-wider text-brand dark:text-[#4ade80]">
+            <span className="text-lg font-black tracking-wider text-brand dark:text-brand-accent">
                BAZOORA
             </span>
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
@@ -145,7 +149,7 @@ function AppContent() {
               })}
             </div>
             <button
-              onClick={() => clearSession()}
+              onClick={() => void signOut()}
               className="ml-3 rounded-md border border-gray-300 bg-white hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 px-3 py-1 text-xs font-black text-red-500 transition-all active:scale-95 cursor-pointer"
             >
               RESET
@@ -200,9 +204,12 @@ function AppContent() {
           {/* RESIDENT */}
           <Route element={<ProtectedRoute allow={["resident", "business", "citizen"]} />}>
             <Route path="/resident" element={<ResidentLayout />}>
-              <Route index element={<Navigate to="/resident/track" replace />} />
+              <Route index element={<Navigate to="/resident/dashboard" replace />} />
               <Route path="track" element={<TrackTruckPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="dashboard" element={<ResidentDashboard />} />
+              <Route path="schedule" element={<ResidentSchedule />} />
+              <Route path="hauling-requests" element={<ResidentHaulingRequests />} />
             </Route>
           </Route>
 

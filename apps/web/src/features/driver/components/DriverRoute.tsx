@@ -1074,7 +1074,7 @@ export default function DriverRoute(): React.ReactNode {
       <LocationPermissionModal onAllow={detectGps} />
       {/* Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50">
               <Truck className="h-7 w-7 text-blue-600" />
@@ -1144,7 +1144,7 @@ export default function DriverRoute(): React.ReactNode {
       )}
 
       {/* Map Area */}
-      <div className="relative flex min-h-[420px] flex-1 flex-col p-4 lg:min-h-0 lg:p-6">
+      <div className="relative flex min-h-105 flex-1 flex-col p-4 lg:min-h-0 lg:p-6">
         <div className="relative flex-1 overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl">
           {isLowPowerMode ? (
             <div className="flex h-full w-full flex-col items-center justify-center bg-gray-50/50 p-6 text-center">
@@ -1176,7 +1176,7 @@ export default function DriverRoute(): React.ReactNode {
           )}
 
           {isPlanning && (
-            <div className="absolute top-4 left-1/2 z-[1000] -translate-x-1/2">
+            <div className="absolute top-4 left-1/2 z-1000 -translate-x-1/2">
               <div className="flex items-center gap-3 rounded-full bg-[#0f2419] px-4 py-2.5 text-white shadow-xl">
                 <MapPin className="h-3 w-3 animate-pulse text-blue-500" />
                 <span className="text-[11px] font-black tracking-widest uppercase">
@@ -1186,8 +1186,8 @@ export default function DriverRoute(): React.ReactNode {
             </div>
           )}
 
-          <div className="absolute bottom-6 left-6 z-[1000]">
-            <DashboardCard className="min-w-[240px] border-gray-200 dark:border-slate-800 bg-white/90 p-4 shadow-2xl backdrop-blur-md">
+          <div className="absolute bottom-6 left-6 z-1000">
+            <DashboardCard className="min-w-60 border-gray-200 dark:border-slate-800 bg-white/90 p-4 shadow-2xl backdrop-blur-md">
               <p className="mb-2 text-[9px] font-black tracking-widest text-gray-400 uppercase">
                 Truck Status
               </p>
@@ -1210,7 +1210,7 @@ export default function DriverRoute(): React.ReactNode {
       </div>
 
       {/* Control Panel */}
-      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-lg lg:w-[360px]">
+      <div className="z-10 flex w-full flex-col border-l border-gray-100 bg-white shadow-lg lg:w-90">
         <div className="flex flex-col gap-3 border-b border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-gray-900">Collection Hub</h2>
@@ -1383,7 +1383,7 @@ export default function DriverRoute(): React.ReactNode {
       </div>
       {/* Skip Stop / Report Issue Modal */}
       {showReportIssue && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-2000 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
               <AlertTriangle className="h-7 w-7 text-red-600" />

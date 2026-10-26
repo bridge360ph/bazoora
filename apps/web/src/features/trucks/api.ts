@@ -15,6 +15,15 @@ export async function listTrucks(): Promise<Truck[]> {
   return truckListSchema.parse(response.data).data;
 }
 
+/**
+ * Trucks currently out on a route, for residents and businesses tracking
+ * collection. Uses the resident-scoped endpoint; GET /trucks is staff-only.
+ */
+export async function listLiveTrucks(): Promise<Truck[]> {
+  const response = await apiClient.get<unknown>("/trucks/live");
+  return truckListSchema.parse(response.data).data;
+}
+
 export async function getTruck(id: string): Promise<Truck> {
   const response = await apiClient.get<unknown>(`/trucks/${id}`);
   return envelope(truckSchema).parse(response.data).data;

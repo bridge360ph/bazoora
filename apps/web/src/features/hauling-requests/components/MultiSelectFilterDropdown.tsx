@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
 
 interface FilterOption<T extends string> {
   label: string;
@@ -41,22 +42,42 @@ export function MultiSelectFilterDropdown<
   onClear,
 }: MultiSelectFilterDropdownProps<TValue, TOption>) {
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const isActive = selectedValues.length > 0;
 
+  // Close when clicking anywhere outside the dropdown.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isOpen]);
+
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className={`flex h-full min-w-[170px] items-center justify-between gap-2 rounded-lg px-4 py-2.5 text-sm font-medium ${
+        className={`flex h-9 min-w-40 items-center justify-between gap-2 rounded-md border px-3 text-xs font-medium transition ${
           isActive
-            ? "bg-brand-dark text-white"
-            : "border border-gray-300 bg-white text-gray-700"
+            ? "border-brand-dark bg-brand-dark text-white"
+            : "border-surface-border bg-white text-gray-700 hover:border-brand-secondary"
         }`}
       >
         <span className="flex items-center gap-1.5">
           {label}
+          {isActive && (
+            <span className="rounded-full bg-white/20 px-1.5 text-[10px] font-bold">
+              {selectedValues.length}
+            </span>
+          )}
 
           {isActive && (
             <span
@@ -81,17 +102,15 @@ export function MultiSelectFilterDropdown<
           )}
         </span>
 
-        <svg
-          className="h-3 w-3"
-          viewBox="0 0 10 6"
-          fill="currentColor"
-        >
-          <path d="M0 0l5 6 5-6H0z" />
-        </svg>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""} ${
+            isActive ? "text-white" : "text-surface-muted"
+          }`}
+        />
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full min-w-[170px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 w-full min-w-48 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
           {options.map((option) => {
             const isAllOption = option.value === allValue;
 
@@ -112,14 +131,16 @@ export function MultiSelectFilterDropdown<
 
                   onToggleValue(option.value as TValue);
                 }}
-                className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 ${
+                className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-gray-50 ${
                   isSelected
-                    ? "bg-gray-100 text-gray-900"
+                    ? "font-semibold text-brand-dark"
                     : "text-gray-700"
                 }`}
               >
                 {option.label}
-                {isSelected && <span aria-hidden="true">✓</span>}
+                {isSelected && (
+                  <Check className="h-3.5 w-3.5 text-brand-secondary" aria-hidden="true" />
+                )}
               </button>
             );
           })}

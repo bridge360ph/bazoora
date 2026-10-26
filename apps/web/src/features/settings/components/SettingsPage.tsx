@@ -17,6 +17,7 @@ import {
   updateMyPreferences,
 } from "@/features/settings/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSignOut } from "@/features/auth/useSignOut";
 import { Button } from "@bazoora/ui";
 import { PhilippineAddressFields } from "./PhilippineAddressFields";
 
@@ -95,7 +96,7 @@ function validateRequiredAddress(
 export function SettingsPage() {
   const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.user);
-  const clearSession = useAuthStore((state) => state.clear);
+  const signOut = useSignOut();
 
   const isAdmin =
     authUser?.role === "super_admin" ||
@@ -544,7 +545,7 @@ export function SettingsPage() {
       showToast("Password updated. Please log in again.");
 
       window.setTimeout(() => {
-        clearSession();
+        void signOut();
         document.documentElement.classList.remove("dark");
         void navigate("/login");
       }, 800);
@@ -573,7 +574,7 @@ export function SettingsPage() {
   }
 
   return (
-    <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 sm:p-6">
+    <main className="h-full min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 sm:p-6">
       <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="m-0 text-2xl font-extrabold text-gray-900 dark:text-white">
@@ -903,7 +904,7 @@ export function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => {
-                      clearSession();
+                      void signOut();
                       document.documentElement.classList.remove("dark");
                       void navigate("/login");
                     }}
