@@ -17,8 +17,13 @@ export function useSignOut(): () => Promise<void> {
   const clearSession = useAuthStore((s) => s.clear);
 
   return useCallback(async () => {
-    await logout();
-    queryClient.clear();
-    clearSession();
+    try {
+      await logout();
+    } finally {
+      // Clear local state even if the logout request fails, so a failed
+      // request can never leave someone signed in on a shared machine.
+      queryClient.clear();
+      clearSession();
+    }
   }, [queryClient, clearSession]);
 }
