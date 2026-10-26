@@ -3,6 +3,7 @@ import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 
 import type { PickupAddress } from "./types";
 import { FieldLabel } from "./FormUi";
+import { MAX_ADDRESS_LENGTH, MAX_PICKUP_ADDRESSES } from "./constants";
 
 export default function PickupAddressList({
   addresses,
@@ -13,6 +14,7 @@ export default function PickupAddressList({
   onResolve,
   onAdd,
   onRemove,
+  canAdd = true,
 }: {
   addresses: PickupAddress[];
   activeIndex: number;
@@ -22,6 +24,7 @@ export default function PickupAddressList({
   onResolve: (index: number) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  canAdd?: boolean;
 }): ReactNode {
   const canRemove = addresses.length > 1;
 
@@ -54,10 +57,13 @@ export default function PickupAddressList({
         <button
           type="button"
           onClick={onAdd}
-          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[9px] font-semibold text-gray-500 transition hover:bg-gray-50 hover:text-gray-700"
+          disabled={!canAdd}
+          className="flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-gray-300 text-[9px] font-semibold text-gray-500 transition hover:bg-gray-50 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
         >
           <Plus className="h-3.5 w-3.5" />
-          ADD ANOTHER PICKUP ADDRESS
+          {canAdd
+            ? "ADD ANOTHER PICKUP ADDRESS"
+            : `MAXIMUM OF ${MAX_PICKUP_ADDRESSES} PICKUP ADDRESSES`}
         </button>
 
         <p className="text-[8px] leading-relaxed text-gray-400">
@@ -119,6 +125,7 @@ function PickupAddressRow({
             id={`pickup-address-${index}`}
             type="text"
             value={item.address}
+            maxLength={MAX_ADDRESS_LENGTH}
             onFocus={onSelect}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => {

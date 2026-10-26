@@ -1,4 +1,8 @@
-import { MIN_ADDRESS_LENGTH } from "./constants";
+import {
+  MAX_ADDRESS_LENGTH,
+  MAX_PICKUP_ADDRESSES,
+  MIN_ADDRESS_LENGTH,
+} from "./constants";
 import type { PickupAddress, WasteType } from "./types";
 
 export function getFilledAddresses(addresses: PickupAddress[]): PickupAddress[] {
@@ -23,6 +27,14 @@ export function validateRequest({
 
   if (filled.length === 0) {
     return "Please add at least one pickup address.";
+  }
+
+  if (filled.length > MAX_PICKUP_ADDRESSES) {
+    return `You can add up to ${MAX_PICKUP_ADDRESSES} pickup addresses.`;
+  }
+
+  if (filled.some((item) => item.address.trim().length > MAX_ADDRESS_LENGTH)) {
+    return `Each pickup address must be ${MAX_ADDRESS_LENGTH} characters or fewer.`;
   }
 
   if (filled.some((item) => !item.position)) {

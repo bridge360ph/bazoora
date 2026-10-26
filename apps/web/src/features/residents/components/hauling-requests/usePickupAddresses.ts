@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { geocode, reverseGeocode } from "@/lib/geocoding";
 
+import { MAX_ADDRESS_LENGTH, MAX_PICKUP_ADDRESSES } from "./constants";
 import type { LatLng, PickupAddress } from "./types";
 import { createEmptyAddress, formatCoordinates } from "./utils";
 
@@ -28,17 +29,33 @@ export function usePickupAddresses({
     );
   }
 
+  /**
+   * Geocoding results arrive after an await, by which time rows may have been
+   * added or removed. Patch by the row's stable id so a result can never land
+   * on a different address; if the row is gone, the result is dropped.
+   */
+  function updateById(id: string, patch: Partial<PickupAddress>) {
+    setAddresses((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function clampAddress(value: string): string {
+    return value.slice(0, MAX_ADDRESS_LENGTH);
+  }
+
   /** Typing clears any previously resolved position. */
   function changeAddress(index: number, value: string) {
-    updateAt(index, { address: value, position: null });
+    updateAt(index, { address: clampAddress(value), position: null });
     setActiveIndex(index);
     onError(null);
   }
 
   async function resolveAddress(index: number) {
-    const query = addresses[index]?.address.trim();
+    const target = addresses[index];
+    const query = target?.address.trim();
 
-    if (!query) return;
+    if (!target || !query) return;
 
     setActiveIndex(index);
     setIsResolving(true);
@@ -61,8 +78,8 @@ export function usePickupAddresses({
         return;
       }
 
-      updateAt(index, {
-        address: match.display_name?.trim() || query,
+      updateById(target.id, {
+        address: clampAddress(match.display_name?.trim() || query),
         position: [lat, lng],
       });
     } catch (error) {
@@ -77,9 +94,9 @@ export function usePickupAddresses({
 
   /** Sets the active address from a map click, falling back to raw coordinates. */
   async function selectMapPosition(position: LatLng) {
-    if (!addresses[activeIndex]) return;
+    const target = addresses[activeIndex];
 
-    const index = activeIndex;
+    if (!target) return;
 
     setIsResolving(true);
     onError(null);
@@ -87,19 +104,23 @@ export function usePickupAddresses({
     try {
       const result = await reverseGeocode(position[0], position[1]);
 
-      updateAt(index, {
-        address: result?.display_name?.trim() || formatCoordinates(position),
+      updateById(target.id, {
+        address: clampAddress(
+          result?.display_name?.trim() || formatCoordinates(position),
+        ),
         position,
       });
     } catch (error) {
       console.error("Failed to reverse geocode map location:", error);
-      updateAt(index, { address: formatCoordinates(position), position });
+      updateById(target.id, { address: formatCoordinates(position), position });
     } finally {
       setIsResolving(false);
     }
   }
 
   function addAddress() {
+    if (addresses.length >= MAX_PICKUP_ADDRESSES) return;
+
     setActiveIndex(addresses.length);
     setAddresses((current) => [...current, createEmptyAddress()]);
   }
@@ -131,6 +152,7 @@ export function usePickupAddresses({
     activeIndex,
     activeAddress: addresses[activeIndex],
     isResolving,
+    canAddAddress: addresses.length < MAX_PICKUP_ADDRESSES,
     setActiveIndex,
     changeAddress,
     resolveAddress,
