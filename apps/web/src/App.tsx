@@ -39,7 +39,6 @@ import { Settings } from "./features/driver/Settings";
 import { ResidentDashboard } from "./features/residents/components/ResidentDashboard";
 import TrackTruckPage from "./features/residents/components/TrackTruckPage";
 import ResidentSchedule from "./features/residents/components/ResidentSchedule";
-import ResidentReports from "./features/residents/components/ResidentReports";
 import ResidentHaulingRequests from "./features/residents/components/ResidentHaulingRequests";
 
 // Eco-Aide Pages
@@ -210,7 +209,6 @@ function AppContent() {
               <Route path="settings" element={<SettingsPage />} />
               <Route path="dashboard" element={<ResidentDashboard />} />
               <Route path="schedule" element={<ResidentSchedule />} />
-              <Route path="reports" element={<ResidentReports />} />
               <Route path="hauling-requests" element={<ResidentHaulingRequests />} />
             </Route>
           </Route>
