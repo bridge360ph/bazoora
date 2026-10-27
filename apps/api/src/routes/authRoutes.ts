@@ -389,6 +389,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         SUPER_ADMIN: [
           "GOVERNMENT_ADMIN",
           "HAULING_ADMIN",
+          "DRIVER",
         ],
         GOVERNMENT_ADMIN: [
           "DRIVER",
