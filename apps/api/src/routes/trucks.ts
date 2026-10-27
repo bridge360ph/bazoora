@@ -130,24 +130,11 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const location = truck.driverLocations[0];
-
+      // Same shape as the other truck endpoints, so the web client can parse
+      // it with the shared truck schema.
       return reply.send({
         success: true,
-        data: {
-          id: truck.id,
-          plateNumber: truck.plateNumber,
-          status: truck.status === "Active" ? "active" : "idle",
-          currentLocation: location
-            ? {
-                lat: location.latitude,
-                lng: location.longitude,
-                timestamp: location.updatedAt.toISOString(),
-              }
-            : null,
-          plannedRoute: plannedRoutes.get(truck.id) || [],
-          organizationId: "org-1",
-        },
+        data: formatTruck(truck),
       });
     },
   );

@@ -24,6 +24,30 @@ Run from this directory with `pnpm <script>`, or from the root with
 | `build`     | Compile TypeScript to `dist/`                |
 | `typecheck` | Type-check without emitting                  |
 | `lint`      | Lint with ESLint (type-aware rules)          |
+| `simulate:truck` | Drive a truck along a test path and post its location (development only) |
+
+### Simulating a moving truck
+
+Live tracking can be tested without a real truck. With the API running, sign
+the simulator in as the truck's assigned driver, or as the eco-aide on the
+route the truck is assigned to:
+
+```bash
+NODE_ENV=development SIM_EMAIL=driver@example.com SIM_PASSWORD=... pnpm simulate:truck
+```
+
+It follows the truck's planned route if one is set, otherwise it loops around
+the truck's last known location (or `SIM_CENTER`). Residents on Track Truck and
+the eco-aide on that route see the truck move. Stop it with Ctrl+C.
+
+| Variable          | Default                 | Notes                           |
+| ----------------- | ----------------------- | ------------------------------- |
+| `SIM_EMAIL`       | (required)              | Driver or eco-aide account      |
+| `SIM_PASSWORD`    | (required)              |                                 |
+| `SIM_API_URL`     | `http://localhost:3000` | API base URL                    |
+| `SIM_INTERVAL_MS` | `2000`                  | Time between location updates   |
+| `SIM_STEP_METERS` | `15`                    | Distance moved per update       |
+| `SIM_CENTER`      | `14.3833,120.8833`      | Fallback start as `lat,lng`     |
 
 ---
 
