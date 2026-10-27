@@ -1,5 +1,7 @@
+import axios from "axios";
 import { apiClient } from "@/lib/api-client";
 import type {
+  DriverFormValue,
   FleetAssignmentOption,
   Truck,
   TruckFormValue,
@@ -11,16 +13,45 @@ type ApiResponse<T> = {
   error?: string;
 };
 
+type ApiErrorBody = {
+  error?: string;
+  passwordErrors?: string[];
+};
+
+/**
+ * Axios rejects on 4xx/5xx with a generic "Request failed with status code"
+ * message. The API puts the reason in the body, so surface that instead.
+ */
+function toFleetError(error: unknown): Error {
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    const body = error.response?.data;
+
+    if (body?.passwordErrors && body.passwordErrors.length > 0) {
+      return new Error(body.passwordErrors.join(" "));
+    }
+
+    if (body?.error) {
+      return new Error(body.error);
+    }
+  }
+
+  return error instanceof Error ? error : new Error("Fleet request failed.");
+}
+
 async function apiRequest<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const response = await apiClient.request<ApiResponse<T>>({
-    method,
-    url: path,
-    data: body,
-  });
+  const response = await apiClient
+    .request<ApiResponse<T>>({
+      method,
+      url: path,
+      data: body,
+    })
+    .catch((error: unknown) => {
+      throw toFleetError(error);
+    });
 
   if (!response.data.success) {
     throw new Error(response.data.error ?? "Fleet request failed.");
@@ -86,3 +117,23 @@ export function fetchFleetAssignmentOptions() {
   }>("GET", "/admin/fleet/assignment-options");
 }
 
+export function deleteTruck(truckDatabaseId: string) {
+  return apiRequest<{ databaseId: string }>(
+    "DELETE",
+    `/admin/fleet/${truckDatabaseId}`,
+  );
+}
+
+/**
+ * Creates a driver account through the staff registration endpoint.
+ */
+export function createDriver(formValue: DriverFormValue) {
+  return apiRequest<{
+    user: { id: string; email: string; name: string | null; role: string };
+  }>("POST", "/auth/register-staff", {
+    name: formValue.name.trim(),
+    email: formValue.email.trim(),
+    password: formValue.password,
+    role: "DRIVER",
+  });
+}

@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, FilterByDropdown, PaginationControls, StatCard } from "@bazoora/ui";
 import type {
+  DriverFormValue,
   FleetAssignmentOption,
   Truck,
   TruckFormValue,
   TruckStatusFilter,
 } from "./fleet.types";
 import {
+  createDriver,
   createTruck,
+  deleteTruck,
   fetchFleetAssignmentOptions,
   fetchTrucks,
   updateTruck,
@@ -16,8 +19,25 @@ import {
 import { TruckStatusPill } from "./components/TruckStatusPill";
 import { TruckFormModal } from "./components/TruckFormModal";
 import { AssignTruckModal } from "./components/AssignTruckModal";
+import { DriverFormModal } from "./components/DriverFormModal";
+import { RemoveTruckModal } from "./components/RemoveTruckModal";
+import { useAuthStore, type UserRole } from "@/stores/auth-store";
 
-type ModalMode = "register" | "edit" | "assign" | null;
+type ModalMode = "register" | "edit" | "assign" | "addDriver" | "remove" | null;
+
+// Roles that POST /auth/register-staff allows to create drivers, in the
+// store's lowercase form (see mapApiRole in features/auth/roles.ts).
+const DRIVER_CREATOR_ROLES: UserRole[] = [
+  "super_admin",
+  "government_agency",
+  "hauling_org",
+];
+
+const emptyDriverForm: DriverFormValue = {
+  name: "",
+  email: "",
+  password: "",
+};
 
 const TRUCKS_PAGE_SIZE = 5;
 
@@ -54,6 +74,11 @@ export function AdminFleetManagementPage() {
     useState<FleetAssignmentOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [requestError, setRequestError] = useState("");
+  const [driverForm, setDriverForm] = useState<DriverFormValue>(emptyDriverForm);
+  const [modalError, setModalError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const userRole = useAuthStore((state) => state.user?.role);
+  const canAddDriver = userRole !== undefined && DRIVER_CREATOR_ROLES.includes(userRole);
 
   useEffect(() => {
     let isMounted = true;
@@ -176,8 +201,76 @@ export function AdminFleetManagementPage() {
   }
 
   function closeModal() {
+    if (isSaving) {
+      return;
+    }
+
     setSelectedTruck(null);
     setModalMode(null);
+    setModalError("");
+  }
+
+  function openAddDriverModal() {
+    setDriverForm(emptyDriverForm);
+    setModalError("");
+    setModalMode("addDriver");
+  }
+
+  function openRemoveModal(truck: Truck) {
+    setSelectedTruck(truck);
+    setModalError("");
+    setModalMode("remove");
+  }
+
+  async function saveDriver() {
+    try {
+      setIsSaving(true);
+      setModalError("");
+
+      await createDriver(driverForm);
+
+      // Reload so the new driver shows up in the Assigned Driver dropdown.
+      const assignmentOptions = await fetchFleetAssignmentOptions();
+      setRouteOptions(assignmentOptions.routes);
+      setEcoAideOptions(assignmentOptions.ecoAides);
+      setDriverOptions(assignmentOptions.drivers);
+
+      setModalMode(null);
+      setDriverForm(emptyDriverForm);
+    } catch (error) {
+      setModalError(
+        error instanceof Error ? error.message : "The driver could not be added.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function removeTruck() {
+    if (!selectedTruck) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setModalError("");
+
+      await deleteTruck(selectedTruck.databaseId);
+
+      setTrucks((currentTrucks) =>
+        currentTrucks.filter(
+          (truck) => truck.databaseId !== selectedTruck.databaseId,
+        ),
+      );
+      setSelectedTruck(null);
+      setModalMode(null);
+    } catch (error) {
+      setModalError(
+        error instanceof Error ? error.message : "The truck could not be removed.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function registerTruck() {
@@ -271,7 +364,14 @@ export function AdminFleetManagementPage() {
           </p>
         </div>
 
-        <Button onClick={openRegisterModal}>+ Register Truck</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {canAddDriver && (
+            <Button variant="secondary" onClick={openAddDriverModal}>
+              + Add Driver
+            </Button>
+          )}
+          <Button onClick={openRegisterModal}>+ Register Truck</Button>
+        </div>
       </section>
 
       {requestError && (
@@ -398,6 +498,17 @@ export function AdminFleetManagementPage() {
                         >
                           Assign
                         </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-600!"
+                          onClick={() => {
+                            openRemoveModal(truck);
+                          }}
+                        >
+                          Remove
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -439,6 +550,31 @@ export function AdminFleetManagementPage() {
           saveLabel="Save"
           driverOptions={driverOptions}
           onSave={saveEditedTruck}
+          onClose={closeModal}
+        />
+      )}
+
+      {modalMode === "addDriver" && (
+        <DriverFormModal
+          formValue={driverForm}
+          setFormValue={setDriverForm}
+          isSaving={isSaving}
+          error={modalError}
+          onSave={() => {
+            void saveDriver();
+          }}
+          onClose={closeModal}
+        />
+      )}
+
+      {modalMode === "remove" && selectedTruck && (
+        <RemoveTruckModal
+          truck={selectedTruck}
+          isSaving={isSaving}
+          error={modalError}
+          onConfirm={() => {
+            void removeTruck();
+          }}
           onClose={closeModal}
         />
       )}
