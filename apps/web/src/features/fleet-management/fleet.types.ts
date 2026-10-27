@@ -31,3 +31,9 @@ export interface TruckFormValue {
   assignedDriver: string;
   assignedDriverId?: string;
 }
+
+export interface DriverFormValue {
+  name: string;
+  email: string;
+  password: string;
+}
