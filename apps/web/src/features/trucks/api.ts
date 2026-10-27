@@ -24,6 +24,15 @@ export async function listLiveTrucks(): Promise<Truck[]> {
   return truckListSchema.parse(response.data).data;
 }
 
+/**
+ * The truck the signed-in driver or eco-aide works on. Drivers get their
+ * assigned truck, eco-aides get the truck on their assigned route.
+ */
+export async function getMyTruck(): Promise<Truck> {
+  const response = await apiClient.get<unknown>("/trucks/me");
+  return envelope(truckSchema).parse(response.data).data;
+}
+
 export async function getTruck(id: string): Promise<Truck> {
   const response = await apiClient.get<unknown>(`/trucks/${id}`);
   return envelope(truckSchema).parse(response.data).data;
