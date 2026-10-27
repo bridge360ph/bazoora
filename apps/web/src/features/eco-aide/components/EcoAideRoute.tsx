@@ -10,6 +10,7 @@ import {
   AlertCircle,
   RefreshCw,
   FileText,
+  Truck as TruckIcon,
 } from "lucide-react";
 import { IncidentHistoryModal } from "./IncidentHistoryModal";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,6 +23,7 @@ import {
 import type { Route, RouteStatus } from "@bazoora/shared";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { toast } from "sonner";
+import { useAssignedTruckTracking } from "@/features/trucks/hooks";
 
 import { CurrentStopCard } from "./CurrentStopCard";
 import { RouteSummaryStats } from "./RouteSummaryStats";
@@ -58,6 +60,10 @@ export default function EcoAideRoute(): React.ReactNode {
   const watchIdRef = useRef<number | null>(null);
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+
+  // The truck on this eco-aide's route, updated live as the driver moves.
+  const { truck: assignedTruck } = useAssignedTruckTracking();
+  const truckLocation = assignedTruck?.currentLocation ?? null;
 
   useEffect(() => {
     gpsPosRef.current = gpsPos;
@@ -283,6 +289,17 @@ export default function EcoAideRoute(): React.ReactNode {
           },
         ]
       : []),
+    ...(assignedTruck && truckLocation
+      ? [
+          {
+            id: `truck-${assignedTruck.id}`,
+            position: [truckLocation.lat, truckLocation.lng] as [number, number],
+            label: `Truck ${assignedTruck.truckNumber ?? assignedTruck.plateNumber}`,
+            icon: "truck" as const,
+            pulse: assignedTruck.status === "active",
+          },
+        ]
+      : []),
     ...stops.map((stop, idx) => ({
       id: stop.id,
       position: [Number(stop.lat), Number(stop.lng)] as [number, number],
@@ -348,6 +365,22 @@ export default function EcoAideRoute(): React.ReactNode {
               <p className="truncate text-xs font-bold text-gray-900">{gpsAddress}</p>
             </div>
           </DashboardCard>
+
+          {assignedTruck && (
+            <DashboardCard className="flex items-center gap-3 border-gray-200 bg-white/95 p-3.5 shadow-xl backdrop-blur-md">
+              <TruckIcon className="h-4 w-4 shrink-0 text-blue-600" />
+              <div className="min-w-0">
+                <p className="text-[10px] font-black tracking-widest text-gray-400 uppercase">
+                  Truck {assignedTruck.truckNumber ?? assignedTruck.plateNumber}
+                </p>
+                <p className="truncate text-xs font-bold text-gray-900">
+                  {truckLocation?.timestamp
+                    ? `Last update ${new Date(truckLocation.timestamp).toLocaleTimeString()}`
+                    : "Location not available yet"}
+                </p>
+              </div>
+            </DashboardCard>
+          )}
         </div>
       </div>
 
