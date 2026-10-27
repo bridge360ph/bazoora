@@ -13,7 +13,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:super-admin": "tsx src/scripts/seedSuperAdmin.ts",
     "seed:eco-aide": "tsx src/scripts/seedEcoAide.ts",
-    "seed:resident": "tsx src/scripts/seedResident.ts"
+    "seed:resident": "tsx src/scripts/seedResident.ts",
+    "seed:driver": "tsx src/scripts/seedDriver.ts"
   },
   "keywords": [],
   "author": "",
