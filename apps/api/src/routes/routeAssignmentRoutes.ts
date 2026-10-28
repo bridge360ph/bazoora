@@ -1,5 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { AssignEcoAideRequest } from "@bazoora/shared";
+import type {
+  AssignEcoAideRequest,
+  AssignTruckRequest,
+} from "@bazoora/shared";
 
 import {
   authGuard,
@@ -7,12 +10,15 @@ import {
 } from "../lib/auth.js";
 import {
   assignEcoAide,
+  assignTruck,
   listEcoAideOptions,
+  listTruckOptions,
   RouteAssignmentError,
 } from "../services/routeAssignmentService.js";
 
 import {
-  assignEcoAideSchema
+  assignEcoAideSchema,
+  assignTruckSchema,
 } from "../schemas/routeAssignment.schema.js";
 
 // Assignment is an admin action, and the eco-aide option list exists only to
@@ -74,6 +80,53 @@ export function routeAssignmentRoutes(
 
       try {
         return await assignEcoAide(id, body);
+      } catch (error) {
+        return reply.status(statusCodeFor(error)).send({
+          message: (error as Error).message,
+        });
+      }
+    },
+  );
+
+
+  app.get(
+    "/trucks",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...routeAdminRoles),
+      ],
+    },
+    async (_request, reply) => {
+      try {
+        return await listTruckOptions();
+      } catch (error) {
+        return reply.status(400).send({
+          message: (error as Error).message,
+        });
+      }
+    },
+  );
+
+
+  app.patch(
+    "/:id/assign-truck",
+    {
+      schema: assignTruckSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...routeAdminRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { id } = request.params as {
+        id: string;
+      };
+
+      const body = request.body as AssignTruckRequest;
+
+      try {
+        return await assignTruck(id, body);
       } catch (error) {
         return reply.status(statusCodeFor(error)).send({
           message: (error as Error).message,
