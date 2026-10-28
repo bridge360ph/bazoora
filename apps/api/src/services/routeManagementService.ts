@@ -3,7 +3,7 @@ import type { Route } from "@prisma/client";
 import type { RouteStatus } from "@bazoora/shared";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
-import { routeEcoAideInclude } from "../lib/routeIncludes.js";
+import { routeAssignmentInclude } from "../lib/routeIncludes.js";
 
 type CreateRouteInput = Pick<
   Route,
@@ -106,7 +106,7 @@ export async function getRoutes() {
         routeNumber: "desc",
       },
     ],
-    include: routeEcoAideInclude,
+    include: routeAssignmentInclude,
   });
 
   return routes.map(mapRouteToResponse);
@@ -160,7 +160,7 @@ export async function getRouteForUser(userId: string, role: string) {
       where: {
         assignedEcoAideId: userId,
       },
-      include: routeEcoAideInclude,
+      include: routeAssignmentInclude,
     });
 
     return route ? mapRouteToResponse(route) : null;
@@ -173,7 +173,7 @@ export async function getRouteForUser(userId: string, role: string) {
           assignedDriverId: userId,
         },
       },
-      include: routeEcoAideInclude,
+      include: routeAssignmentInclude,
     });
 
     return route ? mapRouteToResponse(route) : null;
@@ -187,7 +187,7 @@ export async function getRouteById(id: string) {
     where: {
       id,
     },
-    include: routeEcoAideInclude,
+    include: routeAssignmentInclude,
   });
 
   if (!route) {
@@ -240,7 +240,7 @@ export async function createRoute(
           status: "Not Started",
           stops: stopCount,
         },
-        include: routeEcoAideInclude,
+        include: routeAssignmentInclude,
       });
     },
   );
@@ -300,7 +300,7 @@ export async function updateRoute(
           assignedEcoAideId: data.assignedEcoAideId,
         }),
       },
-      include: routeEcoAideInclude,
+      include: routeAssignmentInclude,
     });
 
   return mapRouteToResponse(route);
@@ -330,8 +330,47 @@ export async function updateRouteStatus(
       data: {
         status,
       },
-      include: routeEcoAideInclude,
+      include: routeAssignmentInclude,
     });
 
   return mapRouteToResponse(route);
+}
+
+export type DeleteRouteResult = "deleted" | "not_found" | "in_progress";
+
+/**
+ * Deletes a route. A route that is in progress is refused so a collection
+ * that is happening is never removed from under its driver and eco-aide.
+ * The assigned truck and eco-aide are freed automatically because the
+ * columns live on Route. Incident reports and hauling requests keep their
+ * data with the route link cleared (both foreign keys are ON DELETE SET
+ * NULL), so approved requests go back to "no route yet".
+ */
+export async function deleteRoute(
+  id: string,
+): Promise<DeleteRouteResult> {
+  const route = await prisma.route.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      status: true,
+    },
+  });
+
+  if (!route) {
+    return "not_found";
+  }
+
+  if (route.status === "In Progress") {
+    return "in_progress";
+  }
+
+  await prisma.route.delete({
+    where: {
+      id,
+    },
+  });
+
+  return "deleted";
 }

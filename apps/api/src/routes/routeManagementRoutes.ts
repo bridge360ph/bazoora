@@ -18,6 +18,7 @@ import {
 } from "../schemas/routeManagement.schema.js";
 import {
   createRoute,
+  deleteRoute,
   getRouteAssignment,
   getRouteById,
   getRouteForUser,
@@ -245,6 +246,40 @@ export function routeManagementRoutes(
           message: (error as Error).message,
         });
       }
+    },
+  );
+
+
+  app.delete(
+    "/:id",
+    {
+      schema: routeManagementParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...routeAdminRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { id } = request.params as {
+        id: string;
+      };
+
+      const result = await deleteRoute(id);
+
+      if (result === "not_found") {
+        return reply.status(404).send({
+          message: "Route not found",
+        });
+      }
+
+      if (result === "in_progress") {
+        return reply.status(409).send({
+          message:
+            "This route is in progress and cannot be deleted until it is completed.",
+        });
+      }
+
+      return reply.send({ id });
     },
   );
 }

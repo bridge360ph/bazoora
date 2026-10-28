@@ -1,9 +1,9 @@
 import type { Prisma } from "@prisma/client";
 import { generateRouteNumber } from "../lib/displayId.js";
-import { routeEcoAideInclude } from "./routeIncludes.js";
+import { routeAssignmentInclude } from "./routeIncludes.js";
 
 type RouteWithRelations = Prisma.RouteGetPayload<{
-  include: typeof routeEcoAideInclude;
+  include: typeof routeAssignmentInclude;
 }>;
 
 export function mapRouteToResponse(route: RouteWithRelations) {

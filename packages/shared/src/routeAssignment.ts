@@ -14,3 +14,18 @@ export interface AssignEcoAideRequest {
   /** Null clears the current assignment. */
   ecoAideId: string | null;
 }
+
+export interface AssignTruckRequest {
+  /** Null takes the truck off the route. */
+  truckId: string | null;
+}
+
+/** A truck option for the route Assign Truck dropdown. */
+export interface RouteTruckOption {
+  id: string;
+  truckNumber: string | null;
+  plateNumber: string;
+  status: string;
+  /** The route this truck is on, or null when it is free. */
+  assignedRouteId: string | null;
+}
