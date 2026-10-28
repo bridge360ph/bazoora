@@ -1,5 +1,6 @@
 import type { FastifyPluginCallback, FastifyReply } from "fastify";
 import type {
+  AssignHaulingRequestRouteInput,
   CreateHaulingRequestInput,
   PresignedUploadUrlRequest,
 } from "@bazoora/shared";
@@ -10,6 +11,7 @@ import {
 } from "../lib/auth.js";
 import { UnsupportedUploadTypeError } from "../lib/s3ImageUpload.js";
 import {
+  assignHaulingRequestRouteSchema,
   createHaulingRequestSchema,
   denyHaulingRequestSchema,
   haulingRequestParamsSchema,
@@ -17,11 +19,14 @@ import {
 } from "../schemas/haulingRequest.schema.js";
 import {
   approveHaulingRequest,
+  assignHaulingRequestRoute,
   createHaulingRequest,
   createHaulingRequestPhotoUpload,
   denyHaulingRequest,
   getHaulingRequests,
+  getHaulingRouteOptions,
   HaulingRequestNotPendingError,
+  HaulingRouteError,
   InvalidDenialReasonError,
 } from "../services/haulingRequestService.js";
 
@@ -46,7 +51,29 @@ async function sendDecisionError(reply: FastifyReply, error: unknown) {
     return reply.status(400).send({ message: error.message });
   }
 
+  if (error instanceof HaulingRouteError) {
+    return reply.status(error.statusCode).send({ message: error.message });
+  }
+
   throw error;
+}
+
+/**
+ * Approve takes an optional { routeId } body. Existing callers send no body
+ * at all, so it is read by hand instead of through a required body schema.
+ */
+function readOptionalRouteId(body: unknown): string | null | undefined {
+  if (body === null || typeof body !== "object" || !("routeId" in body)) {
+    return undefined;
+  }
+
+  const { routeId } = body;
+
+  if (routeId === null || typeof routeId === "string") {
+    return routeId === "" ? null : routeId;
+  }
+
+  return undefined;
 }
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
@@ -147,7 +174,11 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       const { id } = request.params as { id: string };
 
       try {
-        const result = await approveHaulingRequest(id, request.user.sub);
+        const result = await approveHaulingRequest(
+          id,
+          request.user.sub,
+          readOptionalRouteId(request.body),
+        );
 
         if (!result) {
           return reply.status(404).send({
@@ -179,6 +210,62 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         const result = await denyHaulingRequest(
           id,
           denialReason,
+          request.user.sub,
+        );
+
+        if (!result) {
+          return reply.status(404).send({
+            message: "Hauling request not found",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        return sendDecisionError(reply, error);
+      }
+    },
+  );
+
+  app.get(
+    "/:id/route-options",
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const options = await getHaulingRouteOptions(id);
+
+      if (!options) {
+        return reply.status(404).send({
+          message: "Hauling request not found",
+        });
+      }
+
+      return options;
+    },
+  );
+
+  app.patch(
+    "/:id/route",
+    {
+      schema: assignHaulingRequestRouteSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { routeId } = request.body as AssignHaulingRequestRouteInput;
+
+      try {
+        const result = await assignHaulingRequestRoute(
+          id,
+          routeId,
           request.user.sub,
         );
 
