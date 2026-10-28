@@ -10,6 +10,7 @@ export type ModalMode =
   | "detail"
   | "approve"
   | "deny"
+  | "assignRoute"
   | null;
 
 /**
