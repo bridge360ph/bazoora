@@ -132,6 +132,7 @@ model Route {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   incidentReports   IncidentReport[] @relation("RouteIncidentReports")
+  haulingRequests   HaulingRequest[] @relation("RouteHaulingRequests")
 }
 
 model UserSettingsProfile {
@@ -200,8 +201,14 @@ model HaulingRequest {
   denialReason   String?
   note           String?
   archived       Boolean              @default(false)
+  // Set when an admin assigns an approved request to a collection route.
+  // Cleared automatically if the route is deleted.
+  routeId        String?
+  route          Route?               @relation("RouteHaulingRequests", fields: [routeId], references: [id], onDelete: SetNull)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
+
+  @@index([routeId])
 }
 
 model EcoAideProfile {
