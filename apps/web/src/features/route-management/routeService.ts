@@ -45,13 +45,22 @@ export async function fetchRoutes(): Promise<Route[]> {
   }
 }
 
+/**
+ * The route endpoints reject unknown fields, and the truck is assigned
+ * through its own endpoint, so the form's truck pick is left out here.
+ */
+function toRoutePayload({ assignedTruckId, ...payload }: RouteFormValue) {
+  void assignedTruckId;
+  return payload;
+}
+
 export async function createRouteRequest(
   formValue: RouteFormValue,
 ): Promise<Route> {
   try {
     const response = await apiClient.post<Route>(
       "/routes",
-      formValue,
+      toRoutePayload(formValue),
     );
 
     return response.data;
@@ -67,7 +76,7 @@ export async function updateRouteRequest(
   try {
     const response = await apiClient.patch<Route>(
       `/routes/${routeId}`,
-      formValue,
+      toRoutePayload(formValue),
     );
 
     return response.data;
@@ -89,5 +98,13 @@ export async function updateRouteStatusRequest(
     return response.data;
   } catch (error) {
     throw toApiError(error, "Failed to update route status");
+  }
+}
+
+export async function deleteRouteRequest(routeId: string): Promise<void> {
+  try {
+    await apiClient.delete(`/routes/${routeId}`);
+  } catch (error) {
+    throw toApiError(error, "Failed to delete route");
   }
 }
