@@ -14,6 +14,18 @@ export const WASTE_TYPE_LABELS: Record<WasteType, string> = {
   BIODEGRADABLE: "Biodegradable Waste",
 };
 
+/**
+ * Examples shown next to each option on the request form, so residents pick
+ * the right category instead of filing mixed trash as residual. Kept apart
+ * from WASTE_TYPE_LABELS, which is also used in badges and history rows.
+ */
+export const WASTE_TYPE_EXAMPLES: Record<WasteType, string> = {
+  RESIDUAL: "sachets, diapers, styrofoam",
+  NON_BIODEGRADABLE: "plastic bottles, cans, glass",
+  HAZARDOUS: "batteries, paint, bulbs, chemicals",
+  BIODEGRADABLE: "food scraps, leaves, garden waste",
+};
+
 /** Manila, used until at least one pickup address is located. */
 export const DEFAULT_MAP_CENTER: LatLng = [14.5995, 120.9842];
 

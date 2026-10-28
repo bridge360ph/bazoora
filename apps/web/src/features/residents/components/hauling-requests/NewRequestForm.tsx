@@ -7,7 +7,12 @@ import {
 } from "@/features/hauling-requests/api";
 import { useAuthStore } from "@/stores/auth-store";
 
-import { MAX_NOTE_LENGTH, WASTE_TYPES, WASTE_TYPE_LABELS } from "./constants";
+import {
+  MAX_NOTE_LENGTH,
+  WASTE_TYPES,
+  WASTE_TYPE_EXAMPLES,
+  WASTE_TYPE_LABELS,
+} from "./constants";
 import type { WasteType } from "./types";
 import { FieldLabel } from "./FormUi";
 import { getMinimumDateTime } from "./utils";
@@ -146,12 +151,16 @@ export default function NewRequestForm({
                 <option value="">Select type...</option>
                 {WASTE_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {WASTE_TYPE_LABELS[type]}
+                    {WASTE_TYPE_LABELS[type]} ({WASTE_TYPE_EXAMPLES[type]})
                   </option>
                 ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-muted" />
             </div>
+            <p className="mt-1.5 text-xs text-surface-muted">
+              Have more than one type of waste? Submit a separate request for
+              each type.
+            </p>
           </div>
 
           <div className="mt-4">
