@@ -6,13 +6,24 @@ import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
 import { useAssignRouteEcoAide } from "../route-assignment/hooks/useAssignRouteEcoAide";
+import { useAssignRouteTruck } from "../route-assignment/hooks/useAssignRouteTruck";
+import { useDeleteRoute } from "./hooks/useDeleteRoute";
 import { RouteFiltersBar } from "./components/RouteFiltersBar";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
 import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
 import { RouteDetailsModal } from "./components/RouteDetailsModal";
+import { AssignRouteTruckModal } from "./components/AssignRouteTruckModal";
+import { DeleteRouteModal } from "./components/DeleteRouteModal";
 
-type ModalMode = "create" | "edit" | "assign" | "details" | null;
+type ModalMode =
+  | "create"
+  | "edit"
+  | "assign"
+  | "assignTruck"
+  | "delete"
+  | "details"
+  | null;
 
 const ROUTES_PAGE_SIZE = 4;
 
@@ -25,6 +36,7 @@ const emptyRouteForm: RouteFormValue = {
   startTime: "",
   routeType: "Free",
   assignedEcoAideId: null,
+  assignedTruckId: null,
 };
 
 export function AdminRouteManagementPage() {
@@ -32,6 +44,8 @@ export function AdminRouteManagementPage() {
   const createRouteMutation = useCreateRoute();
   const updateRouteMutation = useUpdateRoute();
   const assignEcoAideMutation = useAssignRouteEcoAide();
+  const assignTruckMutation = useAssignRouteTruck();
+  const deleteRouteMutation = useDeleteRoute();
 
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -40,6 +54,7 @@ export function AdminRouteManagementPage() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
   const [assignedEcoAide, setAssignedEcoAide] = useState<string | null>(null);
+  const [assignedTruck, setAssignedTruck] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,6 +116,7 @@ export function AdminRouteManagementPage() {
     routes?.filter((route) => route.status === "Not Started").length ?? 0;
 
   function openCreateModal() {
+    assignTruckMutation.reset();
     setSelectedRoute(null);
     setRouteForm(emptyRouteForm);
     setModalMode("create");
@@ -116,8 +132,10 @@ export function AdminRouteManagementPage() {
       collectionDay: route.collectionDay,
       startTime: route.startTime,
       routeType: route.routeType,
-      assignedEcoAideId: route.assignedEcoAideId ?? null
+      assignedEcoAideId: route.assignedEcoAideId ?? null,
+      assignedTruckId: route.assignedTruckId ?? null,
     });
+    assignTruckMutation.reset();
     setModalMode("edit");
   }
 
@@ -125,6 +143,54 @@ export function AdminRouteManagementPage() {
     setSelectedRoute(route);
     setAssignedEcoAide(route.assignedEcoAideId ?? null);
     setModalMode("assign");
+  }
+
+  function openAssignTruckModal(route: Route) {
+    assignTruckMutation.reset();
+    setSelectedRoute(route);
+    setAssignedTruck(route.assignedTruckId ?? null);
+    setModalMode("assignTruck");
+  }
+
+  function openDeleteModal(route: Route) {
+    deleteRouteMutation.reset();
+    setSelectedRoute(route);
+    setModalMode("delete");
+  }
+
+  function handleSaveTruckAssignment() {
+    if (!selectedRoute) {
+      return;
+    }
+
+    assignTruckMutation.mutate(
+      { routeId: selectedRoute.id, truckId: assignedTruck },
+      {
+        onSuccess: () => {
+          refetch();
+          closeModal();
+          setSuccessMessage(
+            assignedTruck
+              ? "Truck assigned successfully."
+              : "Truck unassigned successfully.",
+          );
+        },
+      },
+    );
+  }
+
+  function handleDeleteRoute() {
+    if (!selectedRoute) {
+      return;
+    }
+
+    deleteRouteMutation.mutate(selectedRoute.id, {
+      onSuccess: () => {
+        refetch();
+        closeModal();
+        setSuccessMessage("Route deleted successfully.");
+      },
+    });
   }
 
   function openDetails(route: Route) {
@@ -146,11 +212,43 @@ export function AdminRouteManagementPage() {
    * (the modal stays open).
    */
 
-    function applyEcoAideAssignment(routeId: string, successMessage: string) {
+    function finishFormSave(successMessage: string) {
+      refetch();
+      closeModal();
+      setSuccessMessage(successMessage);
+    }
+
+    /**
+     * Saves the truck picked in the form through /assign-truck, but only
+     * when it differs from what the route already has.
+     */
+    function applyTruckAssignment(
+      routeId: string,
+      previousTruckId: string | null,
+      successMessage: string,
+    ) {
+      if (routeForm.assignedTruckId === previousTruckId) {
+        finishFormSave(successMessage);
+        return;
+      }
+
+      assignTruckMutation.mutate(
+        { routeId, truckId: routeForm.assignedTruckId },
+        {
+          onSuccess: () => {
+            finishFormSave(successMessage);
+          },
+        },
+      );
+    }
+
+    function applyEcoAideAssignment(
+      routeId: string,
+      previousTruckId: string | null,
+      successMessage: string,
+    ) {
       if (!routeForm.assignedEcoAideId) {
-        refetch();
-        closeModal();
-        setSuccessMessage(successMessage);
+        applyTruckAssignment(routeId, previousTruckId, successMessage);
         return;
       }
 
@@ -158,9 +256,7 @@ export function AdminRouteManagementPage() {
         { routeId, ecoAide: routeForm.assignedEcoAideId },
         {
           onSuccess: () => {
-            refetch();
-            closeModal();
-            setSuccessMessage(successMessage);
+            applyTruckAssignment(routeId, previousTruckId, successMessage);
           },
         },
       );
@@ -169,7 +265,7 @@ export function AdminRouteManagementPage() {
   function handleCreateRoute() {
     createRouteMutation.mutate(routeForm, {
       onSuccess: (createdRoute) => {
-        applyEcoAideAssignment(createdRoute.id, "Route created successfully.");
+        applyEcoAideAssignment(createdRoute.id, null, "Route created successfully.");
       },
     });
   }
@@ -183,7 +279,11 @@ export function AdminRouteManagementPage() {
       { routeId: selectedRoute.id, formValue: routeForm },
       {
         onSuccess: () => {
-          applyEcoAideAssignment(selectedRoute.id, "Route updated successfully.");
+          applyEcoAideAssignment(
+            selectedRoute.id,
+            selectedRoute.assignedTruckId,
+            "Route updated successfully.",
+          );
         },
       },
     );
@@ -210,14 +310,17 @@ export function AdminRouteManagementPage() {
     createRouteMutation.error?.message ??
     updateRouteMutation.error?.message ??
     assignEcoAideMutation.error?.message ??
+    assignTruckMutation.error?.message ??
     null;
 
   const isFormSubmitting =
     modalMode === "create"
       ? createRouteMutation.isPending ||
-        assignEcoAideMutation.isPending
+        assignEcoAideMutation.isPending ||
+        assignTruckMutation.isPending
       : updateRouteMutation.isPending ||
-        assignEcoAideMutation.isPending
+        assignEcoAideMutation.isPending ||
+        assignTruckMutation.isPending
 
   return (
     <div className="p-6">
@@ -284,8 +387,14 @@ export function AdminRouteManagementPage() {
                       onAssign={() => {
                         openAssignModal(route);
                       }}
+                      onAssignTruck={() => {
+                        openAssignTruckModal(route);
+                      }}
                       onView={() => {
                         openDetails(route);
+                      }}
+                      onDelete={() => {
+                        openDeleteModal(route);
                       }}
                     />
                   ))
@@ -346,6 +455,28 @@ export function AdminRouteManagementPage() {
           onClose={closeModal}
           isSubmitting={assignEcoAideMutation.isPending}
           errorMessage={assignEcoAideMutation.error?.message ?? null}
+        />
+      )}
+
+      {modalMode === "assignTruck" && selectedRoute && (
+        <AssignRouteTruckModal
+          route={selectedRoute}
+          assignedTruck={assignedTruck}
+          setAssignedTruck={setAssignedTruck}
+          onSave={handleSaveTruckAssignment}
+          onClose={closeModal}
+          isSubmitting={assignTruckMutation.isPending}
+          errorMessage={assignTruckMutation.error?.message ?? null}
+        />
+      )}
+
+      {modalMode === "delete" && selectedRoute && (
+        <DeleteRouteModal
+          route={selectedRoute}
+          onConfirm={handleDeleteRoute}
+          onClose={closeModal}
+          isSubmitting={deleteRouteMutation.isPending}
+          errorMessage={deleteRouteMutation.error?.message ?? null}
         />
       )}
 
