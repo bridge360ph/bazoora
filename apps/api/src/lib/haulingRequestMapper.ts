@@ -1,8 +1,42 @@
-import type { HaulingRequest as PrismaHaulingRequest } from "@bazoora/db";
-import type { HaulingRequest as SharedHaulingRequest } from "@bazoora/shared";
+import type {
+  HaulingRequest as PrismaHaulingRequest,
+  Prisma,
+} from "@bazoora/db";
+import type {
+  CollectionDay,
+  HaulingRequest as SharedHaulingRequest,
+  WasteType,
+} from "@bazoora/shared";
+import { generateRouteNumber } from "./displayId.js";
+import { getScheduledCollectionAt } from "./haulingSchedule.js";
+
+/** Loads the assigned route summary alongside a hauling request. */
+export const haulingRequestInclude = {
+  route: {
+    select: {
+      id: true,
+      routeNumber: true,
+      name: true,
+      collectionDay: true,
+      startTime: true,
+      wasteType: true,
+      assignedEcoAide: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.HaulingRequestInclude;
+
+type HaulingRequestWithRoute = PrismaHaulingRequest & {
+  route?: Prisma.HaulingRequestGetPayload<{
+    include: typeof haulingRequestInclude;
+  }>["route"];
+};
 
 export function mapHaulingRequest(
-  request: PrismaHaulingRequest,
+  request: HaulingRequestWithRoute,
 ): SharedHaulingRequest {
   return {
     requestId: request.requestId,
@@ -52,6 +86,25 @@ export function mapHaulingRequest(
 
     ...(request.note !== null && {
       note: request.note,
+    }),
+
+    ...(request.routeId !== null && {
+      routeId: request.routeId,
+    }),
+
+    ...(request.route && {
+      route: {
+        id: request.route.id,
+        routeDisplayNumber: generateRouteNumber(request.route.routeNumber),
+        name: request.route.name,
+        collectionDay: request.route.collectionDay as CollectionDay,
+        startTime: request.route.startTime,
+        wasteType: request.route.wasteType as WasteType,
+        ecoAideName: request.route.assignedEcoAide?.name ?? null,
+        scheduledCollectionAt:
+          getScheduledCollectionAt(request.pickupDate, request.route)?.toISOString() ??
+          null,
+      },
     }),
   };
 }

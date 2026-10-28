@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Bell,
+  CalendarCheck,
   CheckCircle2,
   Clock,
   XCircle,
@@ -32,6 +33,11 @@ const NOTIFICATION_STYLES: Record<string, NotificationStyle> = {
     icon: XCircle,
     iconClass: "bg-red-50 text-red-600",
     borderClass: "border-l-red-400",
+  },
+  HAULING_REQUEST_SCHEDULED: {
+    icon: CalendarCheck,
+    iconClass: "bg-sky-50 text-sky-600",
+    borderClass: "border-l-sky-400",
   },
 };
 
