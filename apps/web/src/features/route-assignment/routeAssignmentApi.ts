@@ -2,6 +2,8 @@ import axios from "axios";
 import type {
   Route,
   AssignEcoAideRequest,
+  AssignTruckRequest,
+  RouteTruckOption,
   UserSummary
 } from "@bazoora/shared";
 
@@ -98,4 +100,54 @@ export function getAvailableEcoAides(
 
     return !takenEcoAideIds.has(ecoAide.id);
   });
+}
+
+export async function assignRouteTruckRequest(
+  routeId: string,
+  truckId: string | null,
+): Promise<Route> {
+  const body: AssignTruckRequest = { truckId };
+
+  try {
+    const { data } = await apiClient.patch<Route>(
+      `/routes/${routeId}/assign-truck`,
+      body,
+    );
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Failed to assign truck");
+  }
+}
+
+export async function fetchTruckOptions(): Promise<RouteTruckOption[]> {
+  try {
+    const { data } = await apiClient.get<RouteTruckOption[]>(
+      "/routes/trucks",
+    );
+    return data;
+  } catch (error) {
+    throw toApiError(error, "Failed to fetch trucks");
+  }
+}
+
+/**
+ * assignedTruckId is @unique on Route, so a truck can serve one route at a
+ * time. Leaves out trucks on a different route, but keeps the current
+ * route's own truck so it shows as selected.
+ */
+export function getAvailableTrucks(
+  trucks: RouteTruckOption[],
+  routeId: string,
+): RouteTruckOption[] {
+  return trucks.filter(
+    (truck) =>
+      truck.assignedRouteId === null || truck.assignedRouteId === routeId,
+  );
+}
+
+export function formatTruckOption(truck: {
+  truckNumber: string | null;
+  plateNumber: string;
+}): string {
+  return `${truck.truckNumber ?? "Pending ID"} (${truck.plateNumber})`;
 }
