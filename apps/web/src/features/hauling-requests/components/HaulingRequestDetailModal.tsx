@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
-import { Check, ImageOff, X } from "lucide-react";
+import { Check, ImageOff, Route as RouteIcon, X } from "lucide-react";
 
 import {
   SENDER_DISPLAY,
   WASTE_TYPE_DISPLAY,
 } from "../haulingRequestManagement.constants";
-import { formatDateTime, getPickupAddresses } from "../haulingRequestFormat";
+import {
+  formatDateTime,
+  formatScheduledCollection,
+  getPickupAddresses,
+} from "../haulingRequestFormat";
 import { AdminModalShell, BUTTON_CLASSES, DetailField } from "./AdminModalShell";
 import { HaulingStatusBadge } from "./HaulingStatusBadge";
 
@@ -15,6 +19,7 @@ interface HaulingRequestDetailModalProps {
   onClose: () => void;
   onApproveClick: () => void;
   onDenyClick: () => void;
+  onAssignRouteClick: () => void;
 }
 
 /**
@@ -29,9 +34,11 @@ export function HaulingRequestDetailModal({
   onClose,
   onApproveClick,
   onDenyClick,
+  onAssignRouteClick,
 }: HaulingRequestDetailModalProps): ReactNode {
   const pickups = getPickupAddresses(request.requestAddress);
   const isPending = request.status === "PENDING";
+  const isApproved = request.status === "APPROVED";
 
   return (
     <AdminModalShell
@@ -49,6 +56,16 @@ export function HaulingRequestDetailModal({
             <button type="button" onClick={onApproveClick} className={BUTTON_CLASSES.primary}>
               <Check className="h-3.5 w-3.5" />
               Approve
+            </button>
+          </>
+        ) : isApproved ? (
+          <>
+            <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+              Close
+            </button>
+            <button type="button" onClick={onAssignRouteClick} className={BUTTON_CLASSES.primary}>
+              <RouteIcon className="h-3.5 w-3.5" />
+              {request.route ? "Change Route" : "Assign Route"}
             </button>
           </>
         ) : (
@@ -81,7 +98,7 @@ export function HaulingRequestDetailModal({
               {formatDateTime(request.createdAt)}
             </DetailField>
 
-            <DetailField label="PICKUP DATE">
+            <DetailField label="PREFERRED PICKUP">
               {formatDateTime(request.pickupDate)}
             </DetailField>
           </div>
@@ -121,6 +138,25 @@ export function HaulingRequestDetailModal({
           {request.status === "APPROVED" && request.approvedAt && (
             <DetailField label="APPROVED ON">
               {formatDateTime(request.approvedAt)}
+            </DetailField>
+          )}
+
+          {isApproved && (
+            <DetailField label="ROUTE">
+              {request.route ? (
+                <span>
+                  {request.route.routeDisplayNumber} · {request.route.name}
+                  <span className="block text-[11px] font-normal text-gray-500">
+                    Scheduled collection:{" "}
+                    {formatScheduledCollection(request.route.scheduledCollectionAt)}
+                  </span>
+                  <span className="block text-[11px] font-normal text-gray-500">
+                    Eco-aide: {request.route.ecoAideName ?? "Not assigned yet"}
+                  </span>
+                </span>
+              ) : (
+                <span className="text-amber-700">No route yet</span>
+              )}
             </DetailField>
           )}
 
