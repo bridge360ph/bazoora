@@ -14,6 +14,8 @@ interface UpdateProfileBody {
   cityMunicipality?: string;
   province?: string;
   postalCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface UpdatePreferencesBody {
@@ -118,6 +120,33 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
+      // A saved address must be on the map, so it can be used as a pickup.
+      const { latitude, longitude } = body;
+      const hasLocation =
+        typeof latitude === "number" &&
+        typeof longitude === "number" &&
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude) &&
+        latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180;
+      const hasAddress =
+        normalizeOptionalText(body.streetAddress) !== null ||
+        normalizeOptionalText(body.barangay) !== null;
+
+      if (hasAddress && !hasLocation) {
+        return reply.code(400).send({
+          success: false,
+          error: "Locate your address on the map before saving.",
+        });
+      }
+
+      const location = {
+        latitude: hasAddress && hasLocation ? latitude : null,
+        longitude: hasAddress && hasLocation ? longitude : null,
+      };
+
       const duplicateEmail = await prisma.user.findFirst({
         where: {
           email,
@@ -169,6 +198,7 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
             cityMunicipality: normalizeOptionalText(body.cityMunicipality),
             province: normalizeOptionalText(body.province),
             postalCode: normalizeOptionalText(body.postalCode),
+            ...location,
           },
           update: {
             firstName,
@@ -180,6 +210,7 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
             cityMunicipality: normalizeOptionalText(body.cityMunicipality),
             province: normalizeOptionalText(body.province),
             postalCode: normalizeOptionalText(body.postalCode),
+            ...location,
           },
         });
 
