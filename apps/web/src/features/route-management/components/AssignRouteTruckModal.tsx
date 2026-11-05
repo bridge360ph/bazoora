@@ -68,7 +68,7 @@ export function AssignRouteTruckModal({
             value={route.name}
             disabled
             readOnly
-            className="w-full rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-600"
+            className="h-9 w-full rounded-md border border-surface-border bg-gray-50 px-3 text-xs text-gray-500"
           />
         </FormField>
 
@@ -89,7 +89,7 @@ export function AssignRouteTruckModal({
               onChange={(event) => {
                 setAssignedTruck(event.target.value || null);
               }}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+              className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
             >
               <option value="">Unassigned</option>
 
