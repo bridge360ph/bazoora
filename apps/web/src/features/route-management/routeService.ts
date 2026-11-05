@@ -8,6 +8,7 @@ import type { RouteStatus } from "@bazoora/shared";
 import type {
   RouteFormValue,
 } from "./route.types.ts";
+import { toStopLocations, waypointsFromStops } from "./route.types.ts";
 
 /**
  * Route-management API calls.
@@ -49,9 +50,14 @@ export async function fetchRoutes(): Promise<Route[]> {
  * The route endpoints reject unknown fields, and the truck is assigned
  * through its own endpoint, so the form's truck pick is left out here.
  */
-function toRoutePayload({ assignedTruckId, ...payload }: RouteFormValue) {
+function toRoutePayload({ assignedTruckId, stops, ...payload }: RouteFormValue) {
   void assignedTruckId;
-  return payload;
+
+  return {
+    ...payload,
+    waypoints: waypointsFromStops(stops),
+    stopLocations: toStopLocations(stops),
+  };
 }
 
 export async function createRouteRequest(

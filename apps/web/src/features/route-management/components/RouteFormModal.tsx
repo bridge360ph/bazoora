@@ -70,7 +70,7 @@ export function RouteFormModal({
   }
 
   return (
-    <Modal title={title} onClose={handleClose} width={560}>
+    <Modal title={title} onClose={handleClose} width={720}>
       {errorMessage && (
         <p className="mb-3 text-sm text-red-600">{errorMessage}</p>
       )}
