@@ -72,6 +72,8 @@ export function BarangayPicker({ value, onChange }: BarangayPickerProps): ReactN
           setProvinceCode("");
           setLocalityCode("");
           setBarangayCode("");
+          // A new area clears the old barangay and its collection points.
+          if (value !== "") onChange("");
         }}
       />
 
@@ -86,6 +88,7 @@ export function BarangayPicker({ value, onChange }: BarangayPickerProps): ReactN
             setProvinceCode(option.value);
             setLocalityCode("");
             setBarangayCode("");
+            if (value !== "") onChange("");
           }}
         />
       )}
@@ -100,6 +103,7 @@ export function BarangayPicker({ value, onChange }: BarangayPickerProps): ReactN
           setLocalityCode(option.value);
           setLocalityName(option.label);
           setBarangayCode("");
+          if (value !== "") onChange("");
         }}
       />
 

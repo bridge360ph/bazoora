@@ -1,4 +1,5 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { LoaderCircle } from "lucide-react";
 import { FormField } from "@bazoora/ui";
 import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import {
@@ -212,7 +213,20 @@ export function RouteEntryForm({
     /** Street lookups the routing server did not answer. */
     skipped?: number;
   }>({ forArea: "", status: "idle", count: 0, branchName: null });
-  const areaKey = isFree && area ? `${formValue.barangay}|${area.center.join(",")}` : "";
+  // Empty while the barangay outline is loading, so the previous barangay's
+  // outline is never used for the new one.
+  const areaKey =
+    isFree && area && !isAreaLoading ? `${formValue.barangay}|${area.center.join(",")}` : "";
+  // The barangay currently picked. A generation started for an earlier one
+  // is dropped when it finishes.
+  const latestAreaKeyRef = useRef(areaKey);
+  useEffect(() => {
+    latestAreaKeyRef.current = areaKey;
+  }, [areaKey]);
+  const currentGeneration =
+    generation.forArea === areaKey
+      ? generation
+      : { forArea: areaKey, status: "idle" as const, count: 0, branchName: null, skipped: 0 };
 
   async function generateStops() {
     if (!area || !areaKey) return;
@@ -222,6 +236,8 @@ export function RouteEntryForm({
 
     try {
       const result = await generateBarangayStops(area, formValue.barangay, routeBranch);
+      // The barangay was changed while this one was loading.
+      if (latestAreaKeyRef.current !== forArea) return;
       const stamp = Date.now().toString(36);
 
       setFormValue((current) => ({
@@ -240,9 +256,20 @@ export function RouteEntryForm({
         skipped: result.skipped,
       });
     } catch {
+      if (latestAreaKeyRef.current !== forArea) return;
       setGeneration({ forArea, status: "error", count: 0, branchName: null });
     }
   }
+
+  function resetStops() {
+    setFormValue((current) => ({ ...current, stops: [], waypoints: "" }));
+    setGeneration({ forArea: areaKey, status: "idle", count: 0, branchName: null });
+  }
+
+  const isPreparingStops =
+    isFree &&
+    formValue.barangay !== "" &&
+    (isAreaLoading || currentGeneration.status === "loading");
 
   // A new route generates its collection points once its barangay is found.
   // Routes that already have stops keep them until Regenerate is clicked.
@@ -366,39 +393,67 @@ export function RouteEntryForm({
             *
           </span>
         </span>
-        {isFree && area && (
-          <button
-            type="button"
-            onClick={() => void generateStops()}
-            disabled={generation.status === "loading"}
-            className="cursor-pointer text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-60"
-          >
-            {formValue.stops.length > 0 ? "Regenerate from barangay" : "Generate from barangay"}
-          </button>
-        )}
+        <span className="inline-flex items-center gap-3">
+          {formValue.stops.length > 0 && (
+            <button
+              type="button"
+              onClick={resetStops}
+              disabled={isPreparingStops}
+              className="cursor-pointer text-xs font-semibold text-red-600 hover:underline disabled:cursor-wait disabled:opacity-60"
+            >
+              Reset collection points
+            </button>
+          )}
+          {isFree && areaKey && (
+            <button
+              type="button"
+              onClick={() => void generateStops()}
+              disabled={isPreparingStops}
+              className="cursor-pointer text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-60"
+            >
+              {formValue.stops.length > 0 ? "Regenerate from barangay" : "Generate from barangay"}
+            </button>
+          )}
+        </span>
       </span>
       {isFree && (
         <p className="text-xs font-normal text-gray-500">
           {!formValue.barangay
             ? "Pick a barangay. Its streets become the collection points automatically."
-            : generation.status === "loading"
-              ? "Finding the streets in this barangay..."
-              : generation.status === "error"
+            : isAreaLoading
+              ? `Finding ${barangayNameOf(formValue.barangay)} on the map...`
+              : currentGeneration.status === "loading"
+              ? `Finding the streets in ${barangayNameOf(formValue.barangay)}...`
+              : currentGeneration.status === "error"
                 ? "The streets could not be loaded. Try Regenerate, or add stops by hand."
-                : generation.status === "center"
+                : currentGeneration.status === "center"
                   ? "No named streets were found, so the barangay centre was added. Add more stops by hand if needed."
-                  : generation.status === "streets"
-                    ? `${generation.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
-                        generation.branchName ? `, ordered from ${generation.branchName}` : ""
+                  : currentGeneration.status === "streets"
+                    ? `${currentGeneration.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
+                        currentGeneration.branchName ? `, ordered from ${currentGeneration.branchName}` : ""
                       }. You can still add, move or remove stops.${
-                        generation.skipped
-                          ? ` ${generation.skipped} spots could not be checked, so some streets may be missing. Try Regenerate.`
+                        currentGeneration.skipped
+                          ? ` ${currentGeneration.skipped} spots could not be checked, so some streets may be missing. Try Regenerate.`
                           : ""
                       }`
                     : "Collection points come from the barangay's streets. You can still add, move or remove stops."}
         </p>
       )}
+      <div className="relative">
+      {isPreparingStops && (
+        <div
+          role="status"
+          className="absolute inset-0 z-[1000] flex flex-col items-center justify-center gap-2 rounded-md bg-white/85 text-sm font-medium text-gray-700"
+        >
+          <LoaderCircle className="h-6 w-6 animate-spin text-brand" aria-hidden="true" />
+          {isAreaLoading
+            ? `Finding ${barangayNameOf(formValue.barangay)} on the map...`
+            : `Generating collection points for ${barangayNameOf(formValue.barangay)}...`}
+        </div>
+      )}
       <RouteStopsEditor
+        // A new barangay starts the editor fresh, without the old path or summary.
+        key={formValue.barangay}
         stops={formValue.stops}
         onChange={(stops) => {
           updateField("stops", stops);
@@ -409,10 +464,11 @@ export function RouteEntryForm({
           updateField("startBranchId", branch.id);
         }}
         {...(isFree && {
-          area,
+          area: areaKey ? area : null,
           areaName: barangayNameOf(formValue.barangay) || "the barangay",
         })}
       />
+      </div>
       {unlocatedCount > 0 && (
         <p className="text-xs text-amber-700">
           {unlocatedCount === 1
