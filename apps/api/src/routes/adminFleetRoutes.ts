@@ -3,7 +3,7 @@ import { prisma } from "@bazoora/db";
 import { authGuard, requireRole } from "../lib/auth.js";
 import type { Prisma } from "@bazoora/db";
 import { getNextSequence } from "../lib/counter.js";
-import { generateTruckNumber } from "../lib/displayId.js";
+import { generateRouteNumber, generateTruckNumber } from "../lib/displayId.js";
 
 type TruckInput = {
   plateNumber: string;
@@ -138,6 +138,135 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
       data: trucks.map(formatTruck),
     };
   });
+
+  // Every driver account with the truck assigned to them, if any, and the
+  // route that truck is on.
+  app.get("/drivers", async () => {
+    const drivers = await prisma.user.findMany({
+      where: { role: "DRIVER" },
+      orderBy: [{ name: "asc" }, { email: "asc" }],
+      select: {
+        id: true,
+        userNumber: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        assignedTruck: {
+          select: {
+            id: true,
+            truckNumber: true,
+            plateNumber: true,
+            status: true,
+            assignedRoute: {
+              select: {
+                routeNumber: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: drivers.map((driver) => {
+        const truck = driver.assignedTruck;
+        const route = truck?.assignedRoute;
+
+        return {
+          id: driver.id,
+          userNumber: driver.userNumber,
+          name: driver.name ?? driver.email,
+          email: driver.email,
+          addedAt: driver.createdAt.toISOString(),
+          truck: truck
+            ? {
+                id: truck.id,
+                truckNumber: truck.truckNumber,
+                plateNumber: truck.plateNumber,
+                status: truck.status,
+                route: route
+                  ? {
+                      routeDisplayNumber: generateRouteNumber(route.routeNumber),
+                      name: route.name,
+                    }
+                  : null,
+              }
+            : null,
+        };
+      }),
+    };
+  });
+
+  // Removes a driver account. Their truck stays and becomes driverless.
+  // Refused while the driver is on a route in progress, or when other
+  // records (incident reports, sent notifications) still point to them.
+  app.delete(
+    "/drivers/:id",
+    { schema: { params: truckParamsSchema } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      const driver = await prisma.user.findFirst({
+        where: { id, role: "DRIVER" },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          assignedTruck: {
+            select: {
+              id: true,
+              assignedRoute: { select: { name: true, status: true } },
+            },
+          },
+          _count: {
+            select: {
+              incidentReports: true,
+              createdNotifications: true,
+            },
+          },
+        },
+      });
+
+      if (!driver) {
+        return reply.code(404).send({
+          success: false,
+          error: "Driver not found.",
+        });
+      }
+
+      const route = driver.assignedTruck?.assignedRoute;
+
+      if (route?.status === "In Progress") {
+        return reply.code(409).send({
+          success: false,
+          error: `${driver.name ?? driver.email} is on ${route.name}, which is in progress. Remove them after the route is finished.`,
+        });
+      }
+
+      if (driver._count.incidentReports > 0 || driver._count.createdNotifications > 0) {
+        return reply.code(409).send({
+          success: false,
+          error: `${driver.name ?? driver.email} has incident reports or notifications on record, so the account cannot be removed.`,
+        });
+      }
+
+      await prisma.$transaction([
+        prisma.truck.updateMany({
+          where: { assignedDriverId: driver.id },
+          data: { assignedDriverId: null },
+        }),
+        prisma.driverLocation.deleteMany({ where: { driverId: driver.id } }),
+        prisma.user.delete({ where: { id: driver.id } }),
+      ]);
+
+      return {
+        success: true,
+        data: { id: driver.id },
+      };
+    },
+  );
 
   app.get("/assignment-options", async () => {
     const [routes, ecoAides, drivers] = await Promise.all([
