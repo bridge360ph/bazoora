@@ -62,6 +62,7 @@ const emptyRouteForm: RouteFormValue = {
   assignedTruckId: null,
   stops: [],
   collectionDate: "",
+  startBranchId: null,
 };
 
 /**
@@ -199,6 +200,7 @@ export function AdminRouteManagementPage() {
       assignedTruckId: route.assignedTruckId ?? null,
       stops: toEditableStops(route),
       collectionDate: route.collectionDate ?? "",
+      startBranchId: route.startBranchId ?? null,
     });
     assignTruckMutation.reset();
     setModalMode("edit");

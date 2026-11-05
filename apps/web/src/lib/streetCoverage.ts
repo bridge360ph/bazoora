@@ -83,16 +83,21 @@ function orderPoints(points: { lat: number; lng: number }[]): number[] {
 }
 
 /**
- * A driving path from the nearest branch that passes every street of the
+ * A driving path from a branch (the nearest by default) that passes every street of the
  * area: street points are found across the whole area, put in visiting
  * order, and the road path through them is asked from the routing service
  * in chunks.
  */
-export async function planStreetCoverage(area: AreaBoundary): Promise<CoveragePlan | null> {
+export async function planStreetCoverage(
+  area: AreaBoundary,
+  /** Start from this branch, such as the route truck's. Default: the nearest. */
+  startBranch?: Branch | null,
+): Promise<CoveragePlan | null> {
   const { points: streets, skipped } = await sampleStreetPoints(area);
   if (streets.length === 0) return null;
 
-  const branch = nearestBranches([{ lat: area.center[0], lng: area.center[1] }], 1)[0];
+  const branch =
+    startBranch ?? nearestBranches([{ lat: area.center[0], lng: area.center[1] }], 1)[0];
   if (!branch) return null;
 
   const nodes = [{ lat: branch.lat, lng: branch.lng }, ...streets];

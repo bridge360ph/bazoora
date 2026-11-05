@@ -2,9 +2,14 @@ import { Modal, ModalFooter, FormField } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 import { useTruckOptions } from "../../route-assignment/hooks/useTruckOptions";
 import {
-  formatTruckOption,
+  formatTruckWithBranch,
   getAvailableTrucks,
+  getTrucksForBranch,
+  getTrucksForWasteType,
+  sortTrucksByBranch,
 } from "../../route-assignment/routeAssignmentApi";
+import { branchById, routeBranch as findRouteBranch } from "@/lib/branches";
+import { formatWasteType } from "../routeFilters.constants";
 
 interface AssignRouteTruckModalProps {
   route: Route;
@@ -33,7 +38,21 @@ export function AssignRouteTruckModal({
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
   const { trucks, isLoading, isError } = useTruckOptions();
-  const availableTrucks = getAvailableTrucks(trucks, route.id);
+  const freeTrucks = getAvailableTrucks(trucks, route.id);
+  // Only trucks for the route's waste type and, on a weekly route, from its
+  // branch. Nearest branch first.
+  // Older routes with no saved branch use the branch nearest their stops.
+  const routeBranch = findRouteBranch(route);
+  const routeBranchId = routeBranch?.id ?? null;
+  const wasteMatches = getTrucksForWasteType(freeTrucks, route.wasteType, route.assignedTruckId);
+  const availableTrucks = sortTrucksByBranch(
+    getTrucksForBranch(wasteMatches, route.routeType, routeBranchId, route.assignedTruckId),
+    routeBranchId,
+  );
+  const hiddenCount = freeTrucks.length - wasteMatches.length;
+  const otherBranchCount = wasteMatches.length - availableTrucks.length;
+  const selectedTruck = trucks.find((truck) => truck.id === assignedTruck) ?? null;
+  const selectedBranch = branchById(selectedTruck?.branchId);
   const hasChanged = assignedTruck !== route.assignedTruckId;
 
   function handleClose() {
@@ -95,21 +114,49 @@ export function AssignRouteTruckModal({
 
               {availableTrucks.map((truck) => (
                 <option key={truck.id} value={truck.id}>
-                  {formatTruckOption(truck)} · {truck.status}
+                  {formatTruckWithBranch(truck)} · {truck.status}
                 </option>
               ))}
             </select>
           )}
         </FormField>
 
-        {!isLoading &&
-          !isError &&
-          trucks.length > 0 &&
-          availableTrucks.length === 0 && (
-            <p className="text-xs text-gray-500">
-              All trucks are already assigned to other routes.
+        {!isLoading && !isError && trucks.length > 0 && (
+          <div className="flex flex-col gap-1 text-xs text-gray-500">
+            <p>
+              Showing trucks that carry {formatWasteType(route.wasteType)} waste
+              {routeBranch
+                ? route.routeType === "Paid"
+                  ? `, from ${routeBranch.name} first`
+                  : ` from ${routeBranch.name}`
+                : ""}
+              .
+              {otherBranchCount > 0 &&
+                ` ${otherBranchCount === 1 ? "1 truck from another branch is" : `${otherBranchCount} trucks from other branches are`} hidden.`}
+              {hiddenCount > 0 &&
+                ` ${hiddenCount === 1 ? "1 free truck is" : `${hiddenCount} free trucks are`} hidden because ${
+                  hiddenCount === 1 ? "it does" : "they do"
+                } not carry this waste type.`}
             </p>
-          )}
+            {availableTrucks.length === 0 && (
+              <p>
+                No free truck matches. Register or edit a truck in Fleet Management with this
+                waste type{routeBranch && route.routeType !== "Paid" ? ` and ${routeBranch.name}` : ""}.
+              </p>
+            )}
+            {selectedTruck && selectedBranch && selectedBranch.id !== routeBranch?.id && (
+              <p className="text-amber-700">
+                The route path will start from {selectedBranch.name}, this truck&apos;s branch.
+              </p>
+            )}
+            {selectedTruck && !selectedBranch && (
+              <p className="text-amber-700">
+                This truck has no branch yet. Set it in Fleet Management so the route path has a
+                starting point.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <ModalFooter

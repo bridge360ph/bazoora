@@ -1,5 +1,5 @@
 import type { AreaBoundary } from "./area";
-import { haversineMeters } from "./branches";
+import { haversineMeters, type Branch } from "./branches";
 import { planRoute } from "./routeOptimizer";
 import { sampleStreetPoints } from "./streetSampling";
 
@@ -63,17 +63,20 @@ export interface GeneratedRoute {
   source: "streets" | "center";
   /** Street lookups the routing server did not answer. Some streets may be missing. */
   skipped: number;
-  branchName: string | null;
+  /** The branch the stops are ordered from. Null when only the centre was found. */
+  branch: Branch | null;
 }
 
 /**
  * Builds the collection points of a weekly route from its barangay: points
  * on its streets, spread out evenly, in the shortest driving order from the
- * nearest branch. Falls back to the barangay centre when no street is found.
+ * nearest branch, or from `startBranch` (the route truck's branch) when
+ * given. Falls back to the barangay centre when no street is found.
  */
 export async function generateBarangayStops(
   area: AreaBoundary,
   barangayLabel: string,
+  startBranch?: Branch | null,
 ): Promise<GeneratedRoute> {
   const barangayName = barangayLabel.split(",")[0]?.trim() || barangayLabel;
   let streetPoints: Awaited<ReturnType<typeof sampleStreetPoints>>["points"];
@@ -108,11 +111,14 @@ export async function generateBarangayStops(
       ],
       source: "center",
       skipped,
-      branchName: null,
+      branch: null,
     };
   }
 
-  const plan = await planRoute(stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })));
+  const plan = await planRoute(
+    stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
+    startBranch ? { branches: [startBranch] } : {},
+  );
   const ordered = plan
     ? plan.order.flatMap((index) => {
         const stop = stops[index];
@@ -120,5 +126,5 @@ export async function generateBarangayStops(
       })
     : stops;
 
-  return { stops: ordered, source: "streets", skipped, branchName: plan?.branch.name ?? null };
+  return { stops: ordered, source: "streets", skipped, branch: plan?.branch ?? null };
 }

@@ -30,6 +30,14 @@ interface RouteStopsEditorProps {
    */
   area?: AreaBoundary | null;
   areaName?: string;
+  /**
+   * The branch the path must start from: the route truck's branch, or the
+   * branch a weekly route is run from. Without it the nearest of three
+   * branches by driving time is chosen.
+   */
+  startBranch?: Branch | null;
+  /** Called with the branch Optimize Checkpoints planned from. */
+  onPlannedBranchChange?: (branch: Branch) => void;
 }
 
 // Wait for a pause in typing before searching, and respect Nominatim's limit
@@ -70,6 +78,8 @@ export function RouteStopsEditor({
   optimizeLockedReason,
   area = null,
   areaName = "the barangay",
+  startBranch: fixedBranch = null,
+  onPlannedBranchChange,
 }: RouteStopsEditorProps) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<GeocodeResult[]>([]);
@@ -221,7 +231,7 @@ export function RouteStopsEditor({
     // street, then order the collection points along it.
     if (area && optimizeLockedReason === undefined) {
       try {
-        const plan = await planStreetCoverage(area);
+        const plan = await planStreetCoverage(area, fixedBranch);
 
         if (plan && plan.path.length > 1) {
           const pathIndexOf = (stop: { lat: number; lng: number }) => {
@@ -249,6 +259,7 @@ export function RouteStopsEditor({
 
           setCoverage({ areaKey, plan });
           setPlannedBranch(plan.branch);
+          onPlannedBranchChange?.(plan.branch);
           setOptimizeMessage(
             `The path covers ${plan.points.length} points on ${
               plan.streetCount > 0 ? `${plan.streetCount} streets` : "the streets"
@@ -274,7 +285,7 @@ export function RouteStopsEditor({
       const keepOrder = optimizeLockedReason !== undefined;
       const result = await planRoute(
         locatedStops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
-        { keepOrder },
+        { keepOrder, ...(fixedBranch && { branches: [fixedBranch] }) },
       );
 
       if (!result) return;
@@ -291,8 +302,11 @@ export function RouteStopsEditor({
       }
 
       setPlannedBranch(result.branch);
+      onPlannedBranchChange?.(result.branch);
 
-      const from = `${result.branch.name} (nearest of ${result.branchesCompared} branches by driving time)`;
+      const from = fixedBranch
+        ? `${result.branch.name} (this route's branch)`
+        : `${result.branch.name} (nearest of ${result.branchesCompared} branches by driving time)`;
       const summary = keepOrder
         ? `Starts from ${from}, keeping the resident's order: about ${formatDuration(result.after.seconds)} (${formatDistance(result.after.meters)}).`
         : unchanged
@@ -336,6 +350,7 @@ export function RouteStopsEditor({
     : (area?.center ?? DEFAULT_CENTER);
   // Until Optimize Checkpoints runs, the closest branch in a straight line.
   const startBranch: Branch =
+    fixedBranch ??
     plannedBranch ??
     nearestBranches(
       located.length > 0

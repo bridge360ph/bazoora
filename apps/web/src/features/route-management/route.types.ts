@@ -67,6 +67,11 @@ export interface RouteFormValue {
   stops: EditableRouteStop[];
   /** YYYY-MM-DD, used only when routeType is "Paid". */
   collectionDate: string;
+  /**
+   * The branch the route path starts from: the truck's branch when one is
+   * assigned, otherwise the branch the stops were ordered from.
+   */
+  startBranchId: string | null;
 }
 
 export const ROUTE_TYPES = ["Free", "Paid"] as const;
