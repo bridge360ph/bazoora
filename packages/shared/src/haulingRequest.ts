@@ -107,3 +107,17 @@ export interface CreateHaulingRequestInput {
 
   note?: string;
 }
+
+/**
+ * An approved hauling request on the caller's route that is scheduled for
+ * today's run, returned by GET /hauling-requests/my-route-stops.
+ */
+export interface HaulingRouteStop {
+  requestId: string;
+  requestNumber: string;
+  wasteType: HaulingWasteType;
+  /** One or more pickup addresses joined by new lines, as submitted. */
+  requestAddress: string;
+  note?: string;
+  scheduledCollectionAt: string;
+}

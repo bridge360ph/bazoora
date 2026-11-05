@@ -4,6 +4,7 @@ import { HaulingRequestStatus } from "@prisma/client";
 import type {
   CreateHaulingRequestInput,
   HaulingRouteOption,
+  HaulingRouteStop,
   HaulingWasteType,
 } from "@bazoora/shared";
 import {
@@ -12,7 +13,10 @@ import {
 } from "../lib/haulingRequestMapper.js";
 import { canRouteCollectWaste } from "../lib/haulingRouteCompatibility.js";
 import { generateRouteNumber } from "../lib/displayId.js";
-import { getScheduledCollectionAt } from "../lib/haulingSchedule.js";
+import {
+  getScheduledCollectionAt,
+  toManilaDateKey,
+} from "../lib/haulingSchedule.js";
 import { generateHaulingRequestNumber } from "../lib/displayId.js";
 import { getNextSequence } from "../lib/counter.js";
 import {
@@ -524,4 +528,65 @@ export async function getHaulingRouteOptions(
       wasteType: route.wasteType as HaulingRouteOption["wasteType"],
       ecoAideName: route.assignedEcoAide?.name ?? null,
     }));
+}
+
+/**
+ * Approved hauling requests on the caller's route that are scheduled for
+ * today's run (Philippine time). A driver reaches their route through the
+ * truck assigned to it; an eco-aide is assigned to the route directly.
+ * Returns an empty list when the caller has no route.
+ */
+export async function getMyRouteHaulingStops(
+  userId: string,
+  role: string,
+  now: Date = new Date(),
+): Promise<HaulingRouteStop[]> {
+  const route = await prisma.route.findFirst({
+    where:
+      role === "ECO_AIDE"
+        ? { assignedEcoAideId: userId }
+        : { assignedTruck: { assignedDriverId: userId } },
+    select: {
+      id: true,
+      collectionDay: true,
+      startTime: true,
+    },
+  });
+
+  if (!route) {
+    return [];
+  }
+
+  const requests = await prisma.haulingRequest.findMany({
+    where: {
+      routeId: route.id,
+      status: HaulingRequestStatus.APPROVED,
+      archived: false,
+    },
+    orderBy: {
+      pickupDate: "asc",
+    },
+  });
+
+  const todayKey = toManilaDateKey(now);
+  const stops: HaulingRouteStop[] = [];
+
+  for (const request of requests) {
+    const scheduled = getScheduledCollectionAt(request.pickupDate, route);
+
+    if (!scheduled || toManilaDateKey(scheduled) !== todayKey) {
+      continue;
+    }
+
+    stops.push({
+      requestId: request.requestId,
+      requestNumber: request.requestNumber,
+      wasteType: request.wasteType,
+      requestAddress: request.requestAddress,
+      ...(request.note !== null && { note: request.note }),
+      scheduledCollectionAt: scheduled.toISOString(),
+    });
+  }
+
+  return stops;
 }
