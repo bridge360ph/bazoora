@@ -10,6 +10,8 @@ export const routeManagementParamsSchema = {
   },
 } as const;
 
+import type { RouteStopLocation } from "@bazoora/shared";
+
 export interface CreateRouteBody {
   name: string;
   barangay: string;
@@ -20,6 +22,7 @@ export interface CreateRouteBody {
   routeType: string;
   // Optional to match the schema, which does not list it as required.
   assignedEcoAideId?: string | null;
+  stopLocations?: RouteStopLocation[];
 }
 
 export interface UpdateRouteBody {
@@ -31,6 +34,7 @@ export interface UpdateRouteBody {
   startTime?: string;
   routeType?: string;
   assignedEcoAideId?: string | null;
+  stopLocations?: RouteStopLocation[];
 }
 
 export const createRouteSchema = {
@@ -71,6 +75,22 @@ export const createRouteSchema = {
       assignedEcoAideId: {
         type: ["string", "null"],
       },
+      stopLocations: {
+        type: "array",
+        minItems: 1,
+        maxItems: 50,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "address", "lat", "lng"],
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 200 },
+            address: { type: "string", maxLength: 500 },
+            lat: { type: "number", minimum: -90, maximum: 90 },
+            lng: { type: "number", minimum: -180, maximum: 180 },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -104,6 +124,22 @@ export const updateRouteSchema = {
       },
       assignedEcoAideId: {
         type: ["string", "null"],
+      },
+      stopLocations: {
+        type: "array",
+        minItems: 1,
+        maxItems: 50,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "address", "lat", "lng"],
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 200 },
+            address: { type: "string", maxLength: 500 },
+            lat: { type: "number", minimum: -90, maximum: 90 },
+            lng: { type: "number", minimum: -180, maximum: 180 },
+          },
+        },
       },
       routeType: {
         type: "string",

@@ -1,6 +1,7 @@
 import { prisma } from "@bazoora/db";
+import { Prisma } from "@prisma/client";
 import type { Route } from "@prisma/client";
-import type { RouteStatus } from "@bazoora/shared";
+import type { RouteStatus, RouteStopLocation } from "@bazoora/shared";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
@@ -15,7 +16,9 @@ type CreateRouteInput = Pick<
   | "startTime"
   | "routeType"
 > &
-  Partial<Pick<Route, "assignedEcoAideId">>;
+  Partial<Pick<Route, "assignedEcoAideId">> & {
+    stopLocations?: RouteStopLocation[];
+  };
 
 type UpdateRouteInput = Partial<
   Pick<
@@ -29,7 +32,24 @@ type UpdateRouteInput = Partial<
     | "routeType"
     | "assignedEcoAideId"
   >
->;
+> & {
+  stopLocations?: RouteStopLocation[];
+};
+
+/**
+ * Builds the comma separated waypoints text from map-placed stops, so pages
+ * that still read `waypoints` keep working. Commas inside a stop name would
+ * split it into two stops, so they are replaced.
+ */
+function waypointsFromStops(stops: RouteStopLocation[]): string {
+  return stops
+    .map((stop) => stop.name.replace(/,/g, " ").replace(/\s+/g, " ").trim())
+    .join(", ");
+}
+
+function toJson(stops: RouteStopLocation[]): Prisma.InputJsonValue {
+  return stops as unknown as Prisma.InputJsonValue;
+}
 
 
 function validateRouteFields(
@@ -199,8 +219,13 @@ export async function getRouteById(id: string) {
 
 
 export async function createRoute(
-  data: CreateRouteInput,
+  input: CreateRouteInput,
 ) {
+  const { stopLocations, ...fields } = input;
+  const data = stopLocations?.length
+    ? { ...fields, waypoints: waypointsFromStops(stopLocations) }
+    : fields;
+
   validateRouteFields(data);
 
   const duplicateRoute = await prisma.route.findFirst({
@@ -236,6 +261,9 @@ export async function createRoute(
       return tx.route.create({
         data: {
           ...data,
+          ...(stopLocations?.length && {
+            stopLocations: toJson(stopLocations),
+          }),
           routeNumber,
           status: "Not Started",
           stops: stopCount,
@@ -251,8 +279,13 @@ export async function createRoute(
 
 export async function updateRoute(
   id: string,
-  data: UpdateRouteInput,
+  input: UpdateRouteInput,
 ) {
+  const { stopLocations, ...fields } = input;
+  const data = stopLocations?.length
+    ? { ...fields, waypoints: waypointsFromStops(stopLocations) }
+    : fields;
+
   const existingRoute =
     await prisma.route.findUnique({
       where: {
@@ -283,6 +316,12 @@ export async function updateRoute(
           stops: getStopCount(
             data.waypoints,
           ),
+          // New stops replace the saved positions. Waypoints edited as plain
+          // text no longer match the old positions, so those are cleared and
+          // the pages fall back to looking the names up.
+          stopLocations: stopLocations?.length
+            ? toJson(stopLocations)
+            : Prisma.DbNull,
         }),
         ...(data.wasteType !== undefined && {
           wasteType: data.wasteType,
