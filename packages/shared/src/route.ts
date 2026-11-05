@@ -9,10 +9,12 @@ import type { RouteStatus } from "./routeStatus.js";
  * Frontend should treat this as read-only server data.
  */
 
+/** The same four kinds residents pick on a hauling request. */
 export type WasteType =
-  | "Regular"
-  | "Recyclable"
-  | "Regular/Non-Recyclable";
+  | "BIODEGRADABLE"
+  | "RESIDUAL"
+  | "NON_BIODEGRADABLE"
+  | "HAZARDOUS";
 
 export type CollectionDay =
   | "Sunday"
@@ -56,6 +58,8 @@ export interface Route {
   status: RouteStatus;
   stops: number;
   routeType: string;
+  /** Set on Paid (one-time) routes; null on Free weekly routes. */
+  collectionDate: string | null;
 
   assignedEcoAideId: string | null;
   assignedEcoAide: AssignedEcoAide | null;
