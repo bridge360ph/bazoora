@@ -10,7 +10,7 @@ export const routeManagementParamsSchema = {
   },
 } as const;
 
-import type { RouteStopLocation } from "@bazoora/shared";
+import { BRANCH_IDS, type RouteStopLocation } from "@bazoora/shared";
 
 export interface CreateRouteBody {
   name: string;
@@ -24,6 +24,7 @@ export interface CreateRouteBody {
   assignedEcoAideId?: string | null;
   stopLocations?: RouteStopLocation[];
   collectionDate?: string | null;
+  startBranchId?: string | null;
 }
 
 export interface UpdateRouteBody {
@@ -37,6 +38,7 @@ export interface UpdateRouteBody {
   assignedEcoAideId?: string | null;
   stopLocations?: RouteStopLocation[];
   collectionDate?: string | null;
+  startBranchId?: string | null;
 }
 
 export const createRouteSchema = {
@@ -82,6 +84,10 @@ export const createRouteSchema = {
       },
       assignedEcoAideId: {
         type: ["string", "null"],
+      },
+      startBranchId: {
+        type: ["string", "null"],
+        enum: [...BRANCH_IDS, null],
       },
       stopLocations: {
         type: "array",
@@ -133,6 +139,10 @@ export const updateRouteSchema = {
       },
       assignedEcoAideId: {
         type: ["string", "null"],
+      },
+      startBranchId: {
+        type: ["string", "null"],
+        enum: [...BRANCH_IDS, null],
       },
       stopLocations: {
         type: "array",

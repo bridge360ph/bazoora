@@ -1,9 +1,19 @@
 import type { FastifyPluginCallback } from "fastify";
+import { routeBranchId, type RouteStopLocation } from "@bazoora/shared";
 import { prisma } from "@bazoora/db";
 import { authGuard, requireRole } from "../lib/auth.js";
 import type { Prisma } from "@bazoora/db";
 import { getNextSequence } from "../lib/counter.js";
 import { generateRouteNumber, generateTruckNumber } from "../lib/displayId.js";
+import {
+  branchIdSchema,
+  branchMismatchReason,
+  toWasteType,
+  truckCarries,
+  wasteTypeLabel,
+  wasteTypeMismatchMessage,
+  wasteTypeSchema,
+} from "../lib/truckWasteTypes.js";
 
 type TruckInput = {
   plateNumber: string;
@@ -11,6 +21,8 @@ type TruckInput = {
   capacity: string;
   status: "Active" | "Idle" | "Under Maintenance";
   assignedDriverId?: string;
+  branchId: string;
+  wasteType: string;
 };
 
 type TruckWithRelations = Prisma.TruckGetPayload<{
@@ -47,6 +59,8 @@ function formatTruck(truck: TruckWithRelations) {
     model: truck.model ?? "",
     capacity: truck.capacity ?? "",
     status: truck.status,
+    branchId: truck.branchId,
+    wasteType: toWasteType(truck.wasteType),
     assignedDriver: truck.assignedDriver?.name ?? "Unassigned",
     assignedDriverId: truck.assignedDriverId ?? undefined,
     registeredDate: truck.createdAt.toLocaleDateString("en-GB"),
@@ -73,7 +87,7 @@ const truckInclude = {
 const truckBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["plateNumber", "model", "capacity", "status"],
+  required: ["plateNumber", "model", "capacity", "status", "branchId", "wasteType"],
   properties: {
     plateNumber: { type: "string", minLength: 1, maxLength: 20 },
     model: { type: "string", minLength: 1, maxLength: 100 },
@@ -83,6 +97,8 @@ const truckBodySchema = {
       enum: ["Active", "Idle", "Under Maintenance"],
     },
     assignedDriverId: { type: ["string", "null"] },
+    branchId: branchIdSchema,
+    wasteType: wasteTypeSchema,
   },
 } as const;
 
@@ -95,10 +111,11 @@ const truckParamsSchema = {
 const truckAssignmentBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["routeId", "ecoAideId"],
+  required: ["routeId"],
   properties: {
     routeId: { type: "string", minLength: 1 },
-    ecoAideId: { type: "string", minLength: 1 },
+    // Optional until Eco-Aide assignment is ready.
+    ecoAideId: { type: ["string", "null"] },
   },
 } as const;
 
@@ -157,6 +174,7 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
             truckNumber: true,
             plateNumber: true,
             status: true,
+            branchId: true,
             assignedRoute: {
               select: {
                 routeNumber: true,
@@ -186,6 +204,8 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
                 truckNumber: truck.truckNumber,
                 plateNumber: truck.plateNumber,
                 status: truck.status,
+                // A driver works from their truck's branch.
+                branchId: truck.branchId,
                 route: route
                   ? {
                       routeDisplayNumber: generateRouteNumber(route.routeNumber),
@@ -276,6 +296,10 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
           id: true,
           routeNumber: true,
           name: true,
+          wasteType: true,
+          routeType: true,
+          startBranchId: true,
+          stopLocations: true,
         },
       }),
       prisma.user.findMany({
@@ -304,6 +328,13 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
         routes: routes.map((route) => ({
           id: route.id,
           label: `RT-${String(route.routeNumber).padStart(3, "0")} - ${route.name}`,
+          wasteType: route.wasteType,
+          routeType: route.routeType,
+          // Older routes with no saved branch use the branch nearest their stops.
+          startBranchId: routeBranchId({
+            startBranchId: route.startBranchId,
+            stopLocations: route.stopLocations as RouteStopLocation[] | null,
+          }),
         })),
         ecoAides: ecoAides.map((ecoAide) => ({
           id: ecoAide.id,
@@ -335,6 +366,8 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
             capacity: body.capacity.trim(),
             status: body.status,
             assignedDriverId: body.assignedDriverId || null,
+            branchId: body.branchId,
+            wasteType: body.wasteType,
           },
           include: truckInclude,
         });
@@ -362,18 +395,47 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     async (request, reply) => {
     const { id } = request.params as { id: string };
     const body = request.body as TruckInput;
+    // A truck on a route must keep carrying that route's waste type.
+    const current = await prisma.truck.findUnique({
+      where: { id },
+      select: {
+        assignedRoute: { select: { id: true, name: true, wasteType: true } },
+      },
+    });
+    const route = current?.assignedRoute;
+
+    if (route && body.wasteType !== route.wasteType) {
+      return reply.code(409).send({
+        success: false,
+        error: `This truck is on ${route.name}, which collects ${wasteTypeLabel(route.wasteType)} waste. Keep that waste type, or assign another truck to the route first.`,
+      });
+    }
 
     try {
-      const truck = await prisma.truck.update({
-        where: { id },
-        data: {
-          plateNumber: body.plateNumber.trim().toUpperCase(),
-          model: body.model.trim(),
-          capacity: body.capacity.trim(),
-          status: body.status,
-          assignedDriverId: body.assignedDriverId || null,
-        },
-        include: truckInclude,
+      const truck = await prisma.$transaction(async (tx) => {
+        const updated = await tx.truck.update({
+          where: { id },
+          data: {
+            plateNumber: body.plateNumber.trim().toUpperCase(),
+            model: body.model.trim(),
+            capacity: body.capacity.trim(),
+            status: body.status,
+            assignedDriverId: body.assignedDriverId || null,
+            branchId: body.branchId,
+            wasteType: body.wasteType,
+          },
+          include: truckInclude,
+        });
+
+        // The route path starts from the truck's branch.
+        if (route) {
+          await tx.route.update({
+            where: { id: route.id },
+            data: { startBranchId: body.branchId },
+          });
+        }
+
+        return updated;
       });
 
       return {
@@ -452,8 +514,33 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     const { id } = request.params as { id: string };
     const body = request.body as {
       routeId: string;
-      ecoAideId: string;
+      ecoAideId?: string | null;
     };
+
+    const [assigningTruck, targetRoute] = await Promise.all([
+      prisma.truck.findUnique({
+        where: { id },
+        select: { branchId: true, wasteType: true },
+      }),
+      prisma.route.findUnique({
+        where: { id: body.routeId },
+        select: { wasteType: true, routeType: true, startBranchId: true, stopLocations: true },
+      }),
+    ]);
+
+    if (assigningTruck && targetRoute && !truckCarries(assigningTruck, targetRoute.wasteType)) {
+      return reply.code(409).send({
+        success: false,
+        error: wasteTypeMismatchMessage(targetRoute.wasteType),
+      });
+    }
+
+    const branchReason =
+      assigningTruck && targetRoute ? branchMismatchReason(assigningTruck, targetRoute) : null;
+
+    if (branchReason) {
+      return reply.code(409).send({ success: false, error: branchReason });
+    }
 
     try {
       await prisma.$transaction([
@@ -465,7 +552,8 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
           where: { id: body.routeId },
           data: {
             assignedTruckId: id,
-            assignedEcoAideId: body.ecoAideId,
+            ...(body.ecoAideId && { assignedEcoAideId: body.ecoAideId }),
+            ...(assigningTruck?.branchId && { startBranchId: assigningTruck.branchId }),
           },
         }),
       ]);
