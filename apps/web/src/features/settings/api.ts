@@ -21,6 +21,8 @@ export interface SettingsProfile {
   cityMunicipality: string | null;
   province: string | null;
   postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
   emailNotifications: boolean;
   pushNotifications: boolean;
   dailySummary: boolean;
@@ -48,6 +50,8 @@ export interface UpdateProfileInput {
   cityMunicipality: string;
   province: string;
   postalCode: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface UpdatePreferencesInput {
