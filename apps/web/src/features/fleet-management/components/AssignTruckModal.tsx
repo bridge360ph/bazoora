@@ -20,7 +20,7 @@ interface AssignmentErrors {
 }
 
 const inputBaseClass =
-  "box-border w-full rounded-[7px] border bg-white px-[10px] py-2 text-[13px] text-gray-900 outline-none transition focus:ring-2";
+  "h-9 w-full rounded-md border bg-white px-3 text-xs text-gray-900 outline-none transition focus:ring-2";
 
 export function AssignTruckModal({
   truck,
@@ -40,7 +40,7 @@ export function AssignTruckModal({
     return `${inputBaseClass} ${
       hasError
         ? "border-red-500 focus:border-red-500 focus:ring-red-100"
-        : "border-gray-300 focus:border-brand focus:ring-brand/15"
+        : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
     }`;
   }
 
@@ -79,13 +79,13 @@ export function AssignTruckModal({
           <input
             value={truck.id}
             disabled
-            className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-[10px] py-2 text-[13px] text-gray-500"
+            className="h-9 w-full rounded-md border border-surface-border bg-gray-50 px-3 text-xs text-gray-500"
           />
 
           <input
             value={truck.model}
             disabled
-            className="box-border w-full rounded-[7px] border border-gray-300 bg-gray-50 px-[10px] py-2 text-[13px] text-gray-500"
+            className="h-9 w-full rounded-md border border-surface-border bg-gray-50 px-3 text-xs text-gray-500"
           />
         </div>
       </FormField>
