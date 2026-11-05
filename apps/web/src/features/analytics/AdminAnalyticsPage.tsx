@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
-import { StatCard } from "@bazoora/ui";
+import { AdminPage } from "@/components/admin/AdminPage";
+import { AdminNotice, AdminStat } from "@/components/admin/AdminControls";
 import {
   Bar,
   BarChart,
@@ -77,19 +78,22 @@ export function AdminAnalyticsPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 text-sm text-gray-500">
-        Loading analytics...
-      </div>
+      <AdminPage>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }, (_, index) => (
+            <div key={index} className="h-24 animate-pulse rounded-xl border border-gray-100 bg-white" />
+          ))}
+        </section>
+        <div className="h-80 animate-pulse rounded-xl border border-gray-100 bg-white" />
+      </AdminPage>
     );
   }
 
   if (!overview || errorMessage) {
     return (
-      <div className="p-6">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {errorMessage ?? "Analytics data is unavailable."}
-        </div>
-      </div>
+      <AdminPage>
+        <AdminNotice tone="error">{errorMessage ?? "Analytics data is unavailable."}</AdminNotice>
+      </AdminPage>
     );
   }
 
@@ -112,29 +116,14 @@ export function AdminAnalyticsPage() {
       : 0;
 
   return (
-    <div className="min-w-0 space-y-5 p-4 sm:space-y-6 sm:p-6">
-      <section>
-        <h1 className="text-2xl font-extrabold text-gray-900">
-          Analytics
-        </h1>
-
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
-          View real Eco-Aide and fleet data from the database.
-        </p>
-      </section>
-
-      <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-        <StatCard
-          label="Total Eco-Aides"
-          value={overview.totals.ecoAides.toLocaleString()}
-        />
-        <StatCard
-          label="Total Trucks"
-          value={overview.totals.trucks.toLocaleString()}
-        />
-        <StatCard
+    <AdminPage>
+      <section className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3">
+        <AdminStat label="Total Eco-Aides" value={overview.totals.ecoAides.toLocaleString()} />
+        <AdminStat label="Total Trucks" value={overview.totals.trucks.toLocaleString()} />
+        <AdminStat
           label="Assigned Trucks"
           value={overview.totals.assignedTrucks.toLocaleString()}
+          hint={`${assignedPercentage}% of trucks`}
         />
       </section>
 
@@ -220,10 +209,10 @@ export function AdminAnalyticsPage() {
         {overview.totals.trucks === 0 ? (
           <div className="flex h-64 items-center justify-center text-center">
             <div>
-              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              <p className="text-sm font-semibold text-gray-700">
                 No truck data available yet
               </p>
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="mt-1 text-xs text-gray-500">
                 Register a truck in Fleet Management to populate this chart.
               </p>
             </div>
@@ -267,8 +256,8 @@ export function AdminAnalyticsPage() {
               </ResponsiveContainer>
             </div>
 
-            <p className="-mt-2 text-center text-xs text-white/65">
-              <strong className="text-lg text-green-400">
+            <p className="-mt-2 text-center text-xs text-gray-500">
+              <strong className="text-lg text-brand-secondary">
                 {assignedPercentage}%
               </strong>{" "}
               of trucks are assigned
@@ -276,6 +265,6 @@ export function AdminAnalyticsPage() {
           </>
         )}
       </ChartCard>
-    </div>
+    </AdminPage>
   );
 }
