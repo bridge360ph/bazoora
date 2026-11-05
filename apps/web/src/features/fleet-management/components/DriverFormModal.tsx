@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
 import type { DriverFormValue } from "../fleet.types";
+import { BRANCHES, type Branch } from "@/lib/branches";
 
 interface DriverFormModalProps {
   formValue: DriverFormValue;
@@ -70,6 +71,30 @@ function getFieldError(
   return getPasswordError(formValue.password);
 }
 
+/** "Quezon City Branch" (city "Quezon City") becomes "QuezonCity". */
+function branchWord(branch: Branch): string {
+  return (branch.city.split(",")[0] ?? branch.city).replace(/[^A-Za-z0-9]/g, "");
+}
+
+function capitalize(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+/**
+ * The temporary password template: Bazoora-FNLastname-BranchYear, for
+ * example "Juan Dela Cruz" at the Makati branch in 2026 becomes
+ * "Bazoora-JDelaCruz-Makati2026". Missing parts use sample values.
+ */
+function suggestPassword(name: string, branch: Branch | undefined): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  const initial = words[0]?.[0]?.toUpperCase() ?? "J";
+  const lastName =
+    words.length > 1 ? words.slice(1).map((word) => capitalize(word.replace(/[^A-Za-z]/g, ""))).join("") : "DelaCruz";
+  const place = branch ? branchWord(branch) : "Makati";
+
+  return `Bazoora-${initial}${lastName}-${place}${new Date().getFullYear()}`;
+}
+
 export function DriverFormModal({
   formValue,
   setFormValue,
@@ -80,6 +105,10 @@ export function DriverFormModal({
 }: DriverFormModalProps) {
   const [errors, setErrors] = useState<DriverFormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
+  // Only used to build the suggested password; it is not saved.
+  const [branchId, setBranchId] = useState("");
+  const branch = BRANCHES.find((item) => item.id === branchId);
+  const suggestedPassword = suggestPassword(formValue.name, branch);
 
   function updateField(key: keyof DriverFormValue, value: string) {
     setFormValue((currentValue) => ({
@@ -172,13 +201,30 @@ export function DriverFormModal({
           />
         </FormField>
 
+        <FormField label="Branch">
+          <select
+            value={branchId}
+            onChange={(event) => {
+              setBranchId(event.target.value);
+            }}
+            className={`${getInputClass(false)} cursor-pointer`}
+          >
+            <option value="">Select the driver&apos;s branch</option>
+            {BRANCHES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} ({item.city})
+              </option>
+            ))}
+          </select>
+        </FormField>
+
         <FormField label="Temporary Password" required error={errors.password}>
           <div className="flex gap-2">
             <input
               type={showPassword ? "text" : "password"}
               value={formValue.password}
               maxLength={128}
-              placeholder="e.g. Bazoora-Juan-5895"
+              placeholder={`e.g. ${suggestedPassword}`}
               autoComplete="new-password"
               aria-invalid={Boolean(errors.password)}
               onChange={(event) => {
@@ -201,9 +247,9 @@ export function DriverFormModal({
           </div>
         </FormField>
 
-        <p className="text-[11.5px] text-gray-500">
-          Use Bazoora, the driver&apos;s first name and the digits of their truck&apos;s
-          plate number, separated by dashes.
+        <p className="text-[11px] text-gray-500">
+          Format: Bazoora, the first initial and last name, then the branch and year, separated
+          by dashes. For this driver: <span className="font-semibold text-gray-700">{suggestedPassword}</span>
         </p>
       </div>
 

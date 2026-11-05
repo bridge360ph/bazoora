@@ -3,6 +3,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   DriverFormValue,
   FleetAssignmentOption,
+  FleetDriver,
   Truck,
   TruckFormValue,
 } from "./fleet.types";
@@ -115,6 +116,16 @@ export function fetchFleetAssignmentOptions() {
     ecoAides: FleetAssignmentOption[];
     drivers: FleetAssignmentOption[];
   }>("GET", "/admin/fleet/assignment-options");
+}
+
+export const FLEET_DRIVERS_QUERY_KEY = ["fleet-drivers"] as const;
+
+export function fetchDrivers() {
+  return apiRequest<FleetDriver[]>("GET", "/admin/fleet/drivers");
+}
+
+export function deleteDriver(driverId: string) {
+  return apiRequest<{ id: string }>("DELETE", `/admin/fleet/drivers/${driverId}`);
 }
 
 export function deleteTruck(truckDatabaseId: string) {
