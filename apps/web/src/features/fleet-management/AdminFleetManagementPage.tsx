@@ -18,6 +18,7 @@ import {
   AdminPill,
   AdminSearchInput,
   BUTTON_CLASSES,
+  INPUT_CLASSES,
 } from "@/components/admin/AdminControls";
 import { AdminListCard, AdminMeta } from "@/components/admin/AdminListCard";
 import { AdminPagination, paginate } from "@/components/admin/AdminPagination";
@@ -43,6 +44,8 @@ import { TruckFormModal } from "./components/TruckFormModal";
 import { AssignTruckModal } from "./components/AssignTruckModal";
 import { DriverFormModal } from "./components/DriverFormModal";
 import { RemoveTruckModal } from "./components/RemoveTruckModal";
+import { TruckBranchMeta, WasteTypePill } from "./components/TruckBranchBadges";
+import { BRANCHES, branchById } from "@/lib/branches";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
 
 type ModalMode = "register" | "edit" | "assign" | "addDriver" | "remove" | null;
@@ -77,14 +80,20 @@ const emptyTruckForm: TruckFormValue = {
   model: "",
   capacity: "",
   status: "Active",
+  branchId: "",
+  wasteType: "",
   assignedDriver: "",
 };
+
+// "" lists every branch; "none" lists trucks with no branch set yet.
+const NO_BRANCH_FILTER = "none";
 
 export function AdminFleetManagementPage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<FleetView>("trucks");
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<TruckStatusFilter>("All");
+  const [branchFilter, setBranchFilter] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(TRUCKS_PAGE_SIZE);
@@ -159,13 +168,20 @@ export function AdminFleetManagementPage() {
 
     return trucks.filter(
       (truck) =>
-        normalizedSearch.length === 0 ||
-        truck.id.toLowerCase().includes(normalizedSearch) ||
-        truck.plateNumber.toLowerCase().includes(normalizedSearch) ||
-        truck.model.toLowerCase().includes(normalizedSearch) ||
-        truck.assignedDriver.toLowerCase().includes(normalizedSearch),
+        (branchFilter === "" ||
+          (branchFilter === NO_BRANCH_FILTER
+            ? branchById(truck.branchId) === null
+            : truck.branchId === branchFilter)) &&
+        (normalizedSearch.length === 0 ||
+          truck.id.toLowerCase().includes(normalizedSearch) ||
+          truck.plateNumber.toLowerCase().includes(normalizedSearch) ||
+          truck.model.toLowerCase().includes(normalizedSearch) ||
+          truck.assignedDriver.toLowerCase().includes(normalizedSearch)),
     );
-  }, [searchValue, trucks]);
+  }, [branchFilter, searchValue, trucks]);
+  const trucksWithoutBranch = trucks.filter(
+    (truck) => branchById(truck.branchId) === null || truck.wasteType === null,
+  ).length;
 
   const filteredTrucks = useMemo(
     () =>
@@ -188,6 +204,7 @@ export function AdminFleetManagementPage() {
   function openRegisterModal() {
     setTruckForm(emptyTruckForm);
     setSelectedTruck(null);
+    setModalError("");
     setModalMode("register");
   }
 
@@ -198,9 +215,12 @@ export function AdminFleetManagementPage() {
       model: truck.model,
       capacity: truck.capacity.replace(" kg", ""),
       status: truck.status,
+      branchId: branchById(truck.branchId)?.id ?? "",
+      wasteType: truck.wasteType ?? "",
       assignedDriver: truck.assignedDriver,
       assignedDriverId: truck.assignedDriverId ?? "",
     });
+    setModalError("");
     setModalMode("edit");
   }
 
@@ -217,6 +237,7 @@ export function AdminFleetManagementPage() {
       setSelectedTruck(truck);
       setAssignedRoute(truck.assignedRouteId ?? "");
       setAssignedEcoAide(truck.assignedEcoAideId ?? "");
+      setModalError("");
       setModalMode("assign");
     } catch (error) {
       setRequestError(
@@ -322,13 +343,13 @@ export function AdminFleetManagementPage() {
 
   async function registerTruck() {
     try {
-      setRequestError("");
+      setModalError("");
 
       const createdTruck = await createTruck(truckForm);
       setTrucks((currentTrucks) => [createdTruck, ...currentTrucks]);
       closeModal();
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck could not be registered.",
@@ -342,7 +363,7 @@ export function AdminFleetManagementPage() {
     }
 
     try {
-      setRequestError("");
+      setModalError("");
 
       const updatedTruck = await updateTruck(
         selectedTruck.databaseId,
@@ -359,7 +380,7 @@ export function AdminFleetManagementPage() {
 
       closeModal();
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck could not be updated.",
@@ -368,12 +389,12 @@ export function AdminFleetManagementPage() {
   }
 
   async function saveTruckAssignment() {
-    if (!selectedTruck || !assignedRoute || !assignedEcoAide) {
+    if (!selectedTruck || !assignedRoute) {
       return;
     }
 
     try {
-      setRequestError("");
+      setModalError("");
 
       const updatedTruck = await updateTruckAssignment(
         selectedTruck.databaseId,
@@ -391,7 +412,7 @@ export function AdminFleetManagementPage() {
 
       closeModal();
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck assignment could not be saved.",
@@ -435,15 +456,34 @@ export function AdminFleetManagementPage() {
           }
         />
 
-        <div className="shrink-0 px-6 pt-5">
-          <AdminSearchInput
-            value={searchValue}
-            onChange={(value) => {
-              setSearchValue(value);
+        <div className="flex shrink-0 flex-col gap-2 px-6 pt-5 sm:flex-row">
+          <div className="min-w-0 flex-auto">
+            <AdminSearchInput
+              value={searchValue}
+              onChange={(value) => {
+                setSearchValue(value);
+                setPage(1);
+              }}
+              placeholder="Search truck by ID, plate no., model, or driver"
+            />
+          </div>
+          <select
+            aria-label="Filter by branch"
+            value={branchFilter}
+            onChange={(event) => {
+              setBranchFilter(event.target.value);
               setPage(1);
             }}
-            placeholder="Search truck by ID, plate no., model, or driver"
-          />
+            className={`${INPUT_CLASSES} cursor-pointer sm:w-56`}
+          >
+            <option value="">All branches</option>
+            <option value={NO_BRANCH_FILTER}>No branch set</option>
+            {BRANCHES.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
@@ -451,6 +491,17 @@ export function AdminFleetManagementPage() {
             <div className="mb-3">
               <AdminNotice tone="error" onDismiss={() => setRequestError("")}>
                 {requestError}
+              </AdminNotice>
+            </div>
+          )}
+
+          {!isLoading && trucksWithoutBranch > 0 && (
+            <div className="mb-3">
+              <AdminNotice tone="info">
+                {trucksWithoutBranch === 1 ? "1 truck has" : `${trucksWithoutBranch} trucks have`} no
+                branch or waste type set. Edit {trucksWithoutBranch === 1 ? "it" : "them"} to set
+                both. Until then {trucksWithoutBranch === 1 ? "it is" : "they are"} not offered when
+                checking hauling requests.
               </AdminNotice>
             </div>
           )}
@@ -492,9 +543,11 @@ export function AdminFleetManagementPage() {
                       <p className="text-sm font-bold text-gray-800">{truck.plateNumber}</p>
                       {truck.model && <AdminPill>{truck.model}</AdminPill>}
                       {truck.capacity && <AdminPill>{truck.capacity}</AdminPill>}
+                      <WasteTypePill wasteType={truck.wasteType} />
                     </div>
                     <p className="mt-0.5 text-[10px] text-gray-500">ID: {truck.id}</p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-600">
+                      <TruckBranchMeta branchId={truck.branchId} />
                       <AdminMeta icon={<UserRound className="h-3 w-3 shrink-0 text-gray-400" />}>
                         {truck.assignedDriver || "No driver yet"}
                       </AdminMeta>
@@ -544,6 +597,7 @@ export function AdminFleetManagementPage() {
           setFormValue={setTruckForm}
           saveLabel="Register"
           driverOptions={driverOptions}
+          errorMessage={modalError}
           onSave={registerTruck}
           onClose={closeModal}
         />
@@ -556,6 +610,7 @@ export function AdminFleetManagementPage() {
           setFormValue={setTruckForm}
           saveLabel="Save"
           driverOptions={driverOptions}
+          errorMessage={modalError}
           onSave={saveEditedTruck}
           onClose={closeModal}
         />
@@ -595,6 +650,7 @@ export function AdminFleetManagementPage() {
           setAssignedEcoAide={setAssignedEcoAide}
           routeOptions={routeOptions}
           ecoAideOptions={ecoAideOptions}
+          errorMessage={modalError}
           onSave={saveTruckAssignment}
           onClose={closeModal}
         />
