@@ -1,7 +1,7 @@
 import { prisma } from "@bazoora/db";
 import { Prisma } from "@prisma/client";
 import type { Route } from "@prisma/client";
-import type { RouteStatus, RouteStopLocation } from "@bazoora/shared";
+import { nearestBranchId, type RouteStatus, type RouteStopLocation } from "@bazoora/shared";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
@@ -13,6 +13,7 @@ import {
 } from "../lib/userNotifications.js";
 import { describeRequest } from "./haulingRequestService.js";
 import { generateRouteNumber } from "../lib/displayId.js";
+import { truckCarries } from "../lib/truckWasteTypes.js";
 
 type CreateRouteInput = Pick<
   Route,
@@ -24,7 +25,7 @@ type CreateRouteInput = Pick<
   | "startTime"
   | "routeType"
 > &
-  Partial<Pick<Route, "assignedEcoAideId">> & {
+  Partial<Pick<Route, "assignedEcoAideId" | "startBranchId">> & {
     stopLocations?: RouteStopLocation[];
     /** YYYY-MM-DD; required for Paid routes, ignored for Free ones. */
     collectionDate?: string | null;
@@ -41,6 +42,7 @@ type UpdateRouteInput = Partial<
     | "startTime"
     | "routeType"
     | "assignedEcoAideId"
+    | "startBranchId"
   >
 > & {
   stopLocations?: RouteStopLocation[];
@@ -401,6 +403,9 @@ export async function createRoute(
       const created = await tx.route.create({
         data: {
           ...data,
+          // Without a branch, the route is run from the branch nearest its stops.
+          startBranchId:
+            data.startBranchId ?? nearestBranchId(stopLocations ?? []),
           ...(stopLocations?.length && {
             stopLocations: toJson(stopLocations),
           }),
@@ -481,6 +486,23 @@ export async function updateRoute(
     await assertNoScheduleClash(finalRoute, id);
   }
 
+  // A truck that does not carry the route's new waste type is taken off
+  // the route. The form then assigns the truck the admin picked for it.
+  let removeTruck = false;
+
+  if (
+    data.wasteType !== undefined &&
+    data.wasteType !== existingRoute.wasteType &&
+    existingRoute.assignedTruckId
+  ) {
+    const truck = await prisma.truck.findUnique({
+      where: { id: existingRoute.assignedTruckId },
+      select: { wasteType: true },
+    });
+
+    removeTruck = truck !== null && !truckCarries(truck, data.wasteType);
+  }
+
   const route =
     await prisma.route.update({
       where: {
@@ -523,6 +545,14 @@ export async function updateRoute(
         ...(data.assignedEcoAideId !== undefined && {
           assignedEcoAideId: data.assignedEcoAideId,
         }),
+        ...(data.startBranchId
+          ? { startBranchId: data.startBranchId }
+          : // A route with no branch takes the branch nearest its new stops.
+            !existingRoute.startBranchId &&
+            stopLocations?.length && {
+              startBranchId: nearestBranchId(stopLocations),
+            }),
+        ...(removeTruck && { assignedTruckId: null }),
       },
       include: routeAssignmentInclude,
     });
