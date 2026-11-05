@@ -77,6 +77,14 @@ export default function RequestDetailsModal({
                 </li>
               ))}
             </ol>
+
+            {addresses.length > 1 && (
+              <p className="mt-1.5 text-xs text-gray-500">
+                {request.keepStopOrder
+                  ? "Stop order: follow the order listed"
+                  : "Stop order: any order (shortest path)"}
+              </p>
+            )}
           </DetailRow>
 
           <DetailRow label="STATUS">

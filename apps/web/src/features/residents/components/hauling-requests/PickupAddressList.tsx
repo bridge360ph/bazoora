@@ -15,6 +15,8 @@ export default function PickupAddressList({
   onAdd,
   onRemove,
   canAdd = true,
+  keepStopOrder,
+  onKeepStopOrderChange,
 }: {
   addresses: PickupAddress[];
   activeIndex: number;
@@ -25,6 +27,8 @@ export default function PickupAddressList({
   onAdd: () => void;
   onRemove: (index: number) => void;
   canAdd?: boolean;
+  keepStopOrder: boolean;
+  onKeepStopOrderChange: (value: boolean) => void;
 }): ReactNode {
   const canRemove = addresses.length > 1;
 
@@ -69,8 +73,77 @@ export default function PickupAddressList({
         <p className="text-[8px] leading-relaxed text-gray-400">
           Select a pickup address, then click the map to choose its location.
         </p>
+
+        {addresses.length > 1 && (
+          <StopOrderChoice
+            keepStopOrder={keepStopOrder}
+            onChange={onKeepStopOrderChange}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+const STOP_ORDER_OPTIONS = [
+  {
+    value: false,
+    title: "Any order",
+    description: "We plan the shortest path between your stops.",
+  },
+  {
+    value: true,
+    title: "Follow my order",
+    description: "The truck visits your stops in the order listed above.",
+  },
+] as const;
+
+function StopOrderChoice({
+  keepStopOrder,
+  onChange,
+}: {
+  keepStopOrder: boolean;
+  onChange: (value: boolean) => void;
+}): ReactNode {
+  return (
+    <fieldset className="rounded-lg border border-surface-border p-2.5">
+      <legend className="px-1 text-[9px] font-semibold text-gray-600">
+        STOP ORDER
+      </legend>
+
+      <div className="grid grid-cols-2 gap-2">
+        {STOP_ORDER_OPTIONS.map((option) => {
+          const isSelected = option.value === keepStopOrder;
+
+          return (
+            <label
+              key={option.title}
+              className={`flex cursor-pointer items-start gap-2 rounded-md border p-2 transition ${
+                isSelected
+                  ? "border-brand-secondary bg-[#f8fbf9]"
+                  : "border-surface-border hover:bg-gray-50"
+              }`}
+            >
+              <input
+                type="radio"
+                name="stop-order"
+                checked={isSelected}
+                onChange={() => onChange(option.value)}
+                className="mt-0.5 accent-brand-secondary"
+              />
+              <span>
+                <span className="block text-[10px] font-semibold text-gray-700">
+                  {option.title}
+                </span>
+                <span className="block text-[8px] leading-relaxed text-gray-400">
+                  {option.description}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 
