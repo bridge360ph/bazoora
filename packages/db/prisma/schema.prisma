@@ -111,6 +111,10 @@ model Truck {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   driverLocations  DriverLocation[] @relation("TruckLocations")
+  // The driver's stops for the route they are running, with each stop's
+  // progress. Saved by the driver app and cleared when the route is
+  // finished. Kept in the database so a restart of the API does not wipe it.
+  plannedRoute     Json?
 }
 
 model Route {
@@ -119,6 +123,10 @@ model Route {
   name              String
   barangay          String
   waypoints         String // Comma separated list of stops/waypoints
+  // Exact map position of each stop, in order: [{ name, address, lat, lng }].
+  // Picked on a map when the route is created or edited. Null on routes made
+  // before this existed, which fall back to looking up the waypoint names.
+  stopLocations     Json?
   wasteType         String // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
   collectionDay     String // "Sunday" | "Monday" ...
   startTime         String
