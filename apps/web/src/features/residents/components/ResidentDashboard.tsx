@@ -10,6 +10,7 @@ import {
   useMarkNotificationRead,
   useResidentNotifications,
 } from "@/features/notifications/hooks";
+import { useSavedAddress } from "@/features/settings/useSavedAddress";
 import { useAuthStore } from "@/stores/auth-store";
 
 import { WASTE_TYPE_LABELS } from "./hauling-requests/constants";
@@ -103,12 +104,10 @@ export function ResidentDashboard(): ReactNode {
     };
   }, [requests]);
 
-  const address = user?.address;
-  const addressLine = address
-    ? [address.line1, address.barangay, address.city, address.province]
-        .filter(Boolean)
-        .join(", ")
-    : "";
+  // Read from Settings on the server. The address on the signed-in user is
+  // never filled in, so the dashboard always said none was saved.
+  const { savedAddress } = useSavedAddress();
+  const addressLine = savedAddress?.label ?? "";
 
   return (
     // The resident layout's content panel doesn't scroll, so the page scrolls itself.
