@@ -4,6 +4,7 @@ import {
   MIN_ADDRESS_LENGTH,
 } from "./constants";
 import type { PickupAddress, WasteType } from "./types";
+import { DUPLICATE_PICKUP_MESSAGE, isDuplicatePickup } from "./utils";
 
 export function getFilledAddresses(addresses: PickupAddress[]): PickupAddress[] {
   return addresses.filter((item) => item.address.trim().length > 0);
@@ -35,6 +36,14 @@ export function validateRequest({
 
   if (filled.some((item) => item.address.trim().length > MAX_ADDRESS_LENGTH)) {
     return `Each pickup address must be ${MAX_ADDRESS_LENGTH} characters or fewer.`;
+  }
+
+  if (
+    filled.some((item) =>
+      isDuplicatePickup(filled, item.id, item.address, item.position),
+    )
+  ) {
+    return DUPLICATE_PICKUP_MESSAGE;
   }
 
   if (filled.some((item) => !item.position)) {
