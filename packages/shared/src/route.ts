@@ -67,6 +67,8 @@ export interface Route {
   assignedTruck: AssignedTruck | null;
   /** Null on routes created before stops were placed on a map. */
   stopLocations: RouteStopLocation[] | null;
+  /** The branch the route path starts from. Null on older routes. */
+  startBranchId: string | null;
 }
 
 export interface RouteFormValue {

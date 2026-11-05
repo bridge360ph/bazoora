@@ -6,3 +6,4 @@ export * from "./routeAssignment.js";
 export * from "./users.js";
 export * from "./trucks.js";
 export * from "./incidentReport.js";
+export * from "./branches.js";
