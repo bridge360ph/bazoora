@@ -1,8 +1,11 @@
 import { prisma } from "@bazoora/db";
-import type { Prisma } from "@bazoora/db";
-import { HaulingRequestStatus } from "@prisma/client";
+import { HaulingRequestStatus, Prisma } from "@prisma/client";
 import type {
+  AvailablePaidRouteTruck,
   CreateHaulingRequestInput,
+  CreatePaidHaulingRouteInput,
+  HaulingFeasibilityCheck,
+  HaulingFeasibilityResult,
   HaulingRouteOption,
   HaulingRouteStop,
   HaulingWasteType,
@@ -12,6 +15,7 @@ import {
   mapHaulingRequest,
 } from "../lib/haulingRequestMapper.js";
 import { canRouteCollectWaste } from "../lib/haulingRouteCompatibility.js";
+import { createRoute, getRouteById } from "./routeManagementService.js";
 import { generateRouteNumber } from "../lib/displayId.js";
 import {
   getScheduledCollectionAt,
@@ -55,6 +59,7 @@ function formatRouteForMessage(
     name: string;
     collectionDay: string;
     startTime: string;
+    collectionDate?: Date | null;
   },
   preferredPickup: Date | null,
   routeAssignedAt: Date | null,
@@ -96,7 +101,9 @@ async function getCompatibleRoute(
       name: true,
       collectionDay: true,
       startTime: true,
+      collectionDate: true,
       wasteType: true,
+      routeType: true,
     },
   });
 
@@ -104,9 +111,19 @@ async function getCompatibleRoute(
     throw new HaulingRouteError("The selected route could not be found.", 404);
   }
 
+  // A Paid route is built for one request. It cannot take others.
+  if (route.routeType === "Paid") {
+    throw new HaulingRouteError(
+      `${generateRouteNumber(route.routeNumber)} is a Paid route for a single request. Choose a weekly route.`,
+      409,
+    );
+  }
+
   if (!canRouteCollectWaste(route.wasteType, requestWasteType)) {
     throw new HaulingRouteError(
-      `${generateRouteNumber(route.routeNumber)} collects ${route.wasteType} waste, which does not match this request.`,
+      `${generateRouteNumber(route.routeNumber)} collects ${
+        WASTE_TYPE_LABELS[route.wasteType]?.toLowerCase() ?? route.wasteType
+      }, which does not match this request.`,
       409,
     );
   }
@@ -115,10 +132,10 @@ async function getCompatibleRoute(
 }
 
 const WASTE_TYPE_LABELS: Record<string, string> = {
-  RESIDUAL: "residual waste",
-  NON_BIODEGRADABLE: "non-biodegradable waste",
-  HAZARDOUS: "hazardous waste",
-  BIODEGRADABLE: "biodegradable waste",
+  RESIDUAL: "Residual waste",
+  NON_BIODEGRADABLE: "Non-biodegradable waste",
+  HAZARDOUS: "Hazardous waste",
+  BIODEGRADABLE: "Biodegradable waste",
 };
 
 function formatPickupDate(date: Date | null): string {
@@ -137,7 +154,7 @@ export function describeRequest(request: {
   wasteType: string;
   pickupDate: Date | null;
 }): string {
-  const waste = WASTE_TYPE_LABELS[request.wasteType] ?? "waste";
+  const waste = WASTE_TYPE_LABELS[request.wasteType]?.toLowerCase() ?? "waste";
   return `${request.requestNumber} (${waste}, pickup ${formatPickupDate(request.pickupDate)})`;
 }
 
@@ -186,6 +203,16 @@ export async function createHaulingRequest(
         orgId: null,
 
         requestAddress: data.requestAddress,
+
+        ...(data.pickupLocations?.length && {
+          pickupLocations: data.pickupLocations.map((stop) => ({
+            address: stop.address.trim(),
+            lat: stop.lat,
+            lng: stop.lng,
+          })),
+        }),
+
+        keepStopOrder: data.keepStopOrder ?? false,
 
         senderType: data.senderType,
 
@@ -516,6 +543,8 @@ export async function getHaulingRouteOptions(
       barangay: true,
       collectionDay: true,
       wasteType: true,
+      routeType: true,
+      collectionDate: true,
       assignedEcoAide: {
         select: {
           name: true,
@@ -526,6 +555,8 @@ export async function getHaulingRouteOptions(
 
   return routes
     .filter((route) => canRouteCollectWaste(route.wasteType, request.wasteType))
+    // A Paid route is built for one request, so only weekly routes are offered.
+    .filter((route) => route.routeType !== "Paid")
     .map((route) => ({
       id: route.id,
       routeDisplayNumber: generateRouteNumber(route.routeNumber),
@@ -534,6 +565,10 @@ export async function getHaulingRouteOptions(
       collectionDay: route.collectionDay as HaulingRouteOption["collectionDay"],
       wasteType: route.wasteType as HaulingRouteOption["wasteType"],
       ecoAideName: route.assignedEcoAide?.name ?? null,
+      routeType: route.routeType,
+      collectionDate: route.collectionDate
+        ? route.collectionDate.toISOString().slice(0, 10)
+        : null,
     }));
 }
 
@@ -557,6 +592,7 @@ export async function getMyRouteHaulingStops(
       id: true,
       collectionDay: true,
       startTime: true,
+      collectionDate: true,
     },
   });
 
@@ -596,4 +632,344 @@ export async function getMyRouteHaulingStops(
   }
 
   return stops;
+}
+
+/** Trucks that can take a Paid route: Active, with a driver, and on no route. */
+async function findAvailablePaidRouteTrucks(): Promise<AvailablePaidRouteTruck[]> {
+  const trucks = await prisma.truck.findMany({
+    where: {
+      status: "Active",
+      assignedDriverId: { not: null },
+      assignedRoute: { is: null },
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+    select: {
+      id: true,
+      truckNumber: true,
+      plateNumber: true,
+      assignedDriver: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return trucks.map((truck) => ({
+    id: truck.id,
+    truckNumber: truck.truckNumber,
+    plateNumber: truck.plateNumber,
+    driverName: truck.assignedDriver?.name ?? null,
+  }));
+}
+
+function formatDateKey(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00.000Z`).toLocaleDateString("en-PH", {
+    timeZone: "UTC",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/**
+ * Checks whether a hauling request can be collected on a Paid route: the
+ * pickup date and a free truck with a driver. The driving
+ * path check runs in the browser. Returns null when the request does not
+ * exist.
+ */
+export async function getHaulingFeasibility(
+  id: string,
+  now: Date = new Date(),
+): Promise<HaulingFeasibilityResult | null> {
+  const request = await prisma.haulingRequest.findUnique({
+    where: {
+      requestId: id,
+    },
+  });
+
+  if (!request) {
+    return null;
+  }
+
+  const checks: HaulingFeasibilityCheck[] = [];
+  const todayKey = toManilaDateKey(now);
+  const collectionDate = request.pickupDate
+    ? toManilaDateKey(request.pickupDate)
+    : null;
+
+  // Pickup date
+  if (!collectionDate) {
+    checks.push({
+      key: "date",
+      label: "Pickup date",
+      status: "fail",
+      message: "The request has no preferred pickup date.",
+    });
+  } else if (collectionDate < todayKey) {
+    checks.push({
+      key: "date",
+      label: "Pickup date",
+      status: "fail",
+      message: `The preferred pickup date (${formatDateKey(collectionDate)}) has passed.`,
+    });
+  } else {
+    const otherRequests = await prisma.haulingRequest.findMany({
+      where: {
+        userId: request.userId,
+        requestId: { not: request.requestId },
+        status: HaulingRequestStatus.APPROVED,
+        archived: false,
+        routeId: { not: null },
+      },
+      include: haulingRequestInclude,
+    });
+
+    const sameDay = otherRequests.filter((other) => {
+      if (!other.route) return false;
+      const scheduled = getScheduledCollectionAt(other.pickupDate, other.route);
+      return scheduled !== null && toManilaDateKey(scheduled) === collectionDate;
+    });
+
+    checks.push(
+      sameDay.length > 0
+        ? {
+            key: "date",
+            label: "Pickup date",
+            status: "warn",
+            message: `${formatDateKey(collectionDate)}. This requester already has ${sameDay
+              .map((other) => other.requestNumber)
+              .join(", ")} collected that day.`,
+          }
+        : {
+            key: "date",
+            label: "Pickup date",
+            status: "pass",
+            message: `${formatDateKey(collectionDate)}. No other collection for this requester that day.`,
+          },
+    );
+  }
+
+  // Truck and driver
+  const availableTrucks = await findAvailablePaidRouteTrucks();
+
+  checks.push(
+    availableTrucks.length > 0
+      ? {
+          key: "truck",
+          label: "Truck and driver",
+          status: "pass",
+          message: `${availableTrucks.length} ${
+            availableTrucks.length === 1 ? "truck is" : "trucks are"
+          } free with a driver.`,
+        }
+      : {
+          key: "truck",
+          label: "Truck and driver",
+          status: "fail",
+          message:
+            "No truck is free. Every Active truck with a driver is already on a route.",
+        },
+  );
+
+  return {
+    requestId: request.requestId,
+    collectionDate,
+    checks,
+    availableTrucks,
+  };
+}
+
+/**
+ * Creates a one-time Paid route for a single hauling request, in one
+ * transaction: the route is created, the truck is put on it, and the request
+ * is linked to it (and approved, if it was still pending). Either all of it
+ * happens or nothing changes. The requester is notified.
+ */
+export async function createPaidRouteForRequest(
+  input: CreatePaidHaulingRouteInput,
+  createdBy: string,
+  now: Date = new Date(),
+) {
+  const request = await prisma.haulingRequest.findUnique({
+    where: {
+      requestId: input.requestId,
+    },
+  });
+
+  if (!request) {
+    throw new HaulingRouteError("The hauling request could not be found.", 404);
+  }
+
+  const wasPending = request.status === HaulingRequestStatus.PENDING;
+
+  if (
+    request.archived ||
+    (!wasPending && request.status !== HaulingRequestStatus.APPROVED)
+  ) {
+    throw new HaulingRouteError(
+      `${request.requestNumber} is not pending or approved.`,
+      409,
+    );
+  }
+
+  if (request.routeId) {
+    throw new HaulingRouteError(
+      `${request.requestNumber} is already on a route.`,
+      409,
+    );
+  }
+
+  if (input.collectionDate < toManilaDateKey(now)) {
+    throw new HaulingRouteError("The collection date cannot be in the past.", 400);
+  }
+
+  const truck = await prisma.truck.findUnique({
+    where: {
+      id: input.truckId,
+    },
+    select: {
+      id: true,
+      status: true,
+      assignedDriverId: true,
+      assignedRoute: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!truck) {
+    throw new HaulingRouteError("The selected truck could not be found.", 404);
+  }
+
+  if (truck.status !== "Active" || !truck.assignedDriverId) {
+    throw new HaulingRouteError(
+      "The selected truck must be Active and have a driver.",
+      409,
+    );
+  }
+
+  if (truck.assignedRoute) {
+    throw new HaulingRouteError(
+      `The selected truck is already on ${truck.assignedRoute.name}.`,
+      409,
+    );
+  }
+
+  // Filled inside the transaction, sent once it has committed.
+  const notifications: Awaited<ReturnType<typeof createDirectNotification>>[] = [];
+  let route;
+
+  try {
+    route = await createRoute(
+      {
+        name: input.name.trim(),
+        barangay: input.barangay.trim(),
+        // Replaced from stopLocations by createRoute.
+        waypoints: "",
+        wasteType: request.wasteType,
+        // Replaced by the collection date's weekday for Paid routes.
+        collectionDay: "Monday",
+        startTime: input.startTime,
+        routeType: "Paid",
+        collectionDate: input.collectionDate,
+        stopLocations: input.stopLocations,
+      },
+      async (tx, created) => {
+        await tx.route.update({
+          where: {
+            id: created.id,
+          },
+          data: {
+            assignedTruckId: truck.id,
+          },
+        });
+
+        const { count } = await tx.haulingRequest.updateMany({
+          where: {
+            requestId: request.requestId,
+            routeId: null,
+            archived: false,
+            status: request.status,
+          },
+          data: {
+            routeId: created.id,
+            ...(wasPending && {
+              status: HaulingRequestStatus.APPROVED,
+              approvedBy: createdBy,
+              approvedAt: new Date(),
+            }),
+          },
+        });
+
+        // Another admin changed the request in the meantime.
+        if (count !== 1) {
+          throw new HaulingRouteError(
+            "The request changed while the route was being created. Refresh and try again.",
+            409,
+          );
+        }
+
+        const when = formatRouteForMessage(created, request.pickupDate);
+
+        const notification = await createDirectNotification(tx, {
+          userId: request.userId,
+          createdById: createdBy,
+          type: wasPending
+            ? HAULING_NOTIFICATION_TYPES.approved
+            : HAULING_NOTIFICATION_TYPES.scheduled,
+          title: wasPending
+            ? "Hauling request approved"
+            : "Hauling request scheduled",
+          message: wasPending
+            ? `${describeRequest(request)} has been approved and will be collected by ${when}.`
+            : `${describeRequest(request)} will be collected by ${when}.`,
+        });
+
+        notifications.push(notification);
+      },
+    );
+  } catch (error) {
+    if (error instanceof HaulingRouteError) {
+      throw error;
+    }
+
+    // The truck was put on another route at the same moment.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new HaulingRouteError(
+        "The selected truck was just assigned to another route.",
+        409,
+      );
+    }
+
+    // createRoute reports invalid fields (a short name, a bad date) as plain
+    // Errors. Anything else, such as a database failure, is rethrown as is.
+    if (error instanceof Error && error.constructor === Error) {
+      throw new HaulingRouteError(error.message, 400);
+    }
+
+    throw error;
+  }
+
+  if (!route) {
+    throw new HaulingRouteError(
+      "A route with this name and barangay already exists.",
+      409,
+    );
+  }
+
+  for (const notification of notifications) {
+    emitNotificationCreated(notification);
+  }
+
+  // Read it back so the response includes the truck put on it above.
+  return (await getRouteById(route.id)) ?? route;
 }
