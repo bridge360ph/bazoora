@@ -5,6 +5,7 @@ import type { RouteStatus, RouteStopLocation } from "@bazoora/shared";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
+import { generateRouteNumber } from "../lib/displayId.js";
 
 type CreateRouteInput = Pick<
   Route,
@@ -18,6 +19,8 @@ type CreateRouteInput = Pick<
 > &
   Partial<Pick<Route, "assignedEcoAideId">> & {
     stopLocations?: RouteStopLocation[];
+    /** YYYY-MM-DD; required for Paid routes, ignored for Free ones. */
+    collectionDate?: string | null;
   };
 
 type UpdateRouteInput = Partial<
@@ -34,7 +37,121 @@ type UpdateRouteInput = Partial<
   >
 > & {
   stopLocations?: RouteStopLocation[];
+  collectionDate?: string | null;
 };
+
+const WEEKDAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+/** "2026-11-12" as a Date at midnight UTC, which stores the calendar day. */
+function parseCollectionDate(value: string): Date {
+  const date = new Date(`${value}T00:00:00.000Z`);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(date.getTime())) {
+    throw new Error("Collection date must be a valid date (YYYY-MM-DD)");
+  }
+
+  return date;
+}
+
+/**
+ * Free routes run every week on collectionDay and have no collection date.
+ * Paid routes run once on collectionDate; their collectionDay is set to that
+ * date's weekday so pages that read the weekday stay correct.
+ */
+function resolveRouteSchedule(
+  routeType: string,
+  collectionDate: string | null | undefined,
+  collectionDay: string | undefined,
+): { collectionDate: Date | null; collectionDay?: string } {
+  if (routeType !== "Paid") {
+    return {
+      collectionDate: null,
+      ...(collectionDay !== undefined && { collectionDay }),
+    };
+  }
+
+  if (!collectionDate) {
+    throw new Error("Collection date is required for paid routes");
+  }
+
+  const date = parseCollectionDate(collectionDate);
+
+  return {
+    collectionDate: date,
+    collectionDay: WEEKDAYS[date.getUTCDay()] ?? "Monday",
+  };
+}
+
+/**
+ * Thrown when a weekly route would share its barangay, collection day and
+ * start time with another weekly route. The route handlers answer 409.
+ */
+export class RouteScheduleClashError extends Error {}
+
+function normalizeBarangay(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** "7:00" and "07:00" are the same start time. */
+function normalizeTime(value: string): string {
+  const match = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  return match ? `${match[1]?.padStart(2, "0")}:${match[2]}` : value.trim();
+}
+
+/**
+ * Weekly (Free) routes in one barangay with the same waste type cannot run
+ * on the same day at the same start time. Paid routes are one-time and are
+ * not checked.
+ */
+async function assertNoScheduleClash(
+  slot: {
+    barangay: string;
+    wasteType: string;
+    collectionDay: string;
+    startTime: string;
+  },
+  excludeRouteId?: string,
+) {
+  const sameDay = await prisma.route.findMany({
+    where: {
+      routeType: { not: "Paid" },
+      wasteType: slot.wasteType,
+      collectionDay: slot.collectionDay,
+      ...(excludeRouteId && { id: { not: excludeRouteId } }),
+    },
+    select: {
+      routeNumber: true,
+      name: true,
+      barangay: true,
+      startTime: true,
+    },
+  });
+
+  const clash = sameDay.find(
+    (route) =>
+      normalizeBarangay(route.barangay) === normalizeBarangay(slot.barangay) &&
+      normalizeTime(route.startTime) === normalizeTime(slot.startTime),
+  );
+
+  if (clash) {
+    throw new RouteScheduleClashError(
+      `This barangay already has a route for this waste type every ${slot.collectionDay} at this time (${generateRouteNumber(clash.routeNumber)} ${clash.name}). Change the waste type, collection day or start time.`,
+    );
+  }
+}
+
+export type RouteCreatedHook = (
+  tx: Prisma.TransactionClient,
+  route: Route,
+) => Promise<void>;
 
 /**
  * Builds the comma separated waypoints text from map-placed stops, so pages
@@ -53,7 +170,7 @@ function toJson(stops: RouteStopLocation[]): Prisma.InputJsonValue {
 
 
 function validateRouteFields(
-  data: Partial<CreateRouteInput>,
+  data: Partial<Omit<CreateRouteInput, "collectionDate" | "stopLocations">>,
 ) {
   const minLengthFields = [
     {
@@ -218,15 +335,31 @@ export async function getRouteById(id: string) {
 }
 
 
+/**
+ * `onCreated` runs inside the same transaction as the insert, so work that
+ * must succeed together with the new route (such as linking hauling
+ * requests to it) is rolled back with it on failure.
+ */
 export async function createRoute(
   input: CreateRouteInput,
+  onCreated?: RouteCreatedHook,
 ) {
-  const { stopLocations, ...fields } = input;
+  const { stopLocations, collectionDate, ...rest } = input;
+  const schedule = resolveRouteSchedule(
+    rest.routeType,
+    collectionDate,
+    rest.collectionDay,
+  );
+  const fields = { ...rest, ...schedule };
   const data = stopLocations?.length
     ? { ...fields, waypoints: waypointsFromStops(stopLocations) }
     : fields;
 
   validateRouteFields(data);
+
+  if (data.routeType !== "Paid") {
+    await assertNoScheduleClash(data);
+  }
 
   const duplicateRoute = await prisma.route.findFirst({
     where: {
@@ -258,7 +391,7 @@ export async function createRoute(
         "route",
       );
 
-      return tx.route.create({
+      const created = await tx.route.create({
         data: {
           ...data,
           ...(stopLocations?.length && {
@@ -270,6 +403,12 @@ export async function createRoute(
         },
         include: routeAssignmentInclude,
       });
+
+      if (onCreated) {
+        await onCreated(tx, created);
+      }
+
+      return created;
     },
   );
 
@@ -281,10 +420,7 @@ export async function updateRoute(
   id: string,
   input: UpdateRouteInput,
 ) {
-  const { stopLocations, ...fields } = input;
-  const data = stopLocations?.length
-    ? { ...fields, waypoints: waypointsFromStops(stopLocations) }
-    : fields;
+  const { stopLocations, collectionDate, ...rest } = input;
 
   const existingRoute =
     await prisma.route.findUnique({
@@ -297,7 +433,46 @@ export async function updateRoute(
     return null;
   }
 
+  // Re-check the schedule against the route's current values for any field
+  // the request leaves out, so switching Free/Paid stays consistent.
+  const scheduleTouched =
+    rest.routeType !== undefined ||
+    collectionDate !== undefined ||
+    rest.collectionDay !== undefined;
+  const schedule = scheduleTouched
+    ? resolveRouteSchedule(
+        rest.routeType ?? existingRoute.routeType,
+        collectionDate !== undefined
+          ? collectionDate
+          : existingRoute.collectionDate?.toISOString().slice(0, 10),
+        rest.collectionDay ?? existingRoute.collectionDay,
+      )
+    : null;
+
+  const fields = schedule ? { ...rest, ...schedule } : rest;
+  const data = stopLocations?.length
+    ? { ...fields, waypoints: waypointsFromStops(stopLocations) }
+    : fields;
+
   validateRouteFields(data);
+
+  const finalRoute = {
+    routeType: data.routeType ?? existingRoute.routeType,
+    barangay: data.barangay ?? existingRoute.barangay,
+    wasteType: data.wasteType ?? existingRoute.wasteType,
+    collectionDay: data.collectionDay ?? existingRoute.collectionDay,
+    startTime: data.startTime ?? existingRoute.startTime,
+  };
+  const slotTouched =
+    data.routeType !== undefined ||
+    data.barangay !== undefined ||
+    data.wasteType !== undefined ||
+    data.collectionDay !== undefined ||
+    data.startTime !== undefined;
+
+  if (slotTouched && finalRoute.routeType !== "Paid") {
+    await assertNoScheduleClash(finalRoute, id);
+  }
 
   const route =
     await prisma.route.update({
@@ -334,6 +509,9 @@ export async function updateRoute(
         }),
         ...(data.routeType !== undefined && {
           routeType: data.routeType,
+        }),
+        ...(schedule && {
+          collectionDate: schedule.collectionDate,
         }),
         ...(data.assignedEcoAideId !== undefined && {
           assignedEcoAideId: data.assignedEcoAideId,
