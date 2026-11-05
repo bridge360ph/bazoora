@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 import { X } from "lucide-react";
 
-import { AdminModalShell, BUTTON_CLASSES } from "./AdminModalShell";
+import { AdminModalShell, BUTTON_CLASSES } from "@/components/admin/AdminModalShell";
 
 const DENIAL_REASON_MIN_LENGTH = 5;
 const DENIAL_REASON_MAX_LENGTH = 500;

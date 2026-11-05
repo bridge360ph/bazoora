@@ -3,7 +3,7 @@ import type { HaulingRequest } from "@bazoora/shared";
 import { Check } from "lucide-react";
 
 import { WASTE_TYPE_DISPLAY } from "../haulingRequestManagement.constants";
-import { AdminModalShell, BUTTON_CLASSES } from "./AdminModalShell";
+import { AdminModalShell, BUTTON_CLASSES } from "@/components/admin/AdminModalShell";
 import { HaulingRouteSelect } from "./HaulingRouteSelect";
 
 interface AssignHaulingRouteModalProps {
