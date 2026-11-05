@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Route } from "@bazoora/shared";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
-import { Button, StatCard } from "@bazoora/ui";
+import {
+  CalendarDays,
+  Phone,
+  Plus,
+  Route as RouteIcon,
+  Truck as TruckIcon,
+} from "lucide-react";
+import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
+import { AdminTabs } from "@/components/admin/AdminTabs";
+import {
+  AdminEmptySlot,
+  AdminSearchInput,
+  BUTTON_CLASSES,
+} from "@/components/admin/AdminControls";
+import { AdminListCard, AdminMeta } from "@/components/admin/AdminListCard";
+import { AdminModalShell, DetailField } from "@/components/admin/AdminModalShell";
+import { AdminPagination, paginate } from "@/components/admin/AdminPagination";
 import { PhilippineAddressFields } from "../../settings/components/PhilippineAddressFields";
 import {
   archiveEcoAide,
@@ -21,7 +37,6 @@ import { listTrucks } from "../../trucks/api";
 import type { Truck } from "../../trucks/schemas";
 import type {
   EcoAide,
-  EcoAideManagementTab,
   EcoAideStatus,
   EcoAideStatusFilter,
 } from "../ecoAides.types";
@@ -33,7 +48,11 @@ const statusFilters: EcoAideStatusFilter[] = [
   "Active",
   "On Route",
   "Off Duty",
+  "Suspended",
+  "Deactivated",
 ];
+
+const ECO_AIDES_PAGE_SIZE = 10;
 
 function mapApiEcoAide(apiEcoAide: ApiEcoAide): EcoAide {
   const status: EcoAideStatus =
@@ -79,12 +98,13 @@ const emptyEcoAideForm: EcoAideFormValue = {
 };
 
 export function EcoAideManagementPage() {
-  const [activeTab, setActiveTab] = useState<EcoAideManagementTab>("all");
   const [ecoAides, setEcoAides] = useState<EcoAide[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<EcoAideStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(ECO_AIDES_PAGE_SIZE);
   const [selectedEcoAide, setSelectedEcoAide] = useState<EcoAide | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [formValue, setFormValue] =
@@ -146,34 +166,37 @@ export function EcoAideManagementPage() {
   }, []);
 
 
-  const filteredEcoAides = useMemo(() => {
-    return ecoAides.filter((ecoAide) => {
-      const matchesStatus =
-        statusFilter === "All" ||
-        ecoAide.status === statusFilter ||
-        false;
+  // Search applies before the status tabs, so each tab count shows what
+  // that tab would list.
+  const searchedEcoAides = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
 
-      const normalizedSearch = searchValue.trim().toLowerCase();
-      const matchesSearch =
+    return ecoAides.filter(
+      (ecoAide) =>
         normalizedSearch.length === 0 ||
         ecoAide.name.toLowerCase().includes(normalizedSearch) ||
-        ecoAide.id.toLowerCase().includes(normalizedSearch);
+        ecoAide.id.toLowerCase().includes(normalizedSearch),
+    );
+  }, [ecoAides, searchValue]);
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [ecoAides, searchValue, statusFilter]);
+  const filteredEcoAides = useMemo(
+    () =>
+      statusFilter === "All"
+        ? searchedEcoAides
+        : searchedEcoAides.filter((ecoAide) => ecoAide.status === statusFilter),
+    [searchedEcoAides, statusFilter],
+  );
 
-  const activeCount = ecoAides.filter(
-    (ecoAide) => ecoAide.status === "Active",
-  ).length;
+  const statusCounts = Object.fromEntries(
+    statusFilters.map((filter) => [
+      filter,
+      filter === "All"
+        ? searchedEcoAides.length
+        : searchedEcoAides.filter((ecoAide) => ecoAide.status === filter).length,
+    ]),
+  ) as Record<EcoAideStatusFilter, number>;
 
-  const suspendedCount = ecoAides.filter(
-    (ecoAide) => ecoAide.status === "Suspended",
-  ).length;
-
-  const deactivatedCount = ecoAides.filter(
-    (ecoAide) => ecoAide.status === "Deactivated",
-  ).length;
+  const pagination = paginate(filteredEcoAides, page, rowsPerPage);
 
   function openViewProfile(ecoAide: EcoAide) {
     setSelectedEcoAide(ecoAide);
@@ -396,76 +419,106 @@ export function EcoAideManagementPage() {
   }
 
   return (
-    <main className="flex-1 overflow-y-auto p-6">
-      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap gap-2 border-b border-gray-300">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("all");
-              setSearchValue("");
+    <AdminPage fill>
+      <AdminPanel className="h-full min-h-0">
+        <AdminTabs
+          tabs={statusFilters.map((filter) => ({
+            value: filter,
+            label: filter === "All" ? "ALL" : filter.toUpperCase(),
+            count: statusCounts[filter],
+          }))}
+          active={statusFilter}
+          onChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+          actions={
+            <button type="button" onClick={openCreateAccount} className={BUTTON_CLASSES.primary}>
+              <Plus className="h-3.5 w-3.5" />
+              Add Eco-Aide
+            </button>
+          }
+        />
+
+        <div className="shrink-0 px-6 pt-5">
+          <AdminSearchInput
+            value={searchValue}
+            onChange={(value) => {
+              setSearchValue(value);
+              setPage(1);
             }}
-            className={`cursor-pointer border-0 bg-transparent px-0 py-2 text-[13px] text-gray-900 ${activeTab === "all" ? "border-b-2 border-gray-900 font-bold" : "font-medium"}`}
-          >
-            All Eco-Aides ({ecoAides.length})
-          </button>
-
-
+            placeholder="Search Eco-Aide by name or ID"
+          />
         </div>
 
-        <Button onClick={openCreateAccount}>+ Add Eco-Aide</Button>
-      </section>
-
-      <section className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3.5">
-        <StatCard label="Total Eco-Aides" value={ecoAides.length} />
-        <StatCard label="Active" value={activeCount} />
-        <StatCard label="Suspended" value={suspendedCount} />
-        <StatCard label="Deactivated" value={deactivatedCount} />
-      </section>
-
-      <section className="mb-0 flex flex-wrap items-stretch">
-        {activeTab === "all" ? (
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value as EcoAideStatusFilter);
-            }}
-            className="min-w-[150px] cursor-pointer border-0 bg-brand px-3 py-2.5 text-[13px] text-white"
-          >
-            {statusFilters.map((status) => (
-              <option key={status} value={status}>
-                {status === "All" ? "Filter by Status" : status}
-              </option>
+        <div className="flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
+          <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto pr-1">
+            {pagination.pageItems.map((ecoAide) => (
+              <AdminListCard
+                key={ecoAide.id}
+                accentClassName={statusAccentClass(ecoAide.status)}
+                onOpen={() => openViewProfile(ecoAide)}
+                aside={
+                  <>
+                    <StatusPill status={ecoAide.status} />
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <button type="button" onClick={() => openEditProfile(ecoAide)} className={BUTTON_CLASSES.link}>
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => openSuspendModal(ecoAide)} className={BUTTON_CLASSES.link}>
+                        Suspend
+                      </button>
+                      <button type="button" onClick={() => openDeactivateModal(ecoAide)} className={BUTTON_CLASSES.linkDanger}>
+                        Deactivate
+                      </button>
+                      <button type="button" onClick={() => openArchiveModal(ecoAide)} className={BUTTON_CLASSES.linkDanger}>
+                        Archive
+                      </button>
+                    </div>
+                  </>
+                }
+              >
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <p className="text-sm font-bold text-gray-800">{ecoAide.name}</p>
+                </div>
+                <p className="mt-0.5 text-[10px] text-gray-500">ID: {ecoAide.id}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-600">
+                  <AdminMeta icon={<Phone className="h-3 w-3 shrink-0 text-gray-400" />}>
+                    {ecoAide.contactNumber || "No contact number"}
+                  </AdminMeta>
+                  <AdminMeta icon={<RouteIcon className="h-3 w-3 shrink-0 text-gray-400" />}>
+                    {ecoAide.assignedRoute || "No route yet"}
+                  </AdminMeta>
+                  <AdminMeta icon={<TruckIcon className="h-3 w-3 shrink-0 text-gray-400" />}>
+                    {ecoAide.assignedTruck || "No truck yet"}
+                  </AdminMeta>
+                  <AdminMeta icon={<CalendarDays className="h-3 w-3 shrink-0 text-gray-400" />}>
+                    Added {ecoAide.addedDate}
+                  </AdminMeta>
+                </div>
+              </AdminListCard>
             ))}
-          </select>
-        ) : (
-          <button type="button" className="min-w-[150px] cursor-pointer border-0 bg-brand px-3 py-2.5 text-[13px] text-white">
-            Filter by Date
-          </button>
-        )}
 
-        <input
-          value={searchValue}
-          onChange={(event) => {
-            setSearchValue(event.target.value);
-          }}
-          placeholder={
-            activeTab === "all"
-              ? "Search Eco-Aide by name or ID..."
-              : "Search approval request by name or date..."
-          }
-          className="min-w-[240px] flex-1 border border-gray-300 px-3 py-2.5 text-[13px] outline-none"
-        />
-      </section>
+            {pagination.total === 0 ? (
+              <AdminEmptySlot>
+                {ecoAides.length === 0 ? "No Eco-Aides yet. Add one to get started." : "No Eco-Aides match the current filter."}
+              </AdminEmptySlot>
+            ) : (
+              pagination.page === pagination.totalPages && <AdminEmptySlot>No more Eco-Aides</AdminEmptySlot>
+            )}
+          </div>
 
-      <AllEcoAidesTable
-          ecoAides={filteredEcoAides}
-          onViewProfile={openViewProfile}
-          onEdit={openEditProfile}
-          onSuspend={openSuspendModal}
-          onDeactivate={openDeactivateModal}
-          onArchive={openArchiveModal}
-        />
+          <AdminPagination
+            {...pagination}
+            onPageChange={setPage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(rows) => {
+              setRowsPerPage(rows);
+              setPage(1);
+            }}
+          />
+        </div>
+      </AdminPanel>
 
       {modalMode === "view" && selectedEcoAide && (
         <ViewProfileModal
@@ -551,174 +604,15 @@ export function EcoAideManagementPage() {
         />
       )}
 
-    </main>
+    </AdminPage>
   );
 }
 
-interface AllEcoAidesTableProps {
-  ecoAides: EcoAide[];
-  onViewProfile: (ecoAide: EcoAide) => void;
-  onEdit: (ecoAide: EcoAide) => void;
-  onSuspend: (ecoAide: EcoAide) => void;
-  onDeactivate: (ecoAide: EcoAide) => void;
-  onArchive: (ecoAide: EcoAide) => void;
-}
-
-function AllEcoAidesTable({
-  ecoAides,
-  onViewProfile,
-  onEdit,
-  onSuspend,
-  onDeactivate,
-  onArchive,
-}: AllEcoAidesTableProps) {
-  return (
-    <section className="rounded-b-[10px] border border-gray-200 bg-white">
-      <div className="px-3.5 py-[18px] text-sm font-bold text-gray-900">Eco-Aides</div>
-
-      <div className="w-full overflow-visible">
-        <table className="w-full table-fixed border-collapse">
-          <thead>
-            <tr className="bg-brand">
-              {[
-                "Eco-Aide ID",
-                "Eco-Aide Name",
-                "Added",
-                "Status",
-                "Actions",
-              ].map((heading) => (
-                <th key={heading} className="px-3 py-2.5 text-left text-xs font-bold text-white">
-                  {heading}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
-          <tbody>
-            {ecoAides.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-7 text-center text-[13px] text-gray-400">
-                  No Eco-Aides found.
-                </td>
-              </tr>
-            ) : (
-              ecoAides.map((ecoAide) => (
-                <tr key={ecoAide.id} className="border-b border-gray-200">
-                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.id}</td>
-                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.name}</td>
-                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">{ecoAide.addedDate}</td>
-                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
-                    <StatusPill status={ecoAide.status} />
-                  </td>
-                  <td className="px-3 py-2.5 text-[13px] text-gray-900 break-words">
-                    <div className="flex items-center gap-2 whitespace-nowrap">
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-[10px] border-0 bg-gray-500 px-2.5 py-[3px] text-xs text-white hover:bg-gray-600"
-                        onClick={() => {
-                          onViewProfile(ecoAide);
-                        }}
-                      >
-                        View Profile
-                      </button>
-
-                      <ActionMenu
-                        ecoAide={ecoAide}
-                        onEdit={onEdit}
-                        onSuspend={onSuspend}
-                        onDeactivate={onDeactivate}
-                        onArchive={onArchive}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-</section>
-  );
-}
-
-interface ActionMenuProps {
-  ecoAide: EcoAide;
-  onEdit: (ecoAide: EcoAide) => void;
-  onSuspend: (ecoAide: EcoAide) => void;
-  onDeactivate: (ecoAide: EcoAide) => void;
-  onArchive: (ecoAide: EcoAide) => void;
-}
-
-function ActionMenu({
-  ecoAide,
-  onEdit,
-  onSuspend,
-  onDeactivate,
-  onArchive,
-}: ActionMenuProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="relative inline-block">
-      <button
-        type="button"
-        className="cursor-pointer border-0 bg-transparent px-2 py-1 text-[13px] font-medium text-gray-900 hover:underline"
-        onClick={() => {
-          onEdit(ecoAide);
-        }}
-      >
-        Edit
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen((currentValue) => !currentValue);
-        }}
-        className="cursor-pointer border-0 bg-transparent text-sm font-extrabold text-gray-900"
-      >
-        ...
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full z-[100] mt-1 flex w-36 flex-col overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
-
-          <button
-            type="button"
-            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onSuspend(ecoAide);
-            }}
-          >
-            Suspend
-          </button>
-
-          <button
-            type="button"
-            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onDeactivate(ecoAide);
-            }}
-          >
-            Deactivate
-          </button>
-
-          <button
-            type="button"
-            className="block w-full cursor-pointer border-0 bg-transparent px-3 py-2 text-left text-[13px] hover:bg-gray-100"
-            onClick={() => {
-              setIsOpen(false);
-              onArchive(ecoAide);
-            }}
-          >
-            Archive
-          </button>
-        </div>
-      )}
-    </div>
-  );
+function statusAccentClass(status: EcoAideStatus): string {
+  if (status === "Active") return "border-l-emerald-400";
+  if (status === "On Route") return "border-l-amber-400";
+  if (status === "Suspended") return "border-l-red-400";
+  return "border-l-gray-300";
 }
 
 interface ViewProfileModalProps {
@@ -729,45 +623,48 @@ interface ViewProfileModalProps {
 
 function ViewProfileModal({ ecoAide, onEdit, onClose }: ViewProfileModalProps) {
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-[570px] rounded-[10px] bg-white p-7">
-        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">View profile - {ecoAide.name}</h2>
-
-        <div className="flex items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-[5px] border-black text-[32px]">EA</div>
-
-          <div className="flex-1">
-            <div className="text-base font-extrabold">{ecoAide.name}</div>
-            <div className="text-[13px]">{ecoAide.id}</div>
-          </div>
-
-          <StatusPill status={ecoAide.status} />
-        </div>
-
-        <div className="my-4 border-t border-gray-300" />
-
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
-          <InfoBlock label="Contact number" value={ecoAide.contactNumber} />
-          <InfoBlock label="Birthdate" value={ecoAide.birthdate} />
-          <InfoBlock label="Assigned Route" value={ecoAide.assignedRoute} />
-          <InfoBlock label="Address" value={ecoAide.address} />
-          <InfoBlock label="Assigned Truck" value={ecoAide.assignedTruck} />
-        </div>
-
-        <div className="mt-3 font-semibold">
-          Assignment history
-        </div>
-
-
-
-        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onEdit}>Edit Profile</Button>
-          <Button variant="secondary" onClick={onClose}>
+    <AdminModalShell
+      eyebrow="ECO-AIDE PROFILE"
+      title={ecoAide.name}
+      onClose={onClose}
+      maxWidthClassName="max-w-xl"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
             Close
-          </Button>
+          </button>
+          <button type="button" onClick={onEdit} className={BUTTON_CLASSES.primary}>
+            Edit Profile
+          </button>
+        </>
+      }
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-border text-sm font-bold text-brand-dark">
+          {ecoAide.name
+            .split(/\s+/)
+            .map((part) => part[0] ?? "")
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "EA"}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-gray-800">{ecoAide.name}</p>
+          <p className="text-[11px] text-gray-500">ID: {ecoAide.id}</p>
+        </div>
+        <StatusPill status={ecoAide.status} />
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-4">
+        <DetailField label="CONTACT NUMBER">{ecoAide.contactNumber || "N/A"}</DetailField>
+        <DetailField label="BIRTHDATE">{ecoAide.birthdate || "N/A"}</DetailField>
+        <DetailField label="ASSIGNED ROUTE">{ecoAide.assignedRoute || "No route yet"}</DetailField>
+        <DetailField label="ASSIGNED TRUCK">{ecoAide.assignedTruck || "No truck yet"}</DetailField>
+        <div className="col-span-2">
+          <DetailField label="ADDRESS">{ecoAide.address || "N/A"}</DetailField>
         </div>
       </div>
-    </div>
+    </AdminModalShell>
   );
 }
 
@@ -1238,7 +1135,7 @@ function EditEcoAideModal({
   function getInputClassName(
     field: keyof EcoAideFormValue,
   ) {
-    return `box-border w-full rounded-md border px-2.5 py-2 text-[13px] outline-none placeholder:text-gray-400 ${
+    return `h-9 w-full rounded-md border bg-white px-3 text-xs outline-none placeholder:text-gray-400 ${
       errors[field]
         ? "border-red-500 focus:border-red-600"
         : "border-gray-300 focus:border-brand"
@@ -1246,12 +1143,22 @@ function EditEcoAideModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
-      <div className="max-h-[90vh] w-full max-w-[720px] overflow-y-auto rounded-[10px] bg-white p-7">
-        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">
-          {title}
-        </h2>
-
+    <AdminModalShell
+      eyebrow={mode === "create" ? "NEW ECO-AIDE" : "EDIT ECO-AIDE"}
+      title={title}
+      onClose={onClose}
+      maxWidthClassName="max-w-3xl"
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSubmit} className={BUTTON_CLASSES.primary}>
+            {saveLabel}
+          </button>
+        </>
+      }
+    >
         <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3.5">
           <FormField
             label="Eco-Aide Name"
@@ -1622,18 +1529,7 @@ function EditEcoAideModal({
             </FormField>
           )}
         </div>
-
-        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={handleSubmit}>
-            {saveLabel}
-          </Button>
-
-          <Button variant="secondary" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </div>
-    </div>
+    </AdminModalShell>
   );
 }
 
@@ -1661,34 +1557,39 @@ function ConfirmActionModal({
   onClose,
 }: ConfirmActionModalProps) {
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-[390px] rounded-[10px] bg-white p-6">
-        <h2 className="mb-[18px] text-[22px] font-extrabold text-neutral-950">{title}</h2>
-
-        <div className="rounded-md border border-red-200 bg-rose-50 px-2.5 py-2 text-xs text-red-600">Info: {warning}</div>
-
-        <p className="mt-[18px] text-sm">{message}</p>
-
-        <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-          {reasonLabel}
-          <textarea
-            value={reason}
-            onChange={(event) => {
-              setReason(event.target.value);
-            }}
-            placeholder="Enter reason..."
-            className="min-h-[70px] w-full resize-y rounded-md border border-gray-300 px-2.5 py-2 text-[13px] box-border"
-          />
-        </label>
-
-        <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onConfirm}> {confirmLabel}</Button>
-          <Button variant="secondary" onClick={onClose}>
+    <AdminModalShell
+      eyebrow="ECO-AIDE ACCOUNT"
+      title={title}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
             Cancel
-          </Button>
-        </div>
-      </div>
-    </div>
+          </button>
+          <button type="button" onClick={onConfirm} className={BUTTON_CLASSES.danger}>
+            {confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{warning}</p>
+
+      <p className="mt-4 text-sm text-gray-700">{message}</p>
+
+      <label className="mt-4 flex flex-col gap-1.5">
+        <span className="text-[10px] font-semibold tracking-wider text-gray-400 uppercase">
+          {reasonLabel}
+        </span>
+        <textarea
+          value={reason}
+          onChange={(event) => {
+            setReason(event.target.value);
+          }}
+          placeholder="Enter reason..."
+          className="min-h-20 w-full resize-y rounded-md border border-surface-border px-3 py-2 text-xs text-gray-800 outline-none focus:border-brand-secondary"
+        />
+      </label>
+    </AdminModalShell>
   );
 }
 
@@ -1706,7 +1607,7 @@ function FormField({
   error,
 }: FormFieldProps) {
   return (
-    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
       <span>
         {label}
 
@@ -1734,26 +1635,12 @@ function FormField({
   );
 }
 
-interface InfoBlockProps {
-  label: string;
-  value: string;
-}
-
-function InfoBlock({ label, value }: InfoBlockProps) {
-  return (
-    <div>
-      <div className="text-[13px] font-bold">{label}</div>
-      <div className="text-[13px]">{value}</div>
-    </div>
-  );
-}
-
 function StatusPill({ status }: { status: EcoAideStatus }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full px-2.5 py-[3px] text-[11px] font-bold ${getStatusClassName(status)}`}
+      className={`inline-flex items-center justify-center rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${getStatusClassName(status)}`}
     >
-      {status}
+      {status.toUpperCase()}
     </span>
   );
 }
