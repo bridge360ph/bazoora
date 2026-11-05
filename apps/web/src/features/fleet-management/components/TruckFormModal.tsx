@@ -1,6 +1,9 @@
 import { useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { FormField, Modal, ModalFooter } from "@bazoora/ui";
+import type { WasteType } from "@bazoora/shared";
+import { BRANCHES } from "@/lib/branches";
+import { WASTE_TYPES, WASTE_TYPE_LABELS } from "@/features/route-management/routeFilters.constants";
 import type { FleetAssignmentOption, TruckFormValue, TruckStatus } from "../fleet.types";
 
 interface TruckFormModalProps {
@@ -9,6 +12,8 @@ interface TruckFormModalProps {
   setFormValue: Dispatch<SetStateAction<TruckFormValue>>;
   saveLabel: string;
   driverOptions: FleetAssignmentOption[];
+  /** Shown inside the window when saving fails. */
+  errorMessage?: string;
   onSave: () => void;
   onClose: () => void;
 }
@@ -17,7 +22,9 @@ type ValidatedTruckField =
   | "plateNumber"
   | "model"
   | "capacity"
-  | "status";
+  | "status"
+  | "branchId"
+  | "wasteType";
 
 type TruckFormErrors = Partial<
   Record<ValidatedTruckField, string>
@@ -43,6 +50,7 @@ export function TruckFormModal({
   setFormValue,
   saveLabel,
   driverOptions,
+  errorMessage = "",
   onSave,
   onClose,
 }: TruckFormModalProps) {
@@ -69,7 +77,9 @@ export function TruckFormModal({
       key === "plateNumber" ||
       key === "model" ||
       key === "capacity" ||
-      key === "status"
+      key === "status" ||
+      key === "branchId" ||
+      key === "wasteType"
     ) {
       clearError(key);
     }
@@ -86,6 +96,14 @@ export function TruckFormModal({
   function getFieldError(
     key: ValidatedTruckField,
   ): string | undefined {
+    if (key === "branchId") {
+      return formValue.branchId ? undefined : "Select the truck's branch.";
+    }
+
+    if (key === "wasteType") {
+      return formValue.wasteType ? undefined : "Select the waste type the truck carries.";
+    }
+
     const value = String(formValue[key] ?? "").trim();
 
     if (key === "plateNumber") {
@@ -168,6 +186,8 @@ export function TruckFormModal({
       "model",
       "capacity",
       "status",
+      "branchId",
+      "wasteType",
     ];
 
     const nextErrors: TruckFormErrors = {};
@@ -191,6 +211,14 @@ export function TruckFormModal({
 
   return (
     <Modal title={title} onClose={onClose} width={560}>
+      {errorMessage && (
+        <p
+          role="alert"
+          className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+        >
+          {errorMessage}
+        </p>
+      )}
       <p className="mb-4 text-xs text-gray-500">
         Fields marked with{" "}
         <span className="font-bold text-red-600">*</span>{" "}
@@ -333,6 +361,61 @@ export function TruckFormModal({
             ))}
           </select>
         </FormField>
+
+        <FormField
+          label="Branch"
+          required
+          error={errors.branchId}
+        >
+          <select
+            value={formValue.branchId}
+            aria-invalid={Boolean(errors.branchId)}
+            onChange={(event) => {
+              updateField("branchId", event.target.value);
+            }}
+            onBlur={() => {
+              validateField("branchId");
+            }}
+            className={getInputClass(Boolean(errors.branchId))}
+          >
+            <option value="">Select the truck&apos;s branch</option>
+            {BRANCHES.map((branch) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name} ({branch.city})
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <FormField
+          label="Waste Type"
+          required
+          error={errors.wasteType}
+        >
+          <select
+            value={formValue.wasteType}
+            aria-invalid={Boolean(errors.wasteType)}
+            onChange={(event) => {
+              updateField("wasteType", event.target.value as WasteType | "");
+            }}
+            onBlur={() => {
+              validateField("wasteType");
+            }}
+            className={getInputClass(Boolean(errors.wasteType))}
+          >
+            <option value="">Select the waste type it carries</option>
+            {WASTE_TYPES.map((wasteType) => (
+              <option key={wasteType} value={wasteType}>
+                {WASTE_TYPE_LABELS[wasteType]}
+              </option>
+            ))}
+          </select>
+        </FormField>
+
+        <p className="text-[11px] text-gray-500 sm:col-span-2">
+          Each truck carries one waste type. It is only offered for routes and hauling requests of
+          that type.
+        </p>
       </div>
 
       <ModalFooter
