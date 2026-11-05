@@ -134,7 +134,7 @@ function selectOption(option: SearchableSelectOption) {
     <div ref={containerRef} className="relative">
       <label
         htmlFor={inputId}
-        className="mb-1.5 block text-[12.5px] font-medium text-gray-700 dark:text-gray-200"
+        className="mb-1.5 block text-[10px] font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-400"
       >
         {label}
         {required && (
@@ -192,10 +192,10 @@ function selectOption(option: SearchableSelectOption) {
               setQuery("");
             }, 100);
           }}
-          className={`w-full rounded-lg border bg-white py-2.5 pl-9 pr-10 text-[13.5px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-900 ${
+          className={`h-9 w-full rounded-md border bg-white pl-9 pr-10 text-xs text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 dark:disabled:bg-gray-900 ${
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
-              : "border-gray-300 focus:border-brand focus:ring-brand/15"
+              : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
           }`}
         />
 
@@ -218,7 +218,7 @@ function selectOption(option: SearchableSelectOption) {
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
         >
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option, index) => {
@@ -237,7 +237,7 @@ function selectOption(option: SearchableSelectOption) {
                   onMouseEnter={() => {
                     setActiveIndex(index);
                   }}
-                  className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm ${
+                  className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-xs ${
                     isActive
                       ? "bg-brand/10 text-brand dark:bg-brand/20 dark:text-green-300"
                       : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"

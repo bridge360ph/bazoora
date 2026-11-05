@@ -19,7 +19,9 @@ import {
 } from "@/features/settings/api";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSignOut } from "@/features/auth/useSignOut";
-import { Button } from "@bazoora/ui";
+import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
+import { AdminTabs, type AdminTab } from "@/components/admin/AdminTabs";
+import { BUTTON_CLASSES } from "@/components/admin/AdminControls";
 import { PhilippineAddressFields } from "./PhilippineAddressFields";
 import { AddressLocator, type LatLng } from "./AddressLocator";
 
@@ -621,55 +623,22 @@ export function SettingsPage() {
     }
   }
 
+  const settingsTabs: AdminTab<Tab>[] = [
+    { value: "Account", label: "ACCOUNT" },
+    { value: "Notifications", label: "NOTIFICATIONS" },
+    ...(isAdmin ? [{ value: "System" as const, label: "SYSTEM" }] : []),
+  ];
+
   return (
-    <main className="h-full min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 text-gray-900 transition-colors dark:bg-gray-950 dark:text-gray-100 sm:p-6">
-      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="m-0 text-2xl font-extrabold text-gray-900 dark:text-white">
-            {isAdmin ? "Settings and System Configuration" : "Account Settings"}
-          </h1>
-          <p className="mt-1.5 text-[13px] text-gray-500 dark:text-gray-400">
-            {isAdmin
-              ? "Manage account details, notification preferences, and system behavior."
-              : "Manage your profile details and notification preferences."}
-          </p>
-        </div>
-      </section>
+    <AdminPage>
+      <AdminPanel>
+        <AdminTabs
+          tabs={settingsTabs}
+          active={tab}
+          onChange={setTab}
+        />
 
-      <div
-        className="mb-6 flex flex-wrap justify-center gap-2"
-        role="tablist"
-        aria-label="Settings sections"
-      >
-        <TabButton
-          active={tab === "Account"}
-          onClick={() => {
-            setTab("Account");
-          }}
-        >
-          Account
-        </TabButton>
-        <TabButton
-          active={tab === "Notifications"}
-          onClick={() => {
-            setTab("Notifications");
-          }}
-        >
-          Notifications
-        </TabButton>
-        {isAdmin && (
-          <TabButton
-            active={tab === "System"}
-            onClick={() => {
-              setTab("System");
-            }}
-          >
-            System
-          </TabButton>
-        )}
-      </div>
-
-      <div className="mx-auto max-w-[760px]">
+      <div className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-6">
         {tab === "Account" && (
           <>
             <SectionCard
@@ -866,9 +835,9 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isSavingProfile}>
+                <button className={BUTTON_CLASSES.primary} type="submit" disabled={isSavingProfile}>
                   {isSavingProfile ? "Saving..." : "Save Changes"}
-                </Button>
+                </button>
               </form>
             </SectionCard>
 
@@ -946,9 +915,9 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isUpdatingPassword}>
+                <button className={BUTTON_CLASSES.primary} type="submit" disabled={isUpdatingPassword}>
                   {isUpdatingPassword ? "Updating..." : "Update Password"}
-                </Button>
+                </button>
               </form>
             </SectionCard>
 
@@ -1012,7 +981,7 @@ export function SettingsPage() {
             />
 
             <div className="mt-6 flex flex-col items-center gap-2">
-              <Button
+              <button className={BUTTON_CLASSES.primary}
                 type="button"
                 disabled={!hasNotificationChanges || isSavingPreferences}
                 onClick={() => {
@@ -1024,7 +993,7 @@ export function SettingsPage() {
                   : hasNotificationChanges
                     ? "Save Preferences"
                     : "Preferences Saved"}
-              </Button>
+              </button>
 
               <p
                 className="text-center text-xs text-gray-500 dark:text-gray-400"
@@ -1078,7 +1047,7 @@ export function SettingsPage() {
               />
 
               <div className="mt-6 flex flex-col items-center gap-2">
-                <Button
+                <button className={BUTTON_CLASSES.primary}
                   type="button"
                   disabled={!hasSystemChanges || isSavingPreferences}
                   onClick={() => {
@@ -1090,7 +1059,7 @@ export function SettingsPage() {
                     : hasSystemChanges
                       ? "Save Preferences"
                       : "Preferences Saved"}
-                </Button>
+                </button>
 
                 <p
                   className="text-center text-xs text-gray-500 dark:text-gray-400"
@@ -1105,41 +1074,18 @@ export function SettingsPage() {
           </>
         )}
       </div>
+      </AdminPanel>
 
       {toast && (
         <div
-          className="fixed bottom-6 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-[10px] bg-brand px-[22px] py-3 text-[13.5px] font-medium text-white shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+          className="fixed bottom-6 left-1/2 z-[2000] flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-brand-dark px-5 py-2.5 text-xs font-medium text-white shadow-lg"
           role="status"
         >
           <CheckCircle2 size={17} aria-hidden="true" />
           <span>{toast}</span>
         </div>
       )}
-    </main>
-  );
-}
-
-interface TabButtonProps {
-  active: boolean;
-  children: ReactNode;
-  onClick: () => void;
-}
-
-function TabButton({ active, children, onClick }: TabButtonProps) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-lg border px-5 py-2 text-[13.5px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 ${
-        active
-          ? "border-brand bg-brand font-semibold text-white"
-          : "border-gray-200 bg-white font-medium text-gray-700 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-600 dark:hover:bg-gray-800"
-      }`}
-    >
-      {children}
-    </button>
+    </AdminPage>
   );
 }
 
@@ -1152,17 +1098,17 @@ interface SectionCardProps {
 
 function SectionCard({ icon, title, subtitle, children }: SectionCardProps) {
   return (
-    <section className="mb-[18px] rounded-xl border border-gray-200 bg-white px-5 py-6 shadow-sm transition-colors dark:border-gray-800 dark:bg-gray-900 sm:px-7">
-      <div className="mb-[22px] flex items-center gap-3.5">
+    <section className="mb-5 rounded-xl border border-gray-200 bg-white px-5 py-5 transition-colors last:mb-0 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
+      <div className="mb-5 flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-800">
         <div
-          className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-2 border-brand text-2xl text-brand"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-border text-brand-dark [&_svg]:h-4 [&_svg]:w-4"
           aria-hidden="true"
         >
           {icon}
         </div>
         <div>
-          <h2 className="m-0 text-lg font-extrabold text-gray-900 dark:text-white">{title}</h2>
-          <p className="mt-0.5 text-[13px] text-gray-500 dark:text-gray-400">{subtitle}</p>
+          <h2 className="m-0 text-sm font-bold text-gray-800 dark:text-white">{title}</h2>
+          <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">{subtitle}</p>
         </div>
       </div>
 
@@ -1202,7 +1148,7 @@ function Field({
 
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[12.5px] font-medium text-gray-700 dark:text-gray-200">
+      <span className="mb-1.5 block text-[10px] font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-400">
         {label}
         {required && (
           <span className="ml-1 text-red-600" aria-hidden="true">
@@ -1223,10 +1169,10 @@ function Field({
         autoComplete={autoComplete}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
-        className={`w-full rounded-lg border bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 ${
+        className={`h-9 w-full rounded-md border bg-white px-3 text-xs text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500 ${
           error
             ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
-            : "border-gray-300 focus:border-brand focus:ring-brand/15"
+            : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
         }`}
       />
       {error && (
@@ -1339,7 +1285,7 @@ function PasswordField({
 
   return (
     <label className="block">
-      <span className="mb-1.5 block text-[12.5px] font-medium text-gray-700 dark:text-gray-200">
+      <span className="mb-1.5 block text-[10px] font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-400">
         {label}
         <span className="ml-1 text-red-600" aria-hidden="true">
           *
@@ -1357,10 +1303,10 @@ function PasswordField({
           autoComplete={autoComplete}
           aria-invalid={Boolean(error)}
           aria-describedby={describedBy || undefined}
-          className={`w-full rounded-lg border bg-white px-3 py-2.5 pr-11 text-[13.5px] text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-950 dark:text-gray-100 ${
+          className={`h-9 w-full rounded-md border bg-white px-3 pr-11 text-xs text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-950 dark:text-gray-100 ${
             error
               ? "border-red-500 focus:border-red-500 focus:ring-red-500/15"
-              : "border-gray-300 focus:border-brand focus:ring-brand/15"
+              : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
           }`}
         />
         <button
@@ -1443,10 +1389,10 @@ function ToggleRow({ label, description, value, onChange }: ToggleRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-gray-100 py-4 last:border-b-0 dark:border-gray-800">
       <div>
-        <div className="mb-0.5 text-[15px] font-semibold text-gray-900 dark:text-gray-100">
+        <div className="mb-0.5 text-sm font-semibold text-gray-800 dark:text-gray-100">
           {label}
         </div>
-        <div className="text-[12.5px] text-gray-500 dark:text-gray-400">{description}</div>
+        <div className="text-[11px] text-gray-500 dark:text-gray-400">{description}</div>
       </div>
 
       <Toggle value={value} onChange={onChange} />
@@ -1468,7 +1414,7 @@ function Toggle({ value, onChange }: ToggleProps) {
       }}
       aria-pressed={value}
       className={`relative h-[26px] w-[46px] shrink-0 rounded-full p-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/20 ${
-        value ? "bg-brand" : "bg-gray-300"
+        value ? "bg-brand-dark" : "bg-gray-300"
       }`}
     >
       <span
