@@ -132,7 +132,19 @@ export default function EcoAideRoute(): React.ReactNode {
         const isDbCompleted = currentAssigned?.status === "Completed";
         setRouteCompleted(isDbCompleted);
 
-        if (currentAssigned?.waypoints) {
+        // Routes saved with map positions are used as is, with no lookups.
+        if (currentAssigned?.stopLocations && currentAssigned.stopLocations.length > 0) {
+          setStops(
+            currentAssigned.stopLocations.map((stop, i) => ({
+              id: `stop-${i + 1}`,
+              name: stop.name,
+              address: stop.address || stop.name,
+              lat: stop.lat,
+              lng: stop.lng,
+              status: isDbCompleted ? "completed" : i === 0 ? "active" : "pending",
+            })),
+          );
+        } else if (currentAssigned?.waypoints) {
           setIsGeocodingStops(true);
           const rawStops = currentAssigned.waypoints
             .split(",")
