@@ -127,12 +127,16 @@ model Route {
   // Picked on a map when the route is created or edited. Null on routes made
   // before this existed, which fall back to looking up the waypoint names.
   stopLocations     Json?
-  wasteType         String // "Regular" | "Recyclable" | "Regular/Non-Recyclable"
+  wasteType         String // "BIODEGRADABLE" | "RESIDUAL" | "NON_BIODEGRADABLE" | "HAZARDOUS"
   collectionDay     String // "Sunday" | "Monday" ...
   startTime         String
   status            String   @default("Not Started") // "In Progress" | "Completed" | "Not Started"
   stops             Int      @default(0)
+  // "Free": the regular collection that runs every week on collectionDay.
+  // "Paid": a one-time route built from approved hauling requests, run on
+  // collectionDate (collectionDay is then that date's weekday).
   routeType         String
+  collectionDate    DateTime?
   assignedEcoAideId String?  @unique
   assignedEcoAide   User?    @relation("AssignedEcoAide", fields: [assignedEcoAideId], references: [id])
   assignedTruckId   String?  @unique
@@ -199,6 +203,12 @@ model HaulingRequest {
   userId         String
   orgId          String?
   requestAddress String
+  // Map positions of the pickup stops, in the order the resident listed
+  // them: [{ address, lat, lng }]. Null for requests made before this.
+  pickupLocations Json?
+  // True when the resident wants the stops collected in the order listed.
+  // False lets the admin reorder them with Optimize Checkpoints.
+  keepStopOrder  Boolean              @default(false)
   senderType     SenderType
   wasteType      WasteType
   imageUrl       String?
