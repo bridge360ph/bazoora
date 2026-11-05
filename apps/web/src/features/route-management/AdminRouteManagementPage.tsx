@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
+import { Plus } from "lucide-react";
 import type { Route } from "@bazoora/shared";
 import {
   buildFreeRouteName,
@@ -13,7 +13,18 @@ import { useUpdateRoute } from "./hooks/useUpdateRoute";
 import { useAssignRouteEcoAide } from "../route-assignment/hooks/useAssignRouteEcoAide";
 import { useAssignRouteTruck } from "../route-assignment/hooks/useAssignRouteTruck";
 import { useDeleteRoute } from "./hooks/useDeleteRoute";
-import { RouteFiltersBar } from "./components/RouteFiltersBar";
+import { ROUTE_STATUS_FILTERS } from "./routeFilters.constants";
+import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
+import { AdminTabs } from "@/components/admin/AdminTabs";
+import {
+  AdminEmptySlot,
+  AdminLoadingList,
+  AdminNotice,
+  AdminRefreshButton,
+  AdminSearchInput,
+  BUTTON_CLASSES,
+} from "@/components/admin/AdminControls";
+import { AdminPagination, paginate } from "@/components/admin/AdminPagination";
 import { RouteCard } from "./components/RouteCard";
 import { RouteFormModal } from "./components/RouteFormModal";
 import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
@@ -37,7 +48,7 @@ type ModalMode =
   | "details"
   | null;
 
-const ROUTES_PAGE_SIZE = 4;
+const ROUTES_PAGE_SIZE = 10;
 
 const emptyRouteForm: RouteFormValue = {
   name: "",
@@ -89,6 +100,7 @@ export function AdminRouteManagementPage() {
   const [statusFilter, setStatusFilter] = useState<RouteStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(ROUTES_PAGE_SIZE);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [routeForm, setRouteForm] = useState<RouteFormValue>(emptyRouteForm);
@@ -105,35 +117,37 @@ export function AdminRouteManagementPage() {
     return () => clearTimeout(timeout);
   }, [successMessage]);
 
-  const filteredRoutes = useMemo(() => {
-    if (!routes) {
-      return [];
-    }
+  // Search applies before the status tabs, so each tab count shows what
+  // that tab would list.
+  const searchedRoutes = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
 
-    return routes.filter((route) => {
-      const matchesStatus =
-        statusFilter === "All" || route.status === statusFilter;
-
-      const normalizedSearch = searchValue.trim().toLowerCase();
-      const matchesSearch =
+    return (routes ?? []).filter(
+      (route) =>
         normalizedSearch.length === 0 ||
         route.id.toLowerCase().includes(normalizedSearch) ||
+        route.routeDisplayNumber.toLowerCase().includes(normalizedSearch) ||
         route.name.toLowerCase().includes(normalizedSearch) ||
-        route.barangay.toLowerCase().includes(normalizedSearch);
+        route.barangay.toLowerCase().includes(normalizedSearch),
+    );
+  }, [routes, searchValue]);
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [routes, searchValue, statusFilter]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredRoutes.length / ROUTES_PAGE_SIZE),
+  const filteredRoutes = useMemo(
+    () =>
+      statusFilter === "All"
+        ? searchedRoutes
+        : searchedRoutes.filter((route) => route.status === statusFilter),
+    [searchedRoutes, statusFilter],
   );
 
-  const paginatedRoutes = filteredRoutes.slice(
-    (page - 1) * ROUTES_PAGE_SIZE,
-    page * ROUTES_PAGE_SIZE,
-  );
+  const statusCounts: Record<RouteStatusFilter, number> = {
+    All: searchedRoutes.length,
+    "In Progress": searchedRoutes.filter((route) => route.status === "In Progress").length,
+    "Not Started": searchedRoutes.filter((route) => route.status === "Not Started").length,
+    Completed: searchedRoutes.filter((route) => route.status === "Completed").length,
+  };
+
+  const pagination = paginate(filteredRoutes, page, rowsPerPage);
 
   const handleStatusFilterChange = (value: RouteStatusFilter) => {
     setStatusFilter(value);
@@ -144,15 +158,6 @@ export function AdminRouteManagementPage() {
     setSearchValue(value);
     setPage(1);
   };
-
-  const completedCount =
-    routes?.filter((route) => route.status === "Completed").length ?? 0;
-
-  const inProgressCount =
-    routes?.filter((route) => route.status === "In Progress").length ?? 0;
-
-  const notStartedCount =
-    routes?.filter((route) => route.status === "Not Started").length ?? 0;
 
   function openCreateModal() {
     setSelectedRoute(null);
@@ -383,100 +388,109 @@ export function AdminRouteManagementPage() {
         assignTruckMutation.isPending
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex justify-end">
-        <Button onClick={openCreateModal}>+ Create Route</Button>
-      </div>
+    <AdminPage fill>
+      <AdminPanel className="h-full min-h-0">
+        <AdminTabs
+          tabs={ROUTE_STATUS_FILTERS.map((filter) => ({
+            value: filter,
+            label: filter.toUpperCase(),
+            count: statusCounts[filter],
+          }))}
+          active={statusFilter}
+          onChange={handleStatusFilterChange}
+          actions={
+            <>
+              <AdminRefreshButton onClick={refetch} isRefreshing={isLoading} label="Refresh routes" />
+              <button type="button" onClick={openCreateModal} className={BUTTON_CLASSES.primary}>
+                <Plus className="h-3.5 w-3.5" />
+                Create Route
+              </button>
+            </>
+          }
+        />
 
-      {successMessage && (
-        <div className="mb-4 rounded-md bg-green-50 px-4 py-2 text-sm text-green-700">
-          {successMessage}
-        </div>
-      )}
-
-      <div className="mb-5 grid grid-cols-3 gap-4">
-        <StatCard label="Completed" value={completedCount} />
-        <StatCard label="In Progress" value={inProgressCount} />
-        <StatCard label="Not Started" value={notStartedCount} />
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-4">
-        <div>
-          <RouteFiltersBar
-            statusFilter={statusFilter}
-            onStatusFilterChange={handleStatusFilterChange}
-            searchValue={searchValue}
-            onSearchChange={handleSearchChange}
+        <div className="shrink-0 px-6 pt-5">
+          <AdminSearchInput
+            value={searchValue}
+            onChange={handleSearchChange}
+            placeholder="Search route by ID, name or barangay"
           />
+        </div>
 
-          {isLoading && (
-            <div className="py-16 text-center text-sm text-gray-400">
-              Loading routes…
+        <div className="flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
+          {successMessage && (
+            <div className="mb-3">
+              <AdminNotice tone="success" onDismiss={() => setSuccessMessage(null)}>
+                {successMessage}
+              </AdminNotice>
             </div>
           )}
 
+          {isLoading && <AdminLoadingList />}
+
           {isError && (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-sm text-red-600">
-                Couldn&apos;t load routes
-                {error instanceof Error ? `: ${error.message}` : "."}
-              </p>
-              <Button variant="secondary" onClick={() => refetch()}>
-                Retry
-              </Button>
-            </div>
+            <AdminEmptySlot>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-red-600">
+                  Couldn&apos;t load routes
+                  {error instanceof Error ? `: ${error.message}` : "."}
+                </p>
+                <button type="button" onClick={() => refetch()} className={BUTTON_CLASSES.ghost}>
+                  Retry
+                </button>
+              </div>
+            </AdminEmptySlot>
           )}
 
           {!isLoading && !isError && (
             <>
-              <div>
-                {paginatedRoutes.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-gray-400">
+              <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto pr-1">
+                {pagination.pageItems.map((route) => (
+                  <RouteCard
+                    key={route.id}
+                    route={route}
+                    onEdit={() => {
+                      openEditModal(route);
+                    }}
+                    onAssign={() => {
+                      openAssignModal(route);
+                    }}
+                    onAssignTruck={() => {
+                      openAssignTruckModal(route);
+                    }}
+                    onView={() => {
+                      openDetails(route);
+                    }}
+                    onDelete={() => {
+                      openDeleteModal(route);
+                    }}
+                  />
+                ))}
+
+                {pagination.total === 0 ? (
+                  <AdminEmptySlot>
                     {routes && routes.length === 0
                       ? "No routes have been created yet."
                       : "No routes match the current filter."}
-                  </div>
+                  </AdminEmptySlot>
                 ) : (
-                  paginatedRoutes.map((route) => (
-                    <RouteCard
-                      key={route.id}
-                      route={route}
-                      onEdit={() => {
-                        openEditModal(route);
-                      }}
-                      onAssign={() => {
-                        openAssignModal(route);
-                      }}
-                      onAssignTruck={() => {
-                        openAssignTruckModal(route);
-                      }}
-                      onView={() => {
-                        openDetails(route);
-                      }}
-                      onDelete={() => {
-                        openDeleteModal(route);
-                      }}
-                    />
-                  ))
+                  pagination.page === pagination.totalPages && <AdminEmptySlot>No more routes</AdminEmptySlot>
                 )}
               </div>
 
-              <PaginationControls
-                page={page}
-                totalPages={totalPages}
-                onPrev={() => setPage((current) => Math.max(1, current - 1))}
-                onNext={() =>
-                  setPage((current) => Math.min(totalPages, current + 1))
-                }
+              <AdminPagination
+                {...pagination}
+                onPageChange={setPage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(rows) => {
+                  setRowsPerPage(rows);
+                  setPage(1);
+                }}
               />
             </>
           )}
         </div>
-
-        <div className="min-h-[420px] overflow-hidden rounded-xl bg-[#e8ece8]">
-          <MapPreviewPlaceholder />
-        </div>
-      </div>
+      </AdminPanel>
 
       {modalMode === "chooseType" && (
         <RouteTypeChooserModal
@@ -563,6 +577,6 @@ export function AdminRouteManagementPage() {
       {modalMode === "details" && selectedRoute && (
         <RouteDetailsModal route={selectedRoute} onClose={closeModal} />
       )}
-    </div>
+    </AdminPage>
   );
 }

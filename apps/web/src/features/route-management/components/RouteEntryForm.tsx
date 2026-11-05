@@ -287,7 +287,7 @@ export function RouteEntryForm({
   // Not a FormField: that renders a <label>, which would swallow clicks on
   // the map and the stop buttons inside it.
   const waypointsBlock = (
-    <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+    <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
       <span className="inline-flex items-center justify-between gap-2">
         <span>
           {isFree ? "Collection Points" : "Waypoints / Collection Points"}
@@ -347,9 +347,9 @@ export function RouteEntryForm({
   return (
     <div className="flex flex-col gap-4">
       {isFree ? (
-        <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+        <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
           <span>Route Name</span>
-          <p className="rounded-md bg-gray-50 px-3 py-2 text-sm font-normal text-gray-700">
+          <p className="rounded-md bg-gray-50 px-3 py-2.5 text-xs font-normal text-gray-700">
             {formValue.name || "Named after the barangay, collection day and start time"}
           </p>
         </div>
@@ -361,7 +361,7 @@ export function RouteEntryForm({
             updateField("name", event.target.value);
           }}
           placeholder="Enter Route Name"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
         />
         {showNameError && (
           <p className="mt-1 text-xs text-red-600">
@@ -373,7 +373,7 @@ export function RouteEntryForm({
 
       {isFree ? (
         // Not a FormField: that renders a <label> around the pickers.
-        <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+        <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
           <span>
             Barangay Coverage
             <span aria-hidden="true" className="ml-1 text-red-500">*</span>
@@ -407,7 +407,7 @@ export function RouteEntryForm({
             updateField("barangay", event.target.value);
           }}
           placeholder="Enter Barangay Coverage"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
         />
         {showBarangayError && (
           <p className="mt-1 text-xs text-red-600">
@@ -425,7 +425,7 @@ export function RouteEntryForm({
           onChange={(event) => {
             updateField("wasteType", event.target.value as WasteType);
           }}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
         >
           {WASTE_TYPES.map((wasteType) => (
             <option key={wasteType} value={wasteType}>
@@ -437,9 +437,9 @@ export function RouteEntryForm({
 
       {/* Chosen when the route is created and not changed afterwards: a Paid
           route belongs to one hauling request. */}
-      <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+      <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
         <span>Route Type</span>
-        <p className="rounded-md bg-gray-50 px-3 py-2 text-sm font-normal text-gray-700">
+        <p className="rounded-md bg-gray-50 px-3 py-2.5 text-xs font-normal text-gray-700">
           {formValue.routeType === "Paid"
             ? "Paid · One-time collection for a hauling request"
             : "Free · Weekly garbage day route"}
@@ -455,7 +455,7 @@ export function RouteEntryForm({
               onChange={(event) => {
                 updateField("collectionDate", event.target.value);
               }}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+              className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
             />
           </FormField>
         ) : (
@@ -465,7 +465,7 @@ export function RouteEntryForm({
               onChange={(event) => {
                 updateField("collectionDay", event.target.value as CollectionDay);
               }}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+              className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
             >
               {COLLECTION_DAYS.map((day) => {
                 const taken = takenByDay.get(day);
@@ -529,7 +529,7 @@ export function RouteEntryForm({
             onChange={(event) => {
               updateField("assignedEcoAideId", event.target.value || null);
             }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
           >
             <option value="">Unassigned</option>
             {availableEcoAides.map((ecoAide) => (
@@ -559,7 +559,7 @@ export function RouteEntryForm({
               onChange={(event) => {
                 updateField("assignedTruckId", event.target.value || null);
               }}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+              className="h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary"
             >
               <option value="">Unassigned</option>
               {availableTrucks.map((truck) => (
