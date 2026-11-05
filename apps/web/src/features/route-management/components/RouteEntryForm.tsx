@@ -17,13 +17,18 @@ import {
 } from "../route.types.ts";
 import { isInsideArea, type AreaBoundary } from "@/lib/area";
 import { generateBarangayStops } from "@/lib/barangayStops";
+import { BRANCHES, branchById } from "@/lib/branches";
+import { nearestBranchId } from "@bazoora/shared";
 import { RouteStopsEditor } from "./RouteStopsEditor";
 import { BarangayPicker } from "./BarangayPicker";
 import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
 import {
-  formatTruckOption,
+  formatTruckWithBranch,
   getAvailableEcoAides,
   getAvailableTrucks,
+  getTrucksForBranch,
+  getTrucksForWasteType,
+  sortTrucksByBranch,
 } from "../../route-assignment/routeAssignmentApi";
 import { useTruckOptions } from "../../route-assignment/hooks/useTruckOptions";
 
@@ -167,6 +172,20 @@ export function RouteEntryForm({
     setFormValue((currentValue) => {
       const next = { ...currentValue, [key]: value };
 
+      // The route path starts from the picked truck's branch.
+      if (key === "assignedTruckId") {
+        const truckBranch = trucks.find((truck) => truck.id === value)?.branchId;
+        if (branchById(truckBranch)) next.startBranchId = truckBranch ?? null;
+      }
+
+      // A truck that does not carry the new waste type is taken off.
+      if (key === "wasteType" && next.assignedTruckId) {
+        const truck = trucks.find((option) => option.id === next.assignedTruckId);
+        if (truck && truck.wasteType !== value) {
+          next.assignedTruckId = null;
+        }
+      }
+
       if (next.routeType === "Paid") return next;
 
       return {
@@ -200,7 +219,7 @@ export function RouteEntryForm({
     setGeneration({ forArea, status: "loading", count: 0, branchName: null });
 
     try {
-      const result = await generateBarangayStops(area, formValue.barangay);
+      const result = await generateBarangayStops(area, formValue.barangay, routeBranch);
       const stamp = Date.now().toString(36);
 
       setFormValue((current) => ({
@@ -209,12 +228,13 @@ export function RouteEntryForm({
           id: `gen-${stamp}-${index}`,
           ...stop,
         })),
+        startBranchId: result.branch?.id ?? current.startBranchId,
       }));
       setGeneration({
         forArea,
         status: result.source,
         count: result.stops.length,
-        branchName: result.branchName,
+        branchName: result.branch?.name ?? null,
       });
     } catch {
       setGeneration({ forArea, status: "error", count: 0, branchName: null });
@@ -250,8 +270,56 @@ export function RouteEntryForm({
     isError: trucksErrored,
   } = useTruckOptions();
 
-  // A new route has no id yet, so only free trucks are offered.
-  const availableTrucks = getAvailableTrucks(trucks, editingRouteId ?? "");
+  // A new route has no id yet, so only free trucks are offered. Of those,
+  // only trucks carrying the route's waste type, nearest branch first.
+  const freeTrucks = getAvailableTrucks(trucks, editingRouteId ?? "");
+  const wasteMatches = getTrucksForWasteType(
+    freeTrucks,
+    formValue.wasteType,
+    formValue.assignedTruckId,
+  );
+  const selectedTruck = trucks.find((truck) => truck.id === formValue.assignedTruckId);
+  const truckBranch = branchById(selectedTruck?.branchId);
+  // A weekly route is run from the branch nearest its barangay (or its stops
+  // until the barangay is found). Only trucks from that branch are offered.
+  const areaBranch =
+    isFree && area
+      ? branchById(nearestBranchId([{ lat: area.center[0], lng: area.center[1] }], BRANCHES))
+      : null;
+  const stopsBranch = branchById(
+    nearestBranchId(
+      formValue.stops.filter(isLocatedStop).map((stop) => ({ lat: stop.lat, lng: stop.lng })),
+      BRANCHES,
+    ),
+  );
+  const savedBranch = branchById(formValue.startBranchId);
+  const effectiveBranchId =
+    (isFree ? (areaBranch ?? stopsBranch ?? savedBranch) : (savedBranch ?? stopsBranch))?.id ??
+    null;
+  // The garage the route path starts from: the truck's branch once a truck
+  // is picked, otherwise the route's branch.
+  const routeBranch = truckBranch ?? branchById(effectiveBranchId);
+  const availableTrucks = sortTrucksByBranch(
+    getTrucksForBranch(
+      wasteMatches,
+      formValue.routeType,
+      effectiveBranchId,
+      formValue.assignedTruckId,
+    ),
+    effectiveBranchId,
+  );
+  const hiddenTruckCount = freeTrucks.length - wasteMatches.length;
+  const otherBranchTruckCount = wasteMatches.length - availableTrucks.length;
+  const routeBranchId = routeBranch?.id ?? null;
+
+  // Keep the saved branch in step with the route's branch.
+  useEffect(() => {
+    if (!routeBranchId || formValue.startBranchId === routeBranchId) return;
+    const timer = setTimeout(() => {
+      setFormValue((current) => ({ ...current, startBranchId: routeBranchId }));
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [routeBranchId, formValue.startBranchId, setFormValue]);
   // Only flag a field once the user has put something in it — an empty,
   // untouched form shouldn't open with validation errors already showing.
   const showNameError =
@@ -329,6 +397,10 @@ export function RouteEntryForm({
           updateField("stops", stops);
         }}
         barangay={formValue.barangay}
+        startBranch={routeBranch}
+        onPlannedBranchChange={(branch) => {
+          updateField("startBranchId", branch.id);
+        }}
         {...(isFree && {
           area,
           areaName: barangayNameOf(formValue.barangay) || "the barangay",
@@ -564,13 +636,40 @@ export function RouteEntryForm({
               <option value="">Unassigned</option>
               {availableTrucks.map((truck) => (
                 <option key={truck.id} value={truck.id}>
-                  {formatTruckOption(truck)} · {truck.status}
+                  {formatTruckWithBranch(truck)} · {truck.status}
                 </option>
               ))}
             </select>
-            {availableTrucks.length === 0 && (
+            {availableTrucks.length === 0 ? (
               <p className="mt-1 text-xs text-gray-500">
-                All trucks are already assigned to other routes.
+                {freeTrucks.length === 0
+                  ? "All trucks are already assigned to other routes."
+                  : routeBranch && formValue.routeType !== "Paid"
+                    ? `No free truck from ${routeBranch.name} carries this waste type.`
+                    : "No free truck carries this waste type. Add it to a truck in Fleet Management."}
+              </p>
+            ) : (
+              hiddenTruckCount > 0 && (
+                <p className="mt-1 text-xs font-normal text-gray-500">
+                  {hiddenTruckCount === 1 ? "1 free truck is" : `${hiddenTruckCount} free trucks are`}{" "}
+                  hidden because {hiddenTruckCount === 1 ? "it does" : "they do"} not carry this
+                  waste type.
+                </p>
+              )
+            )}
+            {otherBranchTruckCount > 0 && routeBranch && (
+              <p className="mt-1 text-xs font-normal text-gray-500">
+                This route is run from {routeBranch.name}.{" "}
+                {otherBranchTruckCount === 1
+                  ? "1 truck from another branch is"
+                  : `${otherBranchTruckCount} trucks from other branches are`}{" "}
+                hidden.
+              </p>
+            )}
+            {selectedTruck && !truckBranch && (
+              <p className="mt-1 text-xs text-amber-700">
+                This truck has no branch yet. Set it in Fleet Management so the route path has a
+                starting point.
               </p>
             )}
           </>

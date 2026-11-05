@@ -5,6 +5,7 @@ import type { HaulingRequest, Route } from "@bazoora/shared";
 import { useHaulingRequests } from "@/features/hauling-requests/hooks/useHaulingRequests";
 import { useCreatePaidHaulingRoute } from "@/features/hauling-requests/hooks/useCreatePaidHaulingRoute";
 import { useHaulingFeasibility } from "@/features/hauling-requests/hooks/useHaulingFeasibility";
+import { branchById } from "@/lib/branches";
 import { FeasibilityPanel } from "@/features/hauling-requests/components/FeasibilityPanel";
 import { WASTE_TYPE_DISPLAY } from "@/features/hauling-requests/haulingRequestManagement.constants";
 import {
@@ -131,11 +132,23 @@ export function PaidRouteFormModal({
         ? toEditableStops(selected, feasibility.pickupStops)
         : [];
 
-  const availableTrucks = feasibility.result?.availableTrucks ?? [];
+  // Free trucks that carry the request's waste type, nearest first.
+  const freeTrucks = feasibility.result?.availableTrucks ?? [];
+  const availableTrucks = [...freeTrucks].sort((a, b) => {
+    const rank = (id: string) => {
+      const index = feasibility.truckOrder.indexOf(id);
+      return index === -1 ? Number.POSITIVE_INFINITY : index;
+    };
+    return rank(a.id) - rank(b.id);
+  });
   const effectiveTruckId =
     truckId && availableTrucks.some((truck) => truck.id === truckId)
       ? truckId
-      : (availableTrucks[0]?.id ?? "");
+      : (feasibility.recommendedTruckId ?? availableTrucks[0]?.id ?? "");
+  // The route path starts from the chosen truck's branch.
+  const truckBranch = branchById(
+    availableTrucks.find((truck) => truck.id === effectiveTruckId)?.branchId,
+  );
 
   function selectRequest(request: HaulingRequest) {
     const defaults = defaultsFor(request);
@@ -324,6 +337,7 @@ export function PaidRouteFormModal({
                     setEditedStops({ requestId: selected.requestId, stops: next })
                   }
                   barangay=""
+                  startBranch={truckBranch}
                   {...(selected.keepStopOrder && {
                     optimizeLockedReason: "The resident asked for this stop order.",
                   })}
@@ -336,8 +350,8 @@ export function PaidRouteFormModal({
                 <p className="text-sm text-gray-500">Loading free trucks...</p>
               ) : availableTrucks.length === 0 ? (
                 <p className="text-sm text-red-600">
-                  No free truck with a driver. Free a truck from another route or register one in
-                  Fleet Management.
+                  No free truck with a driver carries this waste type. Free a truck from another
+                  route, or set a branch and waste type on a truck in Fleet Management.
                 </p>
               ) : (
                 <select
@@ -347,7 +361,13 @@ export function PaidRouteFormModal({
                 >
                   {availableTrucks.map((truck) => (
                     <option key={truck.id} value={truck.id}>
-                      {[truck.truckNumber, truck.plateNumber, truck.driverName ?? "No driver name"]
+                      {[
+                        truck.truckNumber,
+                        truck.plateNumber,
+                        truck.driverName ?? "No driver name",
+                        branchById(truck.branchId)?.name,
+                        truck.id === feasibility.recommendedTruckId ? "Nearest" : null,
+                      ]
                         .filter(Boolean)
                         .join(" · ")}
                     </option>
