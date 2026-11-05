@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
   Plus,
   Route as RouteIcon,
-  UserPlus,
+  Truck as TruckIcon,
   UserRound,
+  UsersRound,
 } from "lucide-react";
+import { FleetDriversView } from "./components/FleetDriversView";
 import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
 import { AdminTabs } from "@/components/admin/AdminTabs";
 import {
@@ -29,6 +32,7 @@ import {
   createDriver,
   createTruck,
   deleteTruck,
+  FLEET_DRIVERS_QUERY_KEY,
   fetchFleetAssignmentOptions,
   fetchTrucks,
   updateTruck,
@@ -42,6 +46,8 @@ import { RemoveTruckModal } from "./components/RemoveTruckModal";
 import { useAuthStore, type UserRole } from "@/stores/auth-store";
 
 type ModalMode = "register" | "edit" | "assign" | "addDriver" | "remove" | null;
+
+type FleetView = "trucks" | "drivers";
 
 // Roles that POST /auth/register-staff allows to create drivers, in the
 // store's lowercase form (see mapApiRole in features/auth/roles.ts).
@@ -75,6 +81,8 @@ const emptyTruckForm: TruckFormValue = {
 };
 
 export function AdminFleetManagementPage() {
+  const queryClient = useQueryClient();
+  const [view, setView] = useState<FleetView>("trucks");
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [statusFilter, setStatusFilter] = useState<TruckStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
@@ -254,6 +262,9 @@ export function AdminFleetManagementPage() {
       setEcoAideOptions(assignmentOptions.ecoAides);
       setDriverOptions(assignmentOptions.drivers);
 
+      // The Drivers view lists the new account.
+      await queryClient.invalidateQueries({ queryKey: FLEET_DRIVERS_QUERY_KEY });
+
       setModalMode(null);
       setDriverForm(emptyDriverForm);
     } catch (error) {
@@ -262,6 +273,23 @@ export function AdminFleetManagementPage() {
       );
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // A removed driver leaves their truck driverless, so the truck list and
+  // the driver dropdown are reloaded.
+  async function reloadAfterDriverChange() {
+    try {
+      const [truckRecords, assignmentOptions] = await Promise.all([
+        fetchTrucks(),
+        fetchFleetAssignmentOptions(),
+      ]);
+      setTrucks(truckRecords);
+      setDriverOptions(assignmentOptions.drivers);
+    } catch (error) {
+      setRequestError(
+        error instanceof Error ? error.message : "Fleet records could not be refreshed.",
+      );
     }
   }
 
@@ -374,6 +402,20 @@ export function AdminFleetManagementPage() {
   return (
     <AdminPage fill>
       <AdminPanel className="h-full min-h-0">
+        <div className="flex shrink-0 justify-center px-6 pt-5">
+          <FleetViewSwitch view={view} onChange={setView} />
+        </div>
+
+        {view === "drivers" ? (
+          <FleetDriversView
+            canAddDriver={canAddDriver}
+            onAddDriver={openAddDriverModal}
+            onDriverRemoved={() => {
+              void reloadAfterDriverChange();
+            }}
+          />
+        ) : (
+        <>
         <AdminTabs
           tabs={statusFilters.map((filter) => ({
             value: filter,
@@ -386,18 +428,10 @@ export function AdminFleetManagementPage() {
             setPage(1);
           }}
           actions={
-            <>
-              {canAddDriver && (
-                <button type="button" onClick={openAddDriverModal} className={BUTTON_CLASSES.ghost}>
-                  <UserPlus className="h-3.5 w-3.5" />
-                  Add Driver
-                </button>
-              )}
-              <button type="button" onClick={openRegisterModal} className={BUTTON_CLASSES.primary}>
-                <Plus className="h-3.5 w-3.5" />
-                Register Truck
-              </button>
-            </>
+            <button type="button" onClick={openRegisterModal} className={BUTTON_CLASSES.primary}>
+              <Plus className="h-3.5 w-3.5" />
+              Register Truck
+            </button>
           }
         />
 
@@ -499,6 +533,8 @@ export function AdminFleetManagementPage() {
             </>
           )}
         </div>
+        </>
+        )}
       </AdminPanel>
 
       {modalMode === "register" && (
@@ -564,6 +600,34 @@ export function AdminFleetManagementPage() {
         />
       )}
     </AdminPage>
+  );
+}
+
+function FleetViewSwitch({
+  view,
+  onChange,
+}: {
+  view: FleetView;
+  onChange: (view: FleetView) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5" role="tablist">
+      {(["trucks", "drivers"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="tab"
+          aria-selected={view === option}
+          onClick={() => onChange(option)}
+          className={`inline-flex h-8 cursor-pointer items-center gap-1.5 rounded px-4 text-xs font-semibold transition ${
+            view === option ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"
+          }`}
+        >
+          {option === "trucks" ? <TruckIcon className="h-3.5 w-3.5" /> : <UsersRound className="h-3.5 w-3.5" />}
+          {option === "trucks" ? "Trucks" : "Drivers"}
+        </button>
+      ))}
+    </div>
   );
 }
 
