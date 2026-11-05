@@ -29,6 +29,14 @@ export interface AssignedEcoAide {
   userNumber: string | null;
 }
 
+/** A route stop placed on the map: its label, full address and position. */
+export interface RouteStopLocation {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 export interface AssignedTruck {
   id: string;
   truckNumber: string | null;
@@ -53,6 +61,8 @@ export interface Route {
   assignedEcoAide: AssignedEcoAide | null;
   assignedTruckId: string | null;
   assignedTruck: AssignedTruck | null;
+  /** Null on routes created before stops were placed on a map. */
+  stopLocations: RouteStopLocation[] | null;
 }
 
 export interface RouteFormValue {
