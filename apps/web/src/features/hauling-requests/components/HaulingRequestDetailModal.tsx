@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
-import { Check, ImageOff, Route as RouteIcon, X } from "lucide-react";
+import { Check, ImageOff, Route as RouteIcon, ShieldCheck, X } from "lucide-react";
 
 import {
   SENDER_DISPLAY,
@@ -13,11 +13,14 @@ import {
 } from "../haulingRequestFormat";
 import { AdminModalShell, BUTTON_CLASSES, DetailField } from "./AdminModalShell";
 import { HaulingStatusBadge } from "./HaulingStatusBadge";
+import { FeasibilityPanel } from "./FeasibilityPanel";
+import { useHaulingFeasibility } from "../hooks/useHaulingFeasibility";
 
 interface HaulingRequestDetailModalProps {
   request: HaulingRequest;
   onClose: () => void;
-  onApproveClick: () => void;
+  /** Opens Create Paid Route for this request. Shown once it passes the feasibility check. */
+  onApproveAndCreateRoute: () => void;
   onDenyClick: () => void;
   onAssignRouteClick: () => void;
 }
@@ -32,13 +35,17 @@ interface HaulingRequestDetailModalProps {
 export function HaulingRequestDetailModal({
   request,
   onClose,
-  onApproveClick,
+  onApproveAndCreateRoute,
   onDenyClick,
   onAssignRouteClick,
 }: HaulingRequestDetailModalProps): ReactNode {
   const pickups = getPickupAddresses(request.requestAddress);
   const isPending = request.status === "PENDING";
   const isApproved = request.status === "APPROVED";
+  // The checks run only once the admin asks for them.
+  const [showFeasibility, setShowFeasibility] = useState(false);
+  const feasibility = useHaulingFeasibility(request, isPending && showFeasibility);
+  const hasChecked = showFeasibility && !feasibility.isChecking;
 
   return (
     <AdminModalShell
@@ -47,15 +54,41 @@ export function HaulingRequestDetailModal({
       onClose={onClose}
       maxWidthClassName="max-w-2xl"
       footer={
-        isPending ? (
+        isPending && !hasChecked ? (
+          // Deny and Approve appear only after the request has been checked.
+          <>
+            <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+              Close
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFeasibility(true)}
+              disabled={showFeasibility}
+              className={BUTTON_CLASSES.primary}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {showFeasibility ? "Checking..." : "Check Feasibility"}
+            </button>
+          </>
+        ) : isPending ? (
           <>
             <button type="button" onClick={onDenyClick} className={BUTTON_CLASSES.danger}>
               <X className="h-3.5 w-3.5" />
               Deny
             </button>
-            <button type="button" onClick={onApproveClick} className={BUTTON_CLASSES.primary}>
+            <button
+              type="button"
+              onClick={onApproveAndCreateRoute}
+              disabled={feasibility.hasFailure}
+              title={
+                feasibility.hasFailure
+                  ? "This request did not pass the feasibility check"
+                  : undefined
+              }
+              className={BUTTON_CLASSES.primary}
+            >
               <Check className="h-3.5 w-3.5" />
-              Approve
+              Approve &amp; Create Route
             </button>
           </>
         ) : isApproved ? (
@@ -125,6 +158,13 @@ export function HaulingRequestDetailModal({
                 </li>
               ))}
             </ol>
+            {pickups.length > 1 && (
+              <span className="mt-1.5 block text-[11px] font-normal text-gray-500">
+                {request.keepStopOrder
+                  ? "Stop order: the resident asked for the order listed."
+                  : "Stop order: any order. The route can be optimized."}
+              </span>
+            )}
           </DetailField>
 
           {request.note && (
@@ -188,6 +228,18 @@ export function HaulingRequestDetailModal({
           </div>
         </DetailField>
       </div>
+
+      {isPending && showFeasibility && (
+        <div className="mt-5">
+          <FeasibilityPanel feasibility={feasibility} />
+          {hasChecked && !feasibility.hasFailure && (
+            <p className="mt-2 text-[11px] text-gray-500">
+              Approve &amp; Create Route opens a Paid route for this request. The request is
+              approved when the route is created.
+            </p>
+          )}
+        </div>
+      )}
     </AdminModalShell>
   );
 }
