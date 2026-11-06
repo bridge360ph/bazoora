@@ -4,7 +4,12 @@ import { geocode, reverseGeocode } from "@/lib/geocoding";
 
 import { MAX_ADDRESS_LENGTH, MAX_PICKUP_ADDRESSES } from "./constants";
 import type { LatLng, PickupAddress } from "./types";
-import { createEmptyAddress, formatCoordinates } from "./utils";
+import {
+  DUPLICATE_PICKUP_MESSAGE,
+  createEmptyAddress,
+  formatCoordinates,
+  isDuplicatePickup,
+} from "./utils";
 
 /**
  * Owns the list of pickup addresses, which one is active,
@@ -78,8 +83,15 @@ export function usePickupAddresses({
         return;
       }
 
+      const address = clampAddress(match.display_name?.trim() || query);
+
+      if (isDuplicatePickup(addresses, target.id, address, [lat, lng])) {
+        onError(DUPLICATE_PICKUP_MESSAGE);
+        return;
+      }
+
       updateById(target.id, {
-        address: clampAddress(match.display_name?.trim() || query),
+        address,
         position: [lat, lng],
       });
     } catch (error) {
@@ -101,18 +113,95 @@ export function usePickupAddresses({
     setIsResolving(true);
     onError(null);
 
+    let address = formatCoordinates(position);
+
     try {
       const result = await reverseGeocode(position[0], position[1]);
-
-      updateById(target.id, {
-        address: clampAddress(
-          result?.display_name?.trim() || formatCoordinates(position),
-        ),
-        position,
-      });
+      address = clampAddress(result?.display_name?.trim() || address);
     } catch (error) {
       console.error("Failed to reverse geocode map location:", error);
-      updateById(target.id, { address: formatCoordinates(position), position });
+    }
+
+    try {
+      if (isDuplicatePickup(addresses, target.id, address, position)) {
+        onError(DUPLICATE_PICKUP_MESSAGE);
+        return;
+      }
+
+      updateById(target.id, { address, position });
+    } finally {
+      setIsResolving(false);
+    }
+  }
+
+  /**
+   * Puts the address saved in Settings into the first empty row (or a new
+   * one) and finds it on the map. The street is tried first, then only the
+   * barangay and city if the street is not on the map.
+   */
+  async function applySavedAddress(saved: {
+    label: string;
+    areaLabel: string;
+    position: LatLng | null;
+  }) {
+    if (isDuplicatePickup(addresses, "", saved.label, saved.position)) {
+      onError(DUPLICATE_PICKUP_MESSAGE);
+      return;
+    }
+
+    const emptyIndex = addresses.findIndex((item) => !item.address.trim());
+
+    if (emptyIndex === -1 && addresses.length >= MAX_PICKUP_ADDRESSES) {
+      onError(`You can add up to ${MAX_PICKUP_ADDRESSES} pickup addresses.`);
+      return;
+    }
+
+    const row = emptyIndex === -1 ? createEmptyAddress() : addresses[emptyIndex];
+    if (!row) return;
+
+    const address = clampAddress(saved.label);
+
+    // The pin placed in Settings is used as is, with no lookup.
+    const position = saved.position;
+
+    if (emptyIndex === -1) {
+      setAddresses((current) => [...current, { ...row, address, position }]);
+      setActiveIndex(addresses.length);
+    } else {
+      updateById(row.id, { address, position });
+      setActiveIndex(emptyIndex);
+    }
+
+    if (position) {
+      onError(null);
+      return;
+    }
+
+    setIsResolving(true);
+    onError(null);
+
+    try {
+      for (const query of [saved.label, saved.areaLabel]) {
+        const [match] = (await geocode(query, { limit: 1, countryCodes: "ph" })) ?? [];
+        const lat = Number(match?.lat);
+        const lng = Number(match?.lon);
+
+        if (match && Number.isFinite(lat) && Number.isFinite(lng)) {
+          if (isDuplicatePickup(addresses, row.id, "", [lat, lng])) {
+            updateById(row.id, { address: "", position: null });
+            onError(DUPLICATE_PICKUP_MESSAGE);
+            return;
+          }
+
+          updateById(row.id, { position: [lat, lng] });
+          return;
+        }
+      }
+
+      onError("Your saved address could not be found on the map. Click the map to place it.");
+    } catch (error) {
+      console.error("Failed to locate the saved address:", error);
+      onError("Unable to locate your saved address. Click the map to place it.");
     } finally {
       setIsResolving(false);
     }
@@ -157,6 +246,7 @@ export function usePickupAddresses({
     changeAddress,
     resolveAddress,
     selectMapPosition,
+    applySavedAddress,
     addAddress,
     removeAddress,
     reset,

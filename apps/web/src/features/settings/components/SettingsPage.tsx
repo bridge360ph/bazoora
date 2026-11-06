@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   CheckCircle2,
@@ -20,6 +21,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useSignOut } from "@/features/auth/useSignOut";
 import { Button } from "@bazoora/ui";
 import { PhilippineAddressFields } from "./PhilippineAddressFields";
+import { AddressLocator, type LatLng } from "./AddressLocator";
 
 type Tab = "Account" | "Notifications" | "System";
 
@@ -34,6 +36,12 @@ interface ProfileErrors {
   cityMunicipality?: string;
   province?: string;
   postalCode?: string;
+  location?: string;
+}
+
+/** The address a map pin was placed for. A changed address needs a new pin. */
+function addressKey(parts: string[]): string {
+  return parts.map((part) => part.trim().toLowerCase().replace(/\s+/g, " ")).join("|");
 }
 
 interface PasswordErrors {
@@ -97,6 +105,7 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const authUser = useAuthStore((state) => state.user);
   const signOut = useSignOut();
+  const queryClient = useQueryClient();
 
   const isAdmin =
     authUser?.role === "super_admin" ||
@@ -117,6 +126,14 @@ export function SettingsPage() {
   const [cityMunicipality, setCityMunicipality] = useState(authUser?.address?.city ?? "");
   const [province, setProvince] = useState(authUser?.address?.province ?? "");
   const [postalCode, setPostalCode] = useState("");
+  // The map pin and the address it was placed for.
+  const [addressPin, setAddressPin] = useState<{ position: LatLng; forAddress: string } | null>(
+    null,
+  );
+  const currentAddressKey = addressKey([streetAddress, barangay, cityMunicipality, province]);
+  // A pin only counts for the address it was placed for.
+  const currentPin =
+    addressPin && addressPin.forAddress === currentAddressKey ? addressPin.position : null;
   const [profileErrors, setProfileErrors] = useState<ProfileErrors>({});
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -214,6 +231,19 @@ export function SettingsPage() {
         setCityMunicipality(profile.cityMunicipality ?? "");
         setProvince(profile.province ?? "");
         setPostalCode(profile.postalCode ?? "");
+        setAddressPin(
+          profile.latitude !== null && profile.longitude !== null
+            ? {
+                position: [profile.latitude, profile.longitude],
+                forAddress: addressKey([
+                  profile.streetAddress ?? "",
+                  profile.barangay ?? "",
+                  profile.cityMunicipality ?? "",
+                  profile.province ?? "",
+                ]),
+              }
+            : null,
+        );
 
         setEmailNotifications(profile.emailNotifications);
         setPushNotifications(profile.pushNotifications);
@@ -364,6 +394,9 @@ export function SettingsPage() {
         : POSTAL_CODE_PATTERN.test(postalCode)
           ? undefined
           : "Enter a valid 4-digit Philippine ZIP/postal code.",
+      location: currentPin
+        ? undefined
+        : "Find your address on the map, or click the map to place the pin.",
     };
 
     setProfileErrors(nextErrors);
@@ -384,6 +417,8 @@ export function SettingsPage() {
       cityMunicipality: cityMunicipality.trim().replace(/\s+/g, " "),
       province: province.trim().replace(/\s+/g, " "),
       postalCode,
+      latitude: currentPin?.[0] ?? null,
+      longitude: currentPin?.[1] ?? null,
     };
 
     setIsSavingProfile(true);
@@ -391,6 +426,8 @@ export function SettingsPage() {
     try {
       const savedData = await updateMyProfile(normalizedProfile);
       const savedProfile = savedData.profile;
+      // The dashboard and the hauling request form read the saved address.
+      queryClient.setQueryData(["my-settings"], savedData);
 
       setFirstName(savedProfile.firstName ?? normalizedProfile.firstName);
       setLastName(savedProfile.lastName ?? normalizedProfile.lastName);
@@ -402,6 +439,17 @@ export function SettingsPage() {
       setCityMunicipality(savedProfile.cityMunicipality ?? "");
       setProvince(savedProfile.province ?? "");
       setPostalCode(savedProfile.postalCode ?? "");
+      if (savedProfile.latitude !== null && savedProfile.longitude !== null) {
+        setAddressPin({
+          position: [savedProfile.latitude, savedProfile.longitude],
+          forAddress: addressKey([
+            savedProfile.streetAddress ?? "",
+            savedProfile.barangay ?? "",
+            savedProfile.cityMunicipality ?? "",
+            savedProfile.province ?? "",
+          ]),
+        });
+      }
 
       showToast("Profile information saved.");
     } catch (error) {
@@ -797,6 +845,25 @@ export function SettingsPage() {
                     ZIP is filled automatically when available and can
                     be entered manually when needed.
                   </p>
+                </div>
+
+                <div className="mb-5">
+                  <AddressLocator
+                    fullAddress={[streetAddress, barangay, cityMunicipality, province]
+                      .map((part) => part.trim())
+                      .filter(Boolean)
+                      .join(", ")}
+                    areaAddress={[barangay, cityMunicipality, province]
+                      .map((part) => part.trim())
+                      .filter(Boolean)
+                      .join(", ")}
+                    position={currentPin}
+                    onPositionChange={(position) => {
+                      setAddressPin({ position, forAddress: currentAddressKey });
+                      setProfileErrors((errors) => ({ ...errors, location: undefined }));
+                    }}
+                    error={profileErrors.location}
+                  />
                 </div>
 
                 <Button type="submit" disabled={isSavingProfile}>
