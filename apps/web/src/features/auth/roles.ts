@@ -66,10 +66,10 @@ export function roleHome(role: UserRole): string {
     case "resident":
     case "business":
     case "citizen": {
-      return "/resident";
+      return "/resident/dashboard";
     }
     default: {
-      return "/resident";
+      return "/resident/dashboard";
     }
   }
 }

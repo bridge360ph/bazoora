@@ -1,16 +1,12 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import type { FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button, FormField, Logo } from "@bazoora/ui";
 
 import { useAuthStore } from "@/stores/auth-store";
 import { login } from "../authApi";
 import { roleHome } from "../roles";
-
-interface LocationState {
-  from?: { pathname?: string };
-}
 
 const inputClasses =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-[13.5px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100 dark:placeholder:text-gray-500";
@@ -18,7 +14,6 @@ const inputClasses =
 export function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -36,9 +31,9 @@ export function LoginPage() {
       const { user, accessToken } = await login(email.trim(), password);
       setSession(user, accessToken, rememberMe);
 
-      const state = location.state as LocationState | null;
-      const from = state?.from?.pathname;
-      navigate(from ?? roleHome(user.role), { replace: true });
+      // Always start on the role's dashboard, not the page that was open
+      // before signing in (it may belong to another role).
+      navigate(roleHome(user.role), { replace: true });
     } catch (error_) {
       const message = error_ instanceof Error ? error_.message : "Unable to sign in.";
       setError(message);
