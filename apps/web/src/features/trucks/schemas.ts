@@ -36,7 +36,8 @@ export const plannedStopSchema = z.object({
 
 export const truckSchema = z.object({
   id: z.string(),
-  truckNumber: z.string(),
+  // Optional in the database, so a truck without one must still parse.
+  truckNumber: z.string().nullable(),
   plateNumber: z.string(),
   status: truckStatusSchema,
   currentLocation: truckLocationSchema.nullable().optional(),

@@ -9,9 +9,12 @@ export const createHaulingRequestSchema = {
       "pickupDate",
     ],
     properties: {
+      // Several pickup stops are joined into this one field, so it is capped
+      // at both ends (the form allows at most 10 stops of 200 characters).
       requestAddress: {
         type: "string",
         minLength: 5,
+        maxLength: 2500,
       },
       senderType: {
         type: "string",
@@ -30,8 +33,11 @@ export const createHaulingRequestSchema = {
         type: "string",
         format: "date-time",
       },
+      // Validated again in the service: only a URL issued by our own
+      // presigned upload is stored, anything else becomes null.
       imageUrl: {
         type: "string",
+        maxLength: 2048,
       },
       note: {
         type: "string",
@@ -74,6 +80,23 @@ export const denyHaulingRequestSchema = {
         type: "string",
         minLength: 5,
         maxLength: 500,
+      },
+    },
+  },
+} as const;
+
+export const haulingRequestPhotoUploadSchema = {
+  body: {
+    type: "object",
+    required: ["fileType"],
+    properties: {
+      fileName: {
+        type: "string",
+        maxLength: 255,
+      },
+      fileType: {
+        type: "string",
+        maxLength: 100,
       },
     },
   },

@@ -3,7 +3,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useSocket } from "@/hooks/use-socket";
 import { useEffect, useState } from "react";
-import { listTrucks } from "./api";
+import { listLiveTrucks, listTrucks } from "./api";
 import type { Truck } from "./schemas";
 
 export const truckKeys = {
@@ -21,11 +21,13 @@ export function useTrucks(): UseQueryResult<Truck[]> {
 
 /**
  * Hook for real-time truck tracking using WebSockets (Socket.IO).
+ * Used by the resident Track Truck page, so it loads from the resident-scoped
+ * /trucks/live endpoint.
  */
 export function useTruckTracking() {
   const { data: initialTrucks = [], ...rest } = useQuery({
     queryKey: truckKeys.tracking(),
-    queryFn: listTrucks,
+    queryFn: listLiveTrucks,
   });
 
   const { socket, isConnected } = useSocket();

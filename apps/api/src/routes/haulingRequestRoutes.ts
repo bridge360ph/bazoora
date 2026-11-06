@@ -1,20 +1,28 @@
-import type { FastifyPluginCallback } from "fastify";
-import type { CreateHaulingRequestInput } from "@bazoora/shared";
+import type { FastifyPluginCallback, FastifyReply } from "fastify";
+import type {
+  CreateHaulingRequestInput,
+  PresignedUploadUrlRequest,
+} from "@bazoora/shared";
 
 import {
   authGuard,
   requireRole,
 } from "../lib/auth.js";
+import { UnsupportedUploadTypeError } from "../lib/s3ImageUpload.js";
 import {
   createHaulingRequestSchema,
   denyHaulingRequestSchema,
   haulingRequestParamsSchema,
+  haulingRequestPhotoUploadSchema,
 } from "../schemas/haulingRequest.schema.js";
 import {
   approveHaulingRequest,
   createHaulingRequest,
+  createHaulingRequestPhotoUpload,
   denyHaulingRequest,
   getHaulingRequests,
+  HaulingRequestNotPendingError,
+  InvalidDenialReasonError,
 } from "../services/haulingRequestService.js";
 
 const adminRoles = [
@@ -22,6 +30,24 @@ const adminRoles = [
   "GOVERNMENT_ADMIN",
   "HAULING_ADMIN",
 ] as const;
+
+const requesterRoles = ["RESIDENT", "BUSINESS"] as const;
+
+/**
+ * Maps the expected approve/deny failures to client errors. Anything else is
+ * rethrown so Fastify reports it as a 500 instead of hiding it behind a 400.
+ */
+async function sendDecisionError(reply: FastifyReply, error: unknown) {
+  if (error instanceof HaulingRequestNotPendingError) {
+    return reply.status(409).send({ message: error.message });
+  }
+
+  if (error instanceof InvalidDenialReasonError) {
+    return reply.status(400).send({ message: error.message });
+  }
+
+  throw error;
+}
 
 export const haulingRequestRoutes: FastifyPluginCallback = (
   app,
@@ -41,20 +67,70 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
     },
   );
 
+  app.get(
+    "/me",
+    {
+      preHandler: [
+        authGuard,
+        requireRole(...requesterRoles),
+      ],
+    },
+    async (request) => {
+      return await getHaulingRequests(request.user.sub);
+    },
+  );
+
   app.post(
     "/",
     {
       schema: createHaulingRequestSchema,
       preHandler: [
         authGuard,
-        requireRole("RESIDENT", "BUSINESS"),
+        requireRole(...requesterRoles),
       ],
     },
     async (request) => {
+      const body = request.body as CreateHaulingRequestInput;
+
+      // The sender type follows the account, not the request body, so a
+      // business account is always filed as BUSINESS.
       return await createHaulingRequest(
-        request.body as CreateHaulingRequestInput,
+        {
+          ...body,
+          senderType: request.user.role === "BUSINESS" ? "BUSINESS" : "RESIDENT",
+        },
         request.user.sub,
       );
+    },
+  );
+
+  // PRESIGNED S3 UPLOAD TARGET FOR A HAULING REQUEST PHOTO
+  app.post(
+    "/presigned-url",
+    {
+      schema: haulingRequestPhotoUploadSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...requesterRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { fileType } = request.body as PresignedUploadUrlRequest;
+
+      try {
+        return await createHaulingRequestPhotoUpload(fileType);
+      } catch (error) {
+        if (error instanceof UnsupportedUploadTypeError) {
+          return reply.status(400).send({
+            message: "Only JPEG, PNG, WebP and HEIC images can be attached",
+          });
+        }
+
+        request.log.error(error);
+        return reply.status(500).send({
+          message: "Could not generate presigned upload target",
+        });
+      }
     },
   );
 
@@ -68,15 +144,10 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       ],
     },
     async (request, reply) => {
-      try {
-        const { id } = request.params as {
-          id: string;
-        };
+      const { id } = request.params as { id: string };
 
-        const result = await approveHaulingRequest(
-          id,
-          request.user.sub,
-        );
+      try {
+        const result = await approveHaulingRequest(id, request.user.sub);
 
         if (!result) {
           return reply.status(404).send({
@@ -86,12 +157,7 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
 
         return result;
       } catch (error) {
-        return reply.status(400).send({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Unable to approve request",
-        });
+        return sendDecisionError(reply, error);
       }
     },
   );
@@ -106,18 +172,14 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       ],
     },
     async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const { denialReason } = request.body as { denialReason: string };
+
       try {
-        const { id } = request.params as {
-          id: string;
-        };
-
-        const { denialReason } = request.body as {
-          denialReason: string;
-        };
-
         const result = await denyHaulingRequest(
           id,
           denialReason,
+          request.user.sub,
         );
 
         if (!result) {
@@ -128,12 +190,7 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
 
         return result;
       } catch (error) {
-        return reply.status(400).send({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Invalid denial reason",
-        });
+        return sendDecisionError(reply, error);
       }
     },
   );

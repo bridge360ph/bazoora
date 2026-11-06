@@ -75,5 +75,9 @@ export const ecoAideNavItems: NavItem[] = [
 ];
 
 export const residentNavItems: NavItem[] = [
+  { to: "/resident/dashboard", label: "Dashboard", end: true },
   { to: "/resident/track", label: "Track Truck" },
+  { to: "/resident/schedule", label: "Schedule" },
+  // Reports is hidden until it is wired to the incident API.
+  { to: "/resident/hauling-requests", label: "Hauling Requests" },
 ];

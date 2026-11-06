@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { prisma } from "@bazoora/db";
 import { authGuard, requireRole } from "../lib/auth.js";
 import { io } from "../plugins/socket.js";
+import { DIRECT_AUDIENCE } from "../lib/userNotifications.js";
 
 const AUDIENCE_ROLES: Record<string, string[]> = {
   "All Users": [
@@ -35,6 +36,13 @@ export const notificationRoutes: FastifyPluginAsync = async (app) => {
     },
     async () => {
       const notifications = await prisma.notification.findMany({
+        // Per-user notifications (e.g. hauling request updates) are not
+        // admin broadcasts, so they stay out of the broadcast history.
+        where: {
+          audience: {
+            not: DIRECT_AUDIENCE,
+          },
+        },
         orderBy: {
           createdAt: "desc",
         },

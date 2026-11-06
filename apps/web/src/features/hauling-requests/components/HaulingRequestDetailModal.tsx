@@ -1,10 +1,14 @@
+import type { ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
+import { Check, ImageOff, X } from "lucide-react";
+
 import {
-  Modal,
-  Button,
-  StatusBadge
-} from "@bazoora/ui";
-import { STATUS_DISPLAY } from "../haulingRequestManagement.constants";
+  SENDER_DISPLAY,
+  WASTE_TYPE_DISPLAY,
+} from "../haulingRequestManagement.constants";
+import { formatDateTime, getPickupAddresses } from "../haulingRequestFormat";
+import { AdminModalShell, BUTTON_CLASSES, DetailField } from "./AdminModalShell";
+import { HaulingStatusBadge } from "./HaulingStatusBadge";
 
 interface HaulingRequestDetailModalProps {
   request: HaulingRequest;
@@ -14,93 +18,140 @@ interface HaulingRequestDetailModalProps {
 }
 
 /**
- * "View Details" modal for a single hauling request.
+ * Details window for a single hauling request. Laid out like the resident
+ * RequestDetailsModal, with Approve/Deny actions for pending requests.
  *
- * Fields not yet on `HaulingRequest` (Fee Classification, split
- * Date Requested/Date Needed) render as static placeholders — the Prisma
- * schema isn't finalized. TODO: replace once the backend exposes them.
+ * Fee Classification is not on `HaulingRequest` yet and renders as a
+ * placeholder. TODO: replace once the backend exposes it.
  */
 export function HaulingRequestDetailModal({
   request,
   onClose,
   onApproveClick,
   onDenyClick,
-}: HaulingRequestDetailModalProps) {
+}: HaulingRequestDetailModalProps): ReactNode {
+  const pickups = getPickupAddresses(request.requestAddress);
+  const isPending = request.status === "PENDING";
+
   return (
-    <Modal title={request.requestId} onClose={onClose} width={640}>
-      <div className="flex flex-col gap-4">
-        <div className="w-full h-56 bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
-          {request.imageUrl ? (
-            <img
-              src={request.imageUrl}
-              alt={`Photo for ${request.requestId}`}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <svg
-              className="w-14 h-14 text-gray-300"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <path d="M3 3l18 18M21 3L3 21" />
-            </svg>
+    <AdminModalShell
+      eyebrow="REQUEST DETAILS"
+      title={request.requestNumber}
+      onClose={onClose}
+      maxWidthClassName="max-w-2xl"
+      footer={
+        isPending ? (
+          <>
+            <button type="button" onClick={onDenyClick} className={BUTTON_CLASSES.danger}>
+              <X className="h-3.5 w-3.5" />
+              Deny
+            </button>
+            <button type="button" onClick={onApproveClick} className={BUTTON_CLASSES.primary}>
+              <Check className="h-3.5 w-3.5" />
+              Approve
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={onClose} className={BUTTON_CLASSES.ghost}>
+            Close
+          </button>
+        )
+      }
+    >
+      <div className="grid gap-6 sm:grid-cols-[1fr_220px]">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <HaulingStatusBadge status={request.status} />
+            <span className="rounded-full border border-surface-border px-2.5 py-0.5 text-[10px] font-medium text-surface-muted">
+              {SENDER_DISPLAY[request.senderType]}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <DetailField label="WASTE TYPE">
+              {WASTE_TYPE_DISPLAY[request.wasteType]}
+            </DetailField>
+
+            {/* TODO: feeClassification not yet on HaulingRequest — backend/Prisma pending */}
+            <DetailField label="FEE CLASSIFICATION">
+              <span className="text-gray-400">N/A</span>
+            </DetailField>
+
+            <DetailField label="DATE REQUESTED">
+              {formatDateTime(request.createdAt)}
+            </DetailField>
+
+            <DetailField label="PICKUP DATE">
+              {formatDateTime(request.pickupDate)}
+            </DetailField>
+          </div>
+
+          <DetailField
+            label={
+              pickups.length === 1
+                ? "PICKUP ADDRESS"
+                : `PICKUP ADDRESSES (${pickups.length})`
+            }
+          >
+            <ol className="mt-1.5 space-y-2">
+              {pickups.map((address, index) => (
+                <li
+                  key={`${index}-${address}`}
+                  className="flex items-start gap-2.5 rounded-md border border-gray-200 px-3 py-2"
+                >
+                  {pickups.length > 1 && (
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[9px] font-semibold text-gray-600">
+                      {index + 1}
+                    </span>
+                  )}
+                  <span className="min-w-0 break-words">{address}</span>
+                </li>
+              ))}
+            </ol>
+          </DetailField>
+
+          {request.note && (
+            <DetailField label="NOTE">
+              <p className="whitespace-pre-line font-normal text-gray-700">
+                {request.note}
+              </p>
+            </DetailField>
+          )}
+
+          {request.status === "APPROVED" && request.approvedAt && (
+            <DetailField label="APPROVED ON">
+              {formatDateTime(request.approvedAt)}
+            </DetailField>
+          )}
+
+          {request.status === "DENIED" && request.denialReason && (
+            <DetailField label="DENIAL REASON">
+              <p className="rounded-md bg-red-50 px-3 py-2 font-normal text-red-700">
+                {request.denialReason}
+              </p>
+            </DetailField>
           )}
         </div>
 
-        <DetailRow label="Location" value={request.requestAddress} />
-
-        {/* TODO: wasteType not yet on HaulingRequest — backend/Prisma pending */}
-        <DetailRow label="Waste Type" value="N/A" />
-
-        {/* TODO: feeClassification not yet on HaulingRequest — backend/Prisma pending */}
-        <DetailRow label="Fee Classification" value="N/A" />
-
-        <DetailRow label="Sent By" value={request.senderType} />
-
-        {/*
-          TODO: Figma splits this into "Date Requested"/"Date Needed";
-          HaulingRequest only has a single `pickupDate` today.
-        */}
-        <DetailRow label="Pickup Date" value={request.pickupDate} />
-
-        {request.note && <DetailRow label="Note" value={request.note} />}
-
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm text-gray-700">Status:</span>
-          <StatusBadge status={STATUS_DISPLAY[request.status]} />
-        </div>
-
-        {request.status === "PENDING" && (
-          <div className="flex justify-center gap-4 pt-2">
-            <Button variant="primary" onClick={onApproveClick}>
-              Approve
-            </Button>
-            <Button
-              variant="secondary"
-              className="bg-red-900 text-white"
-              onClick={onDenyClick}
-            >
-              Deny
-            </Button>
+        <DetailField label="ATTACHED PHOTO">
+          <div className="mt-1.5 flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            {request.imageUrl ? (
+              <a href={request.imageUrl} target="_blank" rel="noreferrer" className="h-full w-full">
+                <img
+                  src={request.imageUrl}
+                  alt={`Photo for ${request.requestNumber}`}
+                  className="h-full w-full object-cover"
+                />
+              </a>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5 text-gray-300">
+                <ImageOff className="h-8 w-8" />
+                <span className="text-[10px] font-medium text-gray-400">No photo</span>
+              </div>
+            )}
           </div>
-        )}
+        </DetailField>
       </div>
-    </Modal>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center bg-gray-50 rounded-md overflow-hidden">
-      <span className="w-40 shrink-0 bg-[#8fa89b] text-white text-sm font-semibold px-4 py-2.5">
-        {label}
-      </span>
-      <span className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-800">
-        {value}
-      </span>
-    </div>
+    </AdminModalShell>
   );
 }
