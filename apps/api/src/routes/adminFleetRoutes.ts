@@ -270,6 +270,47 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     }
   });
 
+  // Removes a truck from the fleet. A truck still assigned to a route is
+  // refused so the route is never left pointing at nothing without the admin
+  // knowing. Location history rows keep their data and lose the truck link
+  // (the foreign key is ON DELETE SET NULL).
+  app.delete(
+    "/:id",
+    { schema: { params: truckParamsSchema } },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+
+      const truck = await prisma.truck.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          assignedRoute: { select: { name: true } },
+        },
+      });
+
+      if (!truck) {
+        return reply.code(404).send({
+          success: false,
+          error: "Truck not found.",
+        });
+      }
+
+      if (truck.assignedRoute) {
+        return reply.code(409).send({
+          success: false,
+          error: `This truck is assigned to ${truck.assignedRoute.name}. Assign another truck to that route before removing this one.`,
+        });
+      }
+
+      await prisma.truck.delete({ where: { id } });
+
+      return {
+        success: true,
+        data: { databaseId: id },
+      };
+    },
+  );
+
   app.patch(
     "/:id/assignment",
     {
