@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
 
 import { WASTE_TYPE_LABELS } from "./constants";
-import { formatDateTime } from "@/features/hauling-requests/haulingRequestFormat";
+import {
+  formatDateTime,
+  formatScheduledCollection,
+} from "@/features/hauling-requests/haulingRequestFormat";
 import { StatusBadge } from "./FormUi";
 import { splitPickupAddresses } from "./utils";
 
@@ -43,7 +46,7 @@ export default function RequestDetailsModal({
             </p>
           </DetailRow>
 
-          <DetailRow label="PICKUP DATE">
+          <DetailRow label="PREFERRED PICKUP">
             <p className="mt-1 text-sm font-medium text-gray-800">
               {formatDateTime(request.pickupDate)}
             </p>
@@ -79,6 +82,29 @@ export default function RequestDetailsModal({
           <DetailRow label="STATUS">
             <StatusBadge status={request.status} className="mt-1 inline-flex" />
           </DetailRow>
+
+          {request.status === "APPROVED" && (
+            <DetailRow label="SCHEDULED COLLECTION">
+              {request.route ? (
+                <>
+                  <p className="mt-1 text-sm font-medium text-gray-800">
+                    {formatScheduledCollection(request.route.scheduledCollectionAt)}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {request.route.routeDisplayNumber} · {request.route.name}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    The truck collects on its route&apos;s next run on or after
+                    your preferred pickup date.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-sm text-gray-500">
+                  To be scheduled once your request is assigned to a route.
+                </p>
+              )}
+            </DetailRow>
+          )}
 
           {request.status === "DENIED" && request.denialReason && (
             <DetailRow label="REASON FOR DENIAL">
