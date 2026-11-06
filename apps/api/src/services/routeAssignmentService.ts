@@ -2,10 +2,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@bazoora/db";
 import type {
   AssignEcoAideRequest,
+  AssignTruckRequest,
+  RouteTruckOption,
   UserSummary
 } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
-import { routeEcoAideInclude } from "../lib/routeIncludes.js";
+import { routeAssignmentInclude } from "../lib/routeIncludes.js";
 
 /**
  * Lets the route handler map errors to the right HTTP status instead of
@@ -116,7 +118,7 @@ export async function assignEcoAide(
       data: {
         assignedEcoAideId: data.ecoAideId,
       },
-      include: routeEcoAideInclude,
+      include: routeAssignmentInclude,
     });
 
     return mapRouteToResponse(updatedRoute);
@@ -165,5 +167,119 @@ export async function listEcoAideOptions(): Promise<UserSummary[]> {
     id: ecoAide.id,
     userNumber: ecoAide.userNumber ?? "N/A",
     name: ecoAide.name ?? "Unnamed Eco-Aide",
+  }));
+}
+
+/**
+ * Puts a truck on a route, or takes it off when truckId is null.
+ *
+ * Route.assignedTruckId is unique, so a truck can serve one route at a time.
+ * A truck already on another route is refused rather than moved, so an admin
+ * never takes a truck away from a route without seeing it.
+ */
+export async function assignTruck(
+  routeId: string,
+  data: AssignTruckRequest,
+) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id: routeId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!route) {
+    throw new RouteAssignmentError(
+      "The selected route could not be found.",
+      404,
+    );
+  }
+
+  if (data.truckId) {
+    const truck = await prisma.truck.findUnique({
+      where: {
+        id: data.truckId,
+      },
+      select: {
+        id: true,
+        assignedRoute: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!truck) {
+      throw new RouteAssignmentError(
+        "The selected truck could not be found.",
+        404,
+      );
+    }
+
+    if (truck.assignedRoute && truck.assignedRoute.id !== routeId) {
+      throw new RouteAssignmentError(
+        `This truck is already assigned to ${truck.assignedRoute.name}.`,
+        409,
+      );
+    }
+  }
+
+  try {
+    const updatedRoute = await prisma.route.update({
+      where: {
+        id: routeId,
+      },
+      data: {
+        assignedTruckId: data.truckId,
+      },
+      include: routeAssignmentInclude,
+    });
+
+    return mapRouteToResponse(updatedRoute);
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new RouteAssignmentError(
+        "This truck is already assigned to another route.",
+        409,
+      );
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Trucks for the route Assign Truck dropdown. Trucks on other routes are
+ * included with their assignedRouteId so the UI can leave them out while
+ * still showing the current route's own truck as selected.
+ */
+export async function listTruckOptions(): Promise<RouteTruckOption[]> {
+  const trucks = await prisma.truck.findMany({
+    orderBy: {
+      createdAt: "asc",
+    },
+    select: {
+      id: true,
+      truckNumber: true,
+      plateNumber: true,
+      status: true,
+      assignedRoute: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  return trucks.map((truck) => ({
+    id: truck.id,
+    truckNumber: truck.truckNumber,
+    plateNumber: truck.plateNumber,
+    status: truck.status,
+    assignedRouteId: truck.assignedRoute?.id ?? null,
   }));
 }
