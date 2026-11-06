@@ -1,3 +1,5 @@
+import type { WasteType } from "./route.js";
+
 /**
  * Shared request DTOs used by both the frontend and backend.
  *
@@ -28,4 +30,8 @@ export interface RouteTruckOption {
   status: string;
   /** The route this truck is on, or null when it is free. */
   assignedRouteId: string | null;
+  /** Null on trucks registered before branches existed. */
+  branchId: string | null;
+  /** Null on trucks registered before waste types were set. */
+  wasteType: WasteType | null;
 }

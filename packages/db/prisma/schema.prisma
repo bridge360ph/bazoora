@@ -115,6 +115,14 @@ model Truck {
   // progress. Saved by the driver app and cleared when the route is
   // finished. Kept in the database so a restart of the API does not wipe it.
   plannedRoute     Json?
+  // The branch (depot) the truck works from, one of the ids in
+  // @bazoora/shared BRANCH_IDS. Null on trucks registered before branches
+  // existed; those are left out of feasibility checks until it is set.
+  branchId         String?
+  // The one waste type the truck carries: "BIODEGRADABLE" | "RESIDUAL" |
+  // "NON_BIODEGRADABLE" | "HAZARDOUS". Each type has its own trucks. Null on
+  // trucks registered before this existed.
+  wasteType        String?
 }
 
 model Route {
@@ -137,6 +145,9 @@ model Route {
   // collectionDate (collectionDay is then that date's weekday).
   routeType         String
   collectionDate    DateTime?
+  // The branch the route path starts from: the assigned truck's branch, or
+  // the nearest branch when no truck is assigned yet.
+  startBranchId     String?
   assignedEcoAideId String?  @unique
   assignedEcoAide   User?    @relation("AssignedEcoAide", fields: [assignedEcoAideId], references: [id])
   assignedTruckId   String?  @unique

@@ -15,6 +15,8 @@ export interface RoutePlan {
   before: { seconds: number; meters: number };
   /** The planned order from the chosen branch. */
   after: { seconds: number; meters: number };
+  /** The drive from the branch to the first stop of the planned order. */
+  approach: { seconds: number; meters: number };
   /** How many nearby branches were compared. */
   branchesCompared: number;
   /** True when the routing service was unavailable and straight-line estimates were used. */
@@ -96,14 +98,20 @@ function solveOpenPath(start: number, nodes: number[], seconds: number[][]): num
  *
  * With `keepOrder` the stops stay in their order (the resident asked for
  * it) and only the starting branch is chosen.
+ *
+ * With `branches` only those are compared, for example the branch of the
+ * truck on the route, or the branches of the free trucks.
  */
 export async function planRoute(
   stops: OptimizerPoint[],
-  options: { keepOrder?: boolean } = {},
+  options: { keepOrder?: boolean; branches?: readonly Branch[] } = {},
 ): Promise<RoutePlan | null> {
   if (stops.length === 0) return null;
 
-  const branches = nearestBranches(stops, CANDIDATE_BRANCHES);
+  const branches =
+    options.branches && options.branches.length > 0
+      ? [...options.branches]
+      : nearestBranches(stops, CANDIDATE_BRANCHES);
   const points: OptimizerPoint[] = [...branches, ...stops];
   const branchCount = branches.length;
   const n = points.length;
@@ -166,10 +174,15 @@ export async function planRoute(
   if (!branch) return null;
 
   const original = [best.branchIndex, ...stopNodes];
+  const firstStop = best.path[1] ?? best.branchIndex;
 
   return {
     branch,
     order: best.path.slice(1).map((node) => node - branchCount),
+    approach: {
+      seconds: seconds[best.branchIndex]?.[firstStop] ?? 0,
+      meters: meters[best.branchIndex]?.[firstStop] ?? 0,
+    },
     before: { seconds: pathCost(original, seconds), meters: pathCost(original, meters) },
     after: { seconds: pathCost(best.path, seconds), meters: pathCost(best.path, meters) },
     branchesCompared: branchCount,

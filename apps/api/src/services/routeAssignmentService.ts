@@ -8,6 +8,12 @@ import type {
 } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
+import {
+  branchMismatchReason,
+  toWasteType,
+  truckCarries,
+  wasteTypeMismatchMessage,
+} from "../lib/truckWasteTypes.js";
 
 /**
  * Lets the route handler map errors to the right HTTP status instead of
@@ -187,6 +193,10 @@ export async function assignTruck(
     },
     select: {
       id: true,
+      wasteType: true,
+      routeType: true,
+      startBranchId: true,
+      stopLocations: true,
     },
   });
 
@@ -197,6 +207,8 @@ export async function assignTruck(
     );
   }
 
+  let startBranchId: string | null = null;
+
   if (data.truckId) {
     const truck = await prisma.truck.findUnique({
       where: {
@@ -204,6 +216,8 @@ export async function assignTruck(
       },
       select: {
         id: true,
+        branchId: true,
+        wasteType: true,
         assignedRoute: {
           select: {
             id: true,
@@ -226,6 +240,17 @@ export async function assignTruck(
         409,
       );
     }
+
+    if (!truckCarries(truck, route.wasteType)) {
+      throw new RouteAssignmentError(wasteTypeMismatchMessage(route.wasteType), 409);
+    }
+
+    const branchReason = branchMismatchReason(truck, route);
+    if (branchReason) {
+      throw new RouteAssignmentError(branchReason, 409);
+    }
+
+    startBranchId = truck.branchId;
   }
 
   try {
@@ -235,6 +260,8 @@ export async function assignTruck(
       },
       data: {
         assignedTruckId: data.truckId,
+        // The route path starts from the truck's branch.
+        ...(startBranchId && { startBranchId }),
       },
       include: routeAssignmentInclude,
     });
@@ -267,6 +294,8 @@ export async function listTruckOptions(): Promise<RouteTruckOption[]> {
       truckNumber: true,
       plateNumber: true,
       status: true,
+      branchId: true,
+      wasteType: true,
       assignedRoute: {
         select: {
           id: true,
@@ -281,5 +310,7 @@ export async function listTruckOptions(): Promise<RouteTruckOption[]> {
     plateNumber: truck.plateNumber,
     status: truck.status,
     assignedRouteId: truck.assignedRoute?.id ?? null,
+    branchId: truck.branchId,
+    wasteType: toWasteType(truck.wasteType),
   }));
 }

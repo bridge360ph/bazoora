@@ -146,6 +146,9 @@ export interface AvailablePaidRouteTruck {
   truckNumber: string | null;
   plateNumber: string;
   driverName: string | null;
+  /** The truck's branch. Trucks with no branch are not offered. */
+  branchId: string;
+  wasteType: WasteType;
 }
 
 export type HaulingFeasibilityCheckKey = "date" | "truck";

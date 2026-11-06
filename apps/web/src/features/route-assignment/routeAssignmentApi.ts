@@ -8,6 +8,7 @@ import type {
 } from "@bazoora/shared";
 
 import { apiClient } from "@/lib/api-client";
+import { branchById, haversineMeters } from "@/lib/branches";
 
 /**
  * Route-assignment API calls.
@@ -150,4 +151,55 @@ export function formatTruckOption(truck: {
   plateNumber: string;
 }): string {
   return `${truck.truckNumber ?? "Pending ID"} (${truck.plateNumber})`;
+}
+
+/** Trucks for the route's waste type, plus the truck already on it. */
+export function getTrucksForWasteType(
+  trucks: RouteTruckOption[],
+  wasteType: string,
+  currentTruckId: string | null = null,
+): RouteTruckOption[] {
+  return trucks.filter(
+    (truck) =>
+      truck.id === currentTruckId || truck.wasteType === wasteType,
+  );
+}
+
+/**
+ * A weekly (Free) route is served by trucks from the branch it is run from.
+ * Paid routes start from the truck's branch, so any branch is offered.
+ * The truck already on the route is always kept.
+ */
+export function getTrucksForBranch(
+  trucks: RouteTruckOption[],
+  routeType: string,
+  branchId: string | null,
+  currentTruckId: string | null = null,
+): RouteTruckOption[] {
+  if (routeType === "Paid" || !branchById(branchId)) return trucks;
+  return trucks.filter((truck) => truck.id === currentTruckId || truck.branchId === branchId);
+}
+
+/**
+ * Trucks from the route's branch first, then the others by straight-line
+ * distance from that branch, and trucks with no branch last.
+ */
+export function sortTrucksByBranch(
+  trucks: RouteTruckOption[],
+  branchId: string | null,
+): RouteTruckOption[] {
+  const home = branchById(branchId);
+  const rank = (truck: RouteTruckOption): number => {
+    const branch = branchById(truck.branchId);
+    if (!branch) return Number.POSITIVE_INFINITY;
+    if (!home || branch.id === home.id) return 0;
+    return haversineMeters(home, branch);
+  };
+
+  return [...trucks].sort((a, b) => rank(a) - rank(b));
+}
+
+/** "T-004 (ABC-123) · Imus Branch" */
+export function formatTruckWithBranch(truck: RouteTruckOption): string {
+  return `${formatTruckOption(truck)} · ${branchById(truck.branchId)?.name ?? "No branch"}`;
 }
