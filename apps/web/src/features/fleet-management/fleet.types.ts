@@ -32,6 +32,23 @@ export interface TruckFormValue {
   assignedDriverId?: string;
 }
 
+/** A driver account, from GET /admin/fleet/drivers. */
+export interface FleetDriver {
+  id: string;
+  userNumber: string | null;
+  name: string;
+  email: string;
+  /** ISO date the account was created. */
+  addedAt: string;
+  truck: {
+    id: string;
+    truckNumber: string | null;
+    plateNumber: string;
+    status: string;
+    route: { routeDisplayNumber: string; name: string } | null;
+  } | null;
+}
+
 export interface DriverFormValue {
   name: string;
   email: string;
