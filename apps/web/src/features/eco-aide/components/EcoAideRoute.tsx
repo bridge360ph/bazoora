@@ -24,6 +24,7 @@ import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { toast } from "sonner";
 
 import { CurrentStopCard } from "./CurrentStopCard";
+import { formatWasteType } from "@/features/route-management/routeFilters.constants";
 import { RouteSummaryStats } from "./RouteSummaryStats";
 import { ReportIssueModal } from "./ReportIssueModal";
 
@@ -431,7 +432,11 @@ export default function EcoAideRoute(): React.ReactNode {
               stopName={activeStop.name}
               stopIndex={activeStopIndex >= 0 ? activeStopIndex : 0}
               address={activeStop.address}
-              wasteType={assignedRoute?.wasteType}
+              wasteType={
+                assignedRoute?.wasteType
+                  ? formatWasteType(assignedRoute.wasteType)
+                  : undefined
+              }
               isCollecting={isCollecting}
               onComplete={() => markStopCompleted(activeStop.id)}
               onReportIssue={() => setIsIssueModalOpen(true)}

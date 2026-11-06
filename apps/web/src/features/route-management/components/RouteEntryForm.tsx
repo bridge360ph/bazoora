@@ -1,9 +1,24 @@
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { FormField } from "@bazoora/ui";
 import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
-import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
-import { isLocatedStop, type RouteFormValue } from "../route.types.ts";
+import {
+  COLLECTION_DAYS,
+  WASTE_TYPE_LABELS,
+  WASTE_TYPES,
+} from "../routeFilters.constants.ts";
+import {
+  barangayNameOf,
+  buildFreeRouteName,
+  findScheduleClash,
+  formatStartTime,
+  isLocatedStop,
+  sameBarangay,
+  type RouteFormValue,
+} from "../route.types.ts";
+import { isInsideArea, type AreaBoundary } from "@/lib/area";
+import { generateBarangayStops } from "@/lib/barangayStops";
 import { RouteStopsEditor } from "./RouteStopsEditor";
+import { BarangayPicker } from "./BarangayPicker";
 import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
 import {
   formatTruckOption,
@@ -17,6 +32,16 @@ interface RouteEntryFormProps {
   setFormValue: Dispatch<SetStateAction<RouteFormValue>>;
   routes: Route[];
   editingRouteId?: string;
+  /** The outline of the barangay a weekly route covers, once found. */
+  area: AreaBoundary | null;
+  isAreaLoading: boolean;
+  areaNotFound: boolean;
+}
+
+interface ValidationContext {
+  routes: Route[];
+  editingRouteId?: string | undefined;
+  area: AreaBoundary | null;
 }
 
 /**
@@ -28,13 +53,45 @@ interface RouteEntryFormProps {
  */
 export function getRouteFormValidationError(
   formValue: RouteFormValue,
+  context: ValidationContext,
 ): string | null {
-  if (formValue.name.trim().length < 5) {
-    return "Route Name must be at least 5 characters.";
-  }
+  const isFree = formValue.routeType !== "Paid";
 
-  if (formValue.barangay.trim().length < 5) {
-    return "Barangay Coverage must be at least 5 characters.";
+  if (isFree) {
+    // Checked in this order: barangay, waste type, collection day, start time.
+    if (!formValue.barangay.trim()) {
+      return "Pick the barangay this route covers.";
+    }
+
+    if (!formValue.wasteType) {
+      return "Waste Type is required.";
+    }
+
+    if (!formValue.collectionDay) {
+      return "Collection Day is required.";
+    }
+
+    if (!formValue.startTime.trim()) {
+      return "Start Time is required.";
+    }
+
+    const clash = findScheduleClash(formValue, context.routes, context.editingRouteId);
+
+    if (clash) {
+      return `${barangayNameOf(formValue.barangay)} already has a ${WASTE_TYPE_LABELS[formValue.wasteType]} route every ${formValue.collectionDay} at ${formatStartTime(formValue.startTime)} (${clash.routeDisplayNumber}). Change the waste type, collection day or start time.`;
+    }
+
+    if (formValue.stops.length < 1) {
+      return "Collection points are still being generated. Wait a moment, or add a stop by hand.";
+    }
+  } else {
+    if (formValue.name.trim().length < 5) {
+      return "Route Name must be at least 5 characters.";
+    }
+
+    if (formValue.barangay.trim().length < 5) {
+      return "Barangay Coverage must be at least 5 characters.";
+    }
   }
 
   if (formValue.stops.length < 1) {
@@ -49,11 +106,27 @@ export function getRouteFormValidationError(
     return "Find each collection point on the map, or remove it.";
   }
 
+  const { area } = context;
+
+  if (
+    isFree &&
+    area?.precision === "boundary" &&
+    formValue.stops.some(
+      (stop) => isLocatedStop(stop) && !isInsideArea(area, [stop.lat, stop.lng]),
+    )
+  ) {
+    return `Every stop must be inside ${barangayNameOf(formValue.barangay)}. Move or remove the stops marked in red.`;
+  }
+
   if (!formValue.wasteType) {
     return "Waste Type is required.";
   }
 
-  if (!formValue.collectionDay) {
+  if (formValue.routeType === "Paid") {
+    if (!formValue.collectionDate) {
+      return "Collection Date is required for a paid route.";
+    }
+  } else if (!formValue.collectionDay) {
     return "Collection Day is required.";
   }
 
@@ -80,17 +153,84 @@ export function RouteEntryForm({
   setFormValue,
   routes,
   editingRouteId,
+  area,
+  isAreaLoading,
+  areaNotFound,
 }: RouteEntryFormProps) {
+  const isFree = formValue.routeType !== "Paid";
 
+  // A weekly route is named after its barangay, day and start time.
   function updateField<Key extends keyof RouteFormValue>(
     key: Key,
     value: RouteFormValue[Key],
   ) {
-    setFormValue((currentValue) => ({
-      ...currentValue,
-      [key]: value,
-    }));
+    setFormValue((currentValue) => {
+      const next = { ...currentValue, [key]: value };
+
+      if (next.routeType === "Paid") return next;
+
+      return {
+        ...next,
+        // A new barangay gets its own collection points.
+        ...(key === "barangay" &&
+          value !== currentValue.barangay && { stops: [], waypoints: "" }),
+        name: buildFreeRouteName(
+          next.barangay,
+          next.wasteType,
+          next.collectionDay,
+          next.startTime,
+        ),
+      };
+    });
   }
+
+  // Collection points generated from the barangay's streets.
+  const [generation, setGeneration] = useState<{
+    forArea: string;
+    status: "idle" | "loading" | "streets" | "center" | "error";
+    count: number;
+    branchName: string | null;
+  }>({ forArea: "", status: "idle", count: 0, branchName: null });
+  const areaKey = isFree && area ? `${formValue.barangay}|${area.center.join(",")}` : "";
+
+  async function generateStops() {
+    if (!area || !areaKey) return;
+
+    const forArea = areaKey;
+    setGeneration({ forArea, status: "loading", count: 0, branchName: null });
+
+    try {
+      const result = await generateBarangayStops(area, formValue.barangay);
+      const stamp = Date.now().toString(36);
+
+      setFormValue((current) => ({
+        ...current,
+        stops: result.stops.map((stop, index) => ({
+          id: `gen-${stamp}-${index}`,
+          ...stop,
+        })),
+      }));
+      setGeneration({
+        forArea,
+        status: result.source,
+        count: result.stops.length,
+        branchName: result.branchName,
+      });
+    } catch {
+      setGeneration({ forArea, status: "error", count: 0, branchName: null });
+    }
+  }
+
+  // A new route generates its collection points once its barangay is found.
+  // Routes that already have stops keep them until Regenerate is clicked.
+  useEffect(() => {
+    if (!areaKey || formValue.stops.length > 0 || generation.forArea === areaKey) return;
+    const timer = setTimeout(() => {
+      void generateStops();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaKey]);
 
   const {
     ecoAides,
@@ -122,8 +262,98 @@ export function RouteEntryForm({
     (stop) => !isLocatedStop(stop),
   ).length;
 
+  // Start times already used by weekly routes in this barangay with this
+  // waste type, per collection day.
+  const takenByDay = new Map<string, string[]>();
+
+  if (isFree && formValue.barangay) {
+    for (const route of routes) {
+      if (
+        route.id !== editingRouteId &&
+        route.routeType !== "Paid" &&
+        route.wasteType === formValue.wasteType &&
+        sameBarangay(route.barangay, formValue.barangay)
+      ) {
+        const times = takenByDay.get(route.collectionDay) ?? [];
+        times.push(`${formatStartTime(route.startTime)} (${route.routeDisplayNumber})`);
+        takenByDay.set(route.collectionDay, times);
+      }
+    }
+  }
+
+  const takenToday = takenByDay.get(formValue.collectionDay) ?? [];
+  const clash = isFree ? findScheduleClash(formValue, routes, editingRouteId) : null;
+
+  // Not a FormField: that renders a <label>, which would swallow clicks on
+  // the map and the stop buttons inside it.
+  const waypointsBlock = (
+    <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+      <span className="inline-flex items-center justify-between gap-2">
+        <span>
+          {isFree ? "Collection Points" : "Waypoints / Collection Points"}
+          <span aria-hidden="true" className="ml-1 text-red-500">
+            *
+          </span>
+        </span>
+        {isFree && area && (
+          <button
+            type="button"
+            onClick={() => void generateStops()}
+            disabled={generation.status === "loading"}
+            className="cursor-pointer text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-60"
+          >
+            {formValue.stops.length > 0 ? "Regenerate from barangay" : "Generate from barangay"}
+          </button>
+        )}
+      </span>
+      {isFree && (
+        <p className="text-xs font-normal text-gray-500">
+          {!formValue.barangay
+            ? "Pick a barangay. Its streets become the collection points automatically."
+            : generation.status === "loading"
+              ? "Finding the streets in this barangay..."
+              : generation.status === "error"
+                ? "The streets could not be loaded. Try Regenerate, or add stops by hand."
+                : generation.status === "center"
+                  ? "No named streets were found, so the barangay centre was added. Add more stops by hand if needed."
+                  : generation.status === "streets"
+                    ? `${generation.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
+                        generation.branchName ? `, ordered from ${generation.branchName}` : ""
+                      }. You can still add, move or remove stops.`
+                    : "Collection points come from the barangay's streets. You can still add, move or remove stops."}
+        </p>
+      )}
+      <RouteStopsEditor
+        stops={formValue.stops}
+        onChange={(stops) => {
+          updateField("stops", stops);
+        }}
+        barangay={formValue.barangay}
+        {...(isFree && {
+          area,
+          areaName: barangayNameOf(formValue.barangay) || "the barangay",
+        })}
+      />
+      {unlocatedCount > 0 && (
+        <p className="text-xs text-amber-700">
+          {unlocatedCount === 1
+            ? "1 stop has no map location yet. Use \"Find on map\" or remove it before saving."
+            : `${unlocatedCount} stops have no map location yet. Use "Find on map" or remove them before saving.`}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
+      {isFree ? (
+        <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+          <span>Route Name</span>
+          <p className="rounded-md bg-gray-50 px-3 py-2 text-sm font-normal text-gray-700">
+            {formValue.name || "Named after the barangay, collection day and start time"}
+          </p>
+        </div>
+      ) : (
       <FormField label="Route Name" required>
         <input
           value={formValue.name}
@@ -139,7 +369,37 @@ export function RouteEntryForm({
           </p>
         )}
       </FormField>
+      )}
 
+      {isFree ? (
+        // Not a FormField: that renders a <label> around the pickers.
+        <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+          <span>
+            Barangay Coverage
+            <span aria-hidden="true" className="ml-1 text-red-500">*</span>
+          </span>
+          <BarangayPicker
+            value={formValue.barangay}
+            onChange={(label) => {
+              updateField("barangay", label);
+            }}
+          />
+          {isAreaLoading && (
+            <p className="text-xs font-normal text-gray-500">Finding the barangay on the map...</p>
+          )}
+          {areaNotFound && (
+            <p className="text-xs font-normal text-amber-700">
+              The barangay outline was not found on the map, so stops are not checked against it.
+            </p>
+          )}
+          {area?.precision === "approximate" && (
+            <p className="text-xs font-normal text-amber-700">
+              Only the centre of this barangay is on the map. Stops more than about 1.5 km away
+              are marked, but they do not block saving.
+            </p>
+          )}
+        </div>
+      ) : (
       <FormField label="Barangay Coverage" required>
         <input
           value={formValue.barangay}
@@ -155,31 +415,9 @@ export function RouteEntryForm({
           </p>
         )}
       </FormField>
+      )}
 
-      {/* Not a FormField: that renders a <label>, which would swallow clicks
-          on the map and the stop buttons inside it. */}
-      <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-        <span className="inline-flex items-center">
-          Waypoints / Collection Points
-          <span aria-hidden="true" className="ml-1 text-red-500">
-            *
-          </span>
-        </span>
-        <RouteStopsEditor
-          stops={formValue.stops}
-          onChange={(stops) => {
-            updateField("stops", stops);
-          }}
-          barangay={formValue.barangay}
-        />
-        {unlocatedCount > 0 && (
-          <p className="text-xs text-amber-700">
-            {unlocatedCount === 1
-              ? "1 stop has no map location yet. Use \"Find on map\" or remove it before saving."
-              : `${unlocatedCount} stops have no map location yet. Use "Find on map" or remove them before saving.`}
-          </p>
-        )}
-      </div>
+      {!isFree && waypointsBlock}
 
       <FormField label="Waste Type">
         <select
@@ -191,28 +429,56 @@ export function RouteEntryForm({
         >
           {WASTE_TYPES.map((wasteType) => (
             <option key={wasteType} value={wasteType}>
-              {wasteType}
+              {WASTE_TYPE_LABELS[wasteType]}
             </option>
           ))}
         </select>
       </FormField>
 
+      {/* Chosen when the route is created and not changed afterwards: a Paid
+          route belongs to one hauling request. */}
+      <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+        <span>Route Type</span>
+        <p className="rounded-md bg-gray-50 px-3 py-2 text-sm font-normal text-gray-700">
+          {formValue.routeType === "Paid"
+            ? "Paid · One-time collection for a hauling request"
+            : "Free · Weekly garbage day route"}
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Collection Day">
-          <select
-            value={formValue.collectionDay}
-            onChange={(event) => {
-              updateField("collectionDay", event.target.value as CollectionDay);
-            }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
-          >
-            {COLLECTION_DAYS.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-        </FormField>
+        {formValue.routeType === "Paid" ? (
+          <FormField label="Collection Date" required>
+            <input
+              type="date"
+              value={formValue.collectionDate}
+              onChange={(event) => {
+                updateField("collectionDate", event.target.value);
+              }}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            />
+          </FormField>
+        ) : (
+          <FormField label="Collection Day">
+            <select
+              value={formValue.collectionDay}
+              onChange={(event) => {
+                updateField("collectionDay", event.target.value as CollectionDay);
+              }}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            >
+              {COLLECTION_DAYS.map((day) => {
+                const taken = takenByDay.get(day);
+
+                return (
+                  <option key={day} value={day}>
+                    {taken ? `${day} · taken at ${taken.join(", ")}` : day}
+                  </option>
+                );
+              })}
+            </select>
+          </FormField>
+        )}
 
         <FormField label="Start Time">
           <input
@@ -221,10 +487,26 @@ export function RouteEntryForm({
             onChange={(event) => {
               updateField("startTime", event.target.value);
             }}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            className={`w-full rounded-md border px-3 py-2 text-sm text-gray-900 ${
+              clash ? "border-red-400" : "border-gray-300"
+            }`}
           />
+          {clash ? (
+            <p className="mt-1 text-xs text-red-600">
+              Taken by {clash.routeDisplayNumber}. Pick another time.
+            </p>
+          ) : (
+            isFree &&
+            takenToday.length > 0 && (
+              <p className="mt-1 text-xs text-amber-700">
+                Already taken on {formValue.collectionDay}: {takenToday.join(", ")}.
+              </p>
+            )
+          )}
         </FormField>
       </div>
+
+      {isFree && waypointsBlock}
 
       <FormField label="Eco-Aide">
         {ecoAidesErrored ? (

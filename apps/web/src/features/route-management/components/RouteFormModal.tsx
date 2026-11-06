@@ -3,6 +3,7 @@ import { Modal, ModalFooter } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 import type { RouteFormValue } from "../route.types.ts";
 import { RouteEntryForm, getRouteFormValidationError } from "./RouteEntryForm";
+import { useBarangayArea } from "../hooks/useBarangayArea";
 
 type RouteFormMode = "create" | "edit";
 
@@ -31,7 +32,7 @@ export function RouteFormModal({
 }: RouteFormModalProps) {
   const title =
     mode === "create"
-      ? "Create Route"
+      ? "Create Free Route"
       : route
         ? `Edit Route ${route.routeDisplayNumber}`
         : "Edit Route";
@@ -45,7 +46,17 @@ export function RouteFormModal({
         ? "Saving..."
         : "Save";
 
-  const validationError = getRouteFormValidationError(formValue);
+  // Weekly routes are checked against their barangay's outline.
+  const isFree = formValue.routeType !== "Paid";
+  const { area, isLoading: isAreaLoading, notFound: areaNotFound } = useBarangayArea(
+    isFree ? formValue.barangay : "",
+  );
+
+  const validationError = getRouteFormValidationError(formValue, {
+    routes,
+    editingRouteId: route?.id,
+    area,
+  });
   const isFormValid = validationError === null;
 
   function handleSave() {
@@ -80,6 +91,9 @@ export function RouteFormModal({
         setFormValue={setFormValue}
         routes={routes}
         editingRouteId={route?.id}
+        area={area}
+        isAreaLoading={isAreaLoading}
+        areaNotFound={areaNotFound}
       />
 
       {!isFormValid && (

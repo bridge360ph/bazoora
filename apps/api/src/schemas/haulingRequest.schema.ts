@@ -16,6 +16,24 @@ export const createHaulingRequestSchema = {
         minLength: 5,
         maxLength: 2500,
       },
+      // The same stops with their map positions, in the resident's order.
+      pickupLocations: {
+        type: "array",
+        maxItems: 10,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["address", "lat", "lng"],
+          properties: {
+            address: { type: "string", minLength: 1, maxLength: 500 },
+            lat: { type: ["number", "null"], minimum: -90, maximum: 90 },
+            lng: { type: ["number", "null"], minimum: -180, maximum: 180 },
+          },
+        },
+      },
+      keepStopOrder: {
+        type: "boolean",
+      },
       senderType: {
         type: "string",
         enum: ["RESIDENT", "BUSINESS"],
@@ -120,6 +138,52 @@ export const assignHaulingRequestRouteSchema = {
     properties: {
       routeId: {
         type: ["string", "null"],
+      },
+    },
+  },
+} as const;
+
+export const createPaidHaulingRouteSchema = {
+  body: {
+    type: "object",
+    additionalProperties: false,
+    required: [
+      "requestId",
+      "truckId",
+      "name",
+      "barangay",
+      "collectionDate",
+      "startTime",
+      "stopLocations",
+    ],
+    properties: {
+      requestId: { type: "string", minLength: 1 },
+      truckId: { type: "string", minLength: 1 },
+      name: { type: "string", minLength: 5, maxLength: 100 },
+      barangay: { type: "string", minLength: 5, maxLength: 200 },
+      collectionDate: {
+        type: "string",
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+      },
+      startTime: {
+        type: "string",
+        pattern: "^\\d{1,2}:\\d{2}",
+      },
+      stopLocations: {
+        type: "array",
+        minItems: 1,
+        maxItems: 50,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "address", "lat", "lng"],
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 200 },
+            address: { type: "string", maxLength: 500 },
+            lat: { type: "number", minimum: -90, maximum: 90 },
+            lng: { type: "number", minimum: -180, maximum: 180 },
+          },
+        },
       },
     },
   },
