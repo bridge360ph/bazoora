@@ -75,7 +75,7 @@ export function AddressLocator({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <span className="text-[13px] font-medium text-gray-700 dark:text-gray-200">
+        <span className="text-[10px] font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-400">
           Location on Map
           <span aria-hidden="true" className="ml-1 text-red-500">*</span>
         </span>
@@ -83,7 +83,7 @@ export function AddressLocator({
           type="button"
           onClick={() => void locate()}
           disabled={isLocating || !areaAddress.trim()}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-brand px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-brand"
+          className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLocating ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

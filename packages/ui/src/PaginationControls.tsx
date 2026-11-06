@@ -5,37 +5,31 @@ interface PaginationControlsProps {
   onNext: () => void;
 }
 
-/**
- * Generic prev/current-page/next pagination control.
- */
-export function PaginationControls({
-  page,
-  totalPages,
-  onPrev,
-  onNext,
-}: PaginationControlsProps) {
+/** Previous, current page of total, next. */
+export function PaginationControls({ page, totalPages, onPrev, onNext }: PaginationControlsProps) {
   return (
-    <div className="mt-3.5 flex items-center justify-center gap-1.5">
+    <div className="mt-3 flex items-center justify-center gap-4">
       <button
         type="button"
         disabled={page <= 1}
         onClick={onPrev}
         aria-label="Previous page"
-        className="rounded-md border border-gray-200 bg-white px-2.5 py-0.5 text-xl text-gray-600 disabled:opacity-30"
+        className="cursor-pointer text-lg text-gray-500 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-30"
       >
         ‹
       </button>
 
-      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">
+      <span className="flex h-7 min-w-7 items-center justify-center rounded-md bg-surface-border px-2 text-xs font-semibold text-brand-dark">
         {page}
       </span>
+      <span className="-ml-2 text-[10px] text-gray-400">of {Math.max(totalPages, 1)}</span>
 
       <button
         type="button"
         disabled={page >= totalPages}
         onClick={onNext}
         aria-label="Next page"
-        className="rounded-md border border-gray-200 bg-white px-2.5 py-0.5 text-xl text-gray-600 disabled:opacity-30"
+        className="cursor-pointer text-lg text-gray-500 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-30"
       >
         ›
       </button>

@@ -11,7 +11,7 @@ import {
   formatScheduledCollection,
   getPickupAddresses,
 } from "../haulingRequestFormat";
-import { AdminModalShell, BUTTON_CLASSES, DetailField } from "./AdminModalShell";
+import { AdminModalShell, BUTTON_CLASSES, DetailField } from "@/components/admin/AdminModalShell";
 import { HaulingStatusBadge } from "./HaulingStatusBadge";
 import { FeasibilityPanel } from "./FeasibilityPanel";
 import { useHaulingFeasibility } from "../hooks/useHaulingFeasibility";

@@ -48,7 +48,7 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
         </div>
       </div>
 
-      <ModalFooter saveLabel="Back" onSave={onClose} onClose={onClose} />
+      <ModalFooter saveLabel="Done" closeLabel="Close" onSave={onClose} onClose={onClose} />
     </Modal>
   );
 }

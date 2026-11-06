@@ -5,9 +5,7 @@ export type EcoAideStatus =
   | "Suspended"
   | "Deactivated";
 
-export type EcoAideStatusFilter = "All" | "Active" | "On Route" | "Off Duty";
-
-export type EcoAideManagementTab = "all" | "approval";
+export type EcoAideStatusFilter = "All" | EcoAideStatus;
 
 export interface EcoAide {
   id: string;

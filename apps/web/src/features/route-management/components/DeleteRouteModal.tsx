@@ -57,6 +57,7 @@ export function DeleteRouteModal({
 
       <ModalFooter
         saveLabel={isSubmitting ? "Deleting..." : "Delete"}
+        danger
         onSave={onConfirm}
         onClose={handleClose}
         saveDisabled={isSubmitting || isInProgress}

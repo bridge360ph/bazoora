@@ -1,9 +1,9 @@
 import type { RouteStatus } from "@bazoora/shared";
 
 const statusStyles: Record<RouteStatus, string> = {
-  "In Progress": "bg-[#fef3c7] text-[#92400e] border border-[#fbbf24]",
-  Completed: "bg-[#dcfce7] text-[#166534] border border-[#4ade80]",
-  "Not Started": "bg-[#fee2e2] text-[#9a3412] border border-[#f87171]",
+  "Not Started": "bg-orange-100 text-orange-700",
+  "In Progress": "bg-amber-100 text-amber-700",
+  Completed: "bg-green-100 text-green-700",
 };
 
 interface RouteStatusPillProps {
@@ -13,9 +13,9 @@ interface RouteStatusPillProps {
 export function RouteStatusPill({ status }: RouteStatusPillProps) {
   return (
     <span
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-0.5 text-xs font-bold ${statusStyles[status]}`}
+      className={`inline-flex items-center justify-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide ${statusStyles[status]}`}
     >
-      {status}
+      {status.toUpperCase()}
     </span>
   );
 }
