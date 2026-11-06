@@ -78,6 +78,26 @@ export function useAssignedDriverRoute(
 
         setAssignedRoute(route);
 
+        // Routes saved with map positions are used as is, with no lookups.
+        if (route.stopLocations && route.stopLocations.length > 0) {
+          setStops(
+            route.stopLocations.map((stop, i) => ({
+              stopNumber: String(i + 1).padStart(2, "0"),
+              status: i === 0 ? "NOW" : "UPCOMING",
+              statusLabel: i === 0 ? "NOW" : "UPCOMING",
+              barangay: route.barangay || "Assigned Area",
+              name: stop.name,
+              address: stop.address || stop.name,
+              lat: stop.lat,
+              lng: stop.lng,
+              wasteType: route.wasteType,
+              volume: "—",
+              priority: "Medium",
+            })),
+          );
+          return;
+        }
+
         const rawStops = route.waypoints
           ? route.waypoints
               .split(",")
