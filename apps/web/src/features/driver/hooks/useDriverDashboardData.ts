@@ -34,6 +34,7 @@ export function useDriverDashboardData() {
   const {
     assignedRoute,
     stops,
+    unlocatedStops,
   } =
     useAssignedDriverRoute(
       accessToken,
@@ -186,6 +187,7 @@ export function useDriverDashboardData() {
   return {
     assignedRoute,
     stops,
+    unlocatedStops,
 
     truck,
     truckLoading,

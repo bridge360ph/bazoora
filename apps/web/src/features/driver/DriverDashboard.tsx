@@ -38,6 +38,7 @@ function DriverDashboard() {
   const {
     assignedRoute,
     stops,
+    unlocatedStops,
     truck,
     truckLoading,
     gpsActive,
@@ -263,6 +264,16 @@ function DriverDashboard() {
                 ) : (
                   <div className="py-8 text-center text-sm text-gray-500">
                     No collection stops are currently assigned.
+                  </div>
+                )}
+
+                {unlocatedStops.length > 0 && (
+                  <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    {unlocatedStops.length === 1
+                      ? "1 stop on this route could not be placed on the map"
+                      : `${unlocatedStops.length} stops on this route could not be placed on the map`}
+                    : {unlocatedStops.join(", ")}. Check the address with your
+                    dispatcher before heading out.
                   </div>
                 )}
               </div>
