@@ -10,6 +10,8 @@ interface UseAssignedDriverRouteResult {
   truckId: string | null;
   assignedRoute: Route | null;
   stops: Stop[];
+  /** Waypoints we could not place on the map, by name, so the screen can say so. */
+  unlocatedStops: string[];
 }
 
 interface AssignedTruckResponse {
@@ -19,17 +21,19 @@ interface AssignedTruckResponse {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Cavite municipal centre, used to lay out stops when geocoding is unavailable
-// so the dashboard still shows the route in the right part of the map.
-const LOCAL_CENTER: [number, number] = [14.3833, 120.8833];
-
 /**
  * Resolves the route the signed-in driver is on, and its stops.
  *
  * Stops come from the route's `waypoints` string, which is the only stop data
- * the Route model carries. This mirrors what the eco-aide route screen already
- * does: split the list, geocode each entry within the Philippines, and fall
- * back to an offset from the municipal centre when a lookup fails.
+ * the Route model carries: split the list and geocode each entry within the
+ * Philippines.
+ *
+ * A waypoint we cannot geocode is returned by name in `unlocatedStops` and
+ * kept out of `stops` entirely. It must never be given a placed-looking
+ * position: these coordinates drive the turn-by-turn line, the distance and
+ * ETA readout, and the proximity check that unlocks marking a stop collected,
+ * so a made-up point sends a driver to the wrong place and lets them complete
+ * a collection they never made.
  */
 export function useAssignedDriverRoute(
   accessToken: string | null,
@@ -37,12 +41,14 @@ export function useAssignedDriverRoute(
   const [truckId, setTruckId] = useState<string | null>(null);
   const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
   const [stops, setStops] = useState<Stop[]>([]);
+  const [unlocatedStops, setUnlocatedStops] = useState<string[]>([]);
 
   useEffect(() => {
     if (!accessToken || accessToken === "null") {
       setTruckId(null);
       setAssignedRoute(null);
       setStops([]);
+      setUnlocatedStops([]);
       return;
     }
 
@@ -73,6 +79,7 @@ export function useAssignedDriverRoute(
         if (!route) {
           setAssignedRoute(null);
           setStops([]);
+          setUnlocatedStops([]);
           return;
         }
 
@@ -86,13 +93,13 @@ export function useAssignedDriverRoute(
           : [];
 
         const resolved: Stop[] = [];
+        const unlocated: string[] = [];
 
         for (let i = 0; i < rawStops.length; i++) {
           if (cancelled) return;
 
           const stopName = rawStops[i];
-          let lat = LOCAL_CENTER[0] + (i + 1) * 0.0025;
-          let lng = LOCAL_CENTER[1] + (i + 1) * 0.0025;
+          let position: { lat: number; lng: number } | null = null;
 
           try {
             // Nominatim asks for no more than one request per second.
@@ -116,37 +123,49 @@ export function useAssignedDriverRoute(
               const parsedLat = Number(match.lat);
               const parsedLng = Number(match.lon);
 
-              if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
-                lat = parsedLat;
-                lng = parsedLng;
+              if (Number.isFinite(parsedLat) && Number.isFinite(parsedLng)) {
+                position = { lat: parsedLat, lng: parsedLng };
               }
             }
           } catch (err) {
             console.error("Failed to geocode stop:", stopName, err);
           }
 
+          if (!position) {
+            unlocated.push(stopName);
+            continue;
+          }
+
+          // Numbered off what we actually placed, so the list stays contiguous
+          // when a waypoint in the middle could not be geocoded.
+          const isFirst = resolved.length === 0;
+
           resolved.push({
-            stopNumber: String(i + 1).padStart(2, "0"),
-            status: i === 0 ? "NOW" : "UPCOMING",
-            statusLabel: i === 0 ? "NOW" : "UPCOMING",
+            stopNumber: String(resolved.length + 1).padStart(2, "0"),
+            status: isFirst ? "NOW" : "UPCOMING",
+            statusLabel: isFirst ? "NOW" : "UPCOMING",
             barangay: route.barangay || "Assigned Area",
             name: stopName,
             address: stopName,
-            lat,
-            lng,
+            lat: position.lat,
+            lng: position.lng,
             wasteType: route.wasteType,
             volume: "—",
             priority: "Medium",
           });
         }
 
-        if (!cancelled) setStops(resolved);
+        if (!cancelled) {
+          setStops(resolved);
+          setUnlocatedStops(unlocated);
+        }
       } catch (error) {
         console.error("Failed to fetch assigned route:", error);
 
         if (!cancelled) {
           setAssignedRoute(null);
           setStops([]);
+          setUnlocatedStops([]);
         }
       }
     };
@@ -158,5 +177,5 @@ export function useAssignedDriverRoute(
     };
   }, [accessToken]);
 
-  return { truckId, assignedRoute, stops };
+  return { truckId, assignedRoute, stops, unlocatedStops };
 }
