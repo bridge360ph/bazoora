@@ -9,12 +9,11 @@ import {
 } from "lucide-react";
 
 import { useHaulingRequests } from "./hooks/useHaulingRequests";
-import { useApproveHaulingRequest } from "./hooks/useApproveHaulingRequest";
 import { useDenyHaulingRequest } from "./hooks/useDenyHaulingRequest";
 import { useAssignHaulingRequestRoute } from "./hooks/useAssignHaulingRequestRoute";
 import { HaulingRequestFiltersBar } from "./components/HaulingRequestFiltersBar";
 import { HaulingRequestDetailModal } from "./components/HaulingRequestDetailModal";
-import { ApproveHaulingRequestModal } from "./components/ApproveHaulingRequestModal";
+import { PaidRouteFormModal } from "@/features/route-management/components/PaidRouteFormModal";
 import { DenyHaulingRequestModal } from "./components/DenyHaulingRequestModal";
 import { AssignHaulingRouteModal } from "./components/AssignHaulingRouteModal";
 import {
@@ -72,7 +71,6 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     error,
     refetch,
   } = useHaulingRequests();
-  const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
   const assignRouteMutation = useAssignHaulingRequestRoute();
 
@@ -93,6 +91,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   );
   const [slideDirection, setSlideDirection] = useState<SlideDirection>("left");
   const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<HaulingRequest | null>(
     null,
   );
@@ -220,13 +219,8 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     setModalMode(null);
     setSelectedRequest(null);
     // Clear any previous error so it doesn't show on the next request opened.
-    approveMutation.reset();
     denyMutation.reset();
     assignRouteMutation.reset();
-  }
-
-  function handleApprove(requestId: string, routeId: string | null) {
-    approveMutation.mutate({ requestId, routeId }, { onSuccess: closeModal });
   }
 
   function handleAssignRoute(requestId: string, routeId: string | null) {
@@ -286,6 +280,19 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
 
           {/* List */}
           <div key={statusTab} className="report-slide-in flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
+            {successMessage && (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-emerald-50 px-4 py-2 text-xs text-emerald-800">
+                <span>{successMessage}</span>
+                <button
+                  type="button"
+                  onClick={() => setSuccessMessage(null)}
+                  className="cursor-pointer font-semibold"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {isLoading && (
               <div className="flex flex-auto flex-col gap-3">
                 {Array.from({ length: 4 }, (_, index) => (
@@ -401,7 +408,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
         <HaulingRequestDetailModal
           request={selectedRequest}
           onClose={closeModal}
-          onApproveClick={() => setModalMode("approve")}
+          onApproveAndCreateRoute={() => setModalMode("createRoute")}
           onDenyClick={() => setModalMode("deny")}
           onAssignRouteClick={() => setModalMode("assignRoute")}
         />
@@ -421,17 +428,16 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
         />
       )}
 
-      {modalMode === "approve" && selectedRequest && (
-        <ApproveHaulingRequestModal
-          request={selectedRequest}
-          onClose={closeModal}
-          onConfirm={handleApprove}
-          isSubmitting={approveMutation.isPending}
-          errorMessage={
-            approveMutation.error instanceof Error
-              ? approveMutation.error.message
-              : undefined
-          }
+      {modalMode === "createRoute" && selectedRequest && (
+        <PaidRouteFormModal
+          initialRequest={selectedRequest}
+          onClose={() => setModalMode("detail")}
+          onCreated={(route, request) => {
+            closeModal();
+            setSuccessMessage(
+              `${request.requestNumber} approved. Paid route ${route.routeDisplayNumber} created.`,
+            );
+          }}
         />
       )}
 

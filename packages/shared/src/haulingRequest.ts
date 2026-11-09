@@ -1,14 +1,11 @@
-import type { CollectionDay, WasteType } from "./route.js";
+import type { CollectionDay, RouteStopLocation, WasteType } from "./route.js";
 
 export type SenderType =
   | "RESIDENT"
   | "BUSINESS";
 
-export type HaulingWasteType =
-  | "RESIDUAL"
-  | "NON_BIODEGRADABLE"
-  | "HAZARDOUS"
-  | "BIODEGRADABLE";
+/** Routes and hauling requests use the same waste types. */
+export type HaulingWasteType = WasteType;
 
 export type HaulingRequestStatus =
   | "PENDING"
@@ -23,6 +20,12 @@ export interface HaulingRequest {
   orgId?: string;
 
   requestAddress: string;
+
+  /** Map positions of the pickup stops, in the order the resident listed them. */
+  pickupLocations?: HaulingPickupLocation[];
+
+  /** True when the resident wants the stops collected in the order listed. */
+  keepStopOrder: boolean;
 
   senderType: SenderType;
 
@@ -47,6 +50,13 @@ export interface HaulingRequest {
 
   createdAt?: string;
   updatedAt?: string;
+}
+
+/** One pickup stop of a hauling request. lat/lng are null when not placed on the map. */
+export interface HaulingPickupLocation {
+  address: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 /** The route summary returned with a hauling request. */
@@ -86,6 +96,10 @@ export interface HaulingRouteOption {
   collectionDay: CollectionDay;
   wasteType: WasteType;
   ecoAideName: string | null;
+  /** "Free" weekly route or "Paid" one-time route. */
+  routeType: string;
+  /** YYYY-MM-DD for Paid routes, null for Free ones. */
+  collectionDate: string | null;
 }
 
 /**
@@ -96,6 +110,10 @@ export interface HaulingRouteOption {
  */
 export interface CreateHaulingRequestInput {
   requestAddress: string;
+
+  pickupLocations?: HaulingPickupLocation[];
+
+  keepStopOrder?: boolean;
 
   senderType: SenderType;
 
@@ -120,4 +138,51 @@ export interface HaulingRouteStop {
   requestAddress: string;
   note?: string;
   scheduledCollectionAt: string;
+}
+
+/** A truck that can take a Paid route: Active, has a driver and no route. */
+export interface AvailablePaidRouteTruck {
+  id: string;
+  truckNumber: string | null;
+  plateNumber: string;
+  driverName: string | null;
+}
+
+export type HaulingFeasibilityCheckKey = "date" | "truck";
+
+/** "warn" means the request can go ahead, but the admin should look first. */
+export type HaulingFeasibilityStatus = "pass" | "warn" | "fail";
+
+export interface HaulingFeasibilityCheck {
+  key: HaulingFeasibilityCheckKey;
+  label: string;
+  status: HaulingFeasibilityStatus;
+  message: string;
+}
+
+/**
+ * Returned by GET /hauling-requests/:id/feasibility. The driving path check
+ * runs in the browser, which has the depot and the routing service.
+ */
+export interface HaulingFeasibilityResult {
+  requestId: string;
+  /** The preferred pickup day in Philippine time, YYYY-MM-DD. */
+  collectionDate: string | null;
+  checks: HaulingFeasibilityCheck[];
+  availableTrucks: AvailablePaidRouteTruck[];
+}
+
+/**
+ * Body accepted by POST /hauling-requests/paid-route: a one-time Paid route
+ * for a single hauling request. A pending request is approved by it.
+ */
+export interface CreatePaidHaulingRouteInput {
+  requestId: string;
+  truckId: string;
+  name: string;
+  barangay: string;
+  /** YYYY-MM-DD. */
+  collectionDate: string;
+  startTime: string;
+  stopLocations: RouteStopLocation[];
 }

@@ -2,6 +2,7 @@ import type { FastifyPluginCallback, FastifyReply } from "fastify";
 import type {
   AssignHaulingRequestRouteInput,
   CreateHaulingRequestInput,
+  CreatePaidHaulingRouteInput,
   PresignedUploadUrlRequest,
 } from "@bazoora/shared";
 
@@ -13,6 +14,7 @@ import { UnsupportedUploadTypeError } from "../lib/s3ImageUpload.js";
 import {
   assignHaulingRequestRouteSchema,
   createHaulingRequestSchema,
+  createPaidHaulingRouteSchema,
   denyHaulingRequestSchema,
   haulingRequestParamsSchema,
   haulingRequestPhotoUploadSchema,
@@ -22,7 +24,9 @@ import {
   assignHaulingRequestRoute,
   createHaulingRequest,
   createHaulingRequestPhotoUpload,
+  createPaidRouteForRequest,
   denyHaulingRequest,
+  getHaulingFeasibility,
   getHaulingRequests,
   getHaulingRouteOptions,
   getMyRouteHaulingStops,
@@ -227,6 +231,30 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
     },
   );
 
+  // One-time Paid route for a single hauling request.
+  app.post(
+    "/paid-route",
+    {
+      schema: createPaidHaulingRouteSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      try {
+        const route = await createPaidRouteForRequest(
+          request.body as CreatePaidHaulingRouteInput,
+          request.user.sub,
+        );
+
+        return reply.code(201).send(route);
+      } catch (error) {
+        return sendDecisionError(reply, error);
+      }
+    },
+  );
+
   // Today's hauling stops for the driver or eco-aide on a route. Registered
   // as a static path, so Fastify matches it before "/:id/..." routes.
   app.get(
@@ -262,6 +290,31 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       }
 
       return options;
+    },
+  );
+
+  // Checks a request against the pickup date and free trucks
+  // before it is approved or put on a Paid route.
+  app.get(
+    "/:id/feasibility",
+    {
+      schema: haulingRequestParamsSchema,
+      preHandler: [
+        authGuard,
+        requireRole(...adminRoles),
+      ],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const result = await getHaulingFeasibility(id);
+
+      if (!result) {
+        return reply.status(404).send({
+          message: "Hauling request not found",
+        });
+      }
+
+      return result;
     },
   );
 
