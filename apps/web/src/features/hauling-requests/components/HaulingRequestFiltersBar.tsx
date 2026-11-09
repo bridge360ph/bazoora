@@ -23,6 +23,9 @@ interface HaulingRequestFiltersBarProps {
   onClearWasteTypes: () => void;
 
   onClearAll: () => void;
+
+  searchValue: string;
+  onSearchChange: (value: string) => void;
 }
 
 function findLabel<T extends string>(
@@ -33,7 +36,8 @@ function findLabel<T extends string>(
 }
 
 /**
- * Sender and waste type are client-side multi-select filters.
+ * Sender and waste type are client-side multi-select filters. The search box
+ * matches the assigned route number, route name or eco-aide name.
  */
 export function HaulingRequestFiltersBar({
   selectedSenders,
@@ -44,6 +48,8 @@ export function HaulingRequestFiltersBar({
   onToggleWasteType,
   onClearWasteTypes,
   onClearAll,
+  searchValue,
+  onSearchChange,
 }: HaulingRequestFiltersBarProps) {
   const hasActiveFilters =
     selectedSenders.length > 0 || selectedWasteTypes.length > 0;
@@ -69,15 +75,14 @@ export function HaulingRequestFiltersBar({
           onClear={onClearWasteTypes}
         />
 
-        {/* TODO: no Eco-Aide assignment field/endpoint yet; backend/Prisma pending */}
         <div className="relative min-w-56 flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
-            type="text"
-            disabled
-            placeholder="Search Eco-Aide by name or ID (coming soon)"
-            title="Coming soon — available once hauling requests are linked to assigned routes."
-            className="h-9 w-full cursor-not-allowed rounded-md border border-surface-border bg-gray-50 pl-9 pr-3 text-xs text-gray-400 placeholder:text-gray-400"
+            type="search"
+            value={searchValue}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search route or eco-aide (e.g. RT-001)"
+            className="h-9 w-full rounded-md border border-surface-border bg-white pl-9 pr-3 text-xs text-gray-800 placeholder:text-gray-400"
           />
         </div>
       </div>

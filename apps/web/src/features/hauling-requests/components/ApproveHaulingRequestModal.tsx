@@ -1,30 +1,27 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { HaulingRequest } from "@bazoora/shared";
-import { Check, ChevronDown } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { WASTE_TYPE_DISPLAY } from "../haulingRequestManagement.constants";
 import { formatDateTime } from "../haulingRequestFormat";
 import { AdminModalShell, BUTTON_CLASSES } from "./AdminModalShell";
+import { HaulingRouteSelect } from "./HaulingRouteSelect";
 
 interface ApproveHaulingRequestModalProps {
   request: HaulingRequest;
   onClose: () => void;
-  onConfirm: (requestId: string) => void;
+  onConfirm: (requestId: string, routeId: string | null) => void;
   isSubmitting: boolean;
   errorMessage?: string;
 }
 
-// Static placeholder — TODO: replace once a GET /eco-aides endpoint exists.
-const ECO_AIDE_PLACEHOLDER = "Ferdinan Ramos (RT-001)";
-
 /**
  * Confirmation window for approving a hauling request.
  *
- * The Figma design includes an "Assign Eco-Aide and Route" dropdown, but
- * `HaulingRequest` has no Eco-Aide/route field yet and there's no
- * `/eco-aides` endpoint to populate it. Rendered as a static, disabled
- * select so the layout matches — TODO: wire up once the backend supports
- * Eco-Aide assignment (Prisma schema not finalized).
+ * The admin can assign a collection route here. It is optional, because a
+ * suitable route may not exist yet; the route can then be assigned later
+ * from the request details. Picking a route also brings in its eco-aide,
+ * since the eco-aide belongs to the route.
  */
 export function ApproveHaulingRequestModal({
   request,
@@ -33,6 +30,8 @@ export function ApproveHaulingRequestModal({
   isSubmitting,
   errorMessage,
 }: ApproveHaulingRequestModalProps): ReactNode {
+  const [routeId, setRouteId] = useState<string | null>(null);
+
   return (
     <AdminModalShell
       eyebrow="APPROVE REQUEST"
@@ -52,7 +51,7 @@ export function ApproveHaulingRequestModal({
           <button
             type="button"
             disabled={isSubmitting}
-            onClick={() => onConfirm(request.requestId)}
+            onClick={() => onConfirm(request.requestId, routeId)}
             className={BUTTON_CLASSES.primary}
           >
             <Check className="h-3.5 w-3.5" />
@@ -67,7 +66,7 @@ export function ApproveHaulingRequestModal({
             {WASTE_TYPE_DISPLAY[request.wasteType]}
           </p>
           <p className="mt-0.5 text-xs text-surface-muted">
-            Pickup {formatDateTime(request.pickupDate)}
+            Preferred pickup {formatDateTime(request.pickupDate)}
           </p>
         </div>
 
@@ -77,24 +76,18 @@ export function ApproveHaulingRequestModal({
 
         <div>
           <label
-            htmlFor="approve-eco-aide"
+            htmlFor="approve-route"
             className="text-[10px] font-semibold tracking-wider text-gray-400"
           >
-            ASSIGN ECO-AIDE AND ROUTE
+            ASSIGN ROUTE (OPTIONAL)
           </label>
-          <div className="relative mt-1.5">
-            <select
-              id="approve-eco-aide"
-              disabled
-              value={ECO_AIDE_PLACEHOLDER}
-              title="Coming soon — Eco-Aide assignment is not yet supported by the backend"
-              className="h-9 w-full cursor-not-allowed appearance-none rounded-md border border-surface-border bg-gray-50 px-3 pr-9 text-xs text-gray-400"
-            >
-              <option>{ECO_AIDE_PLACEHOLDER}</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-300" />
-          </div>
-          <p className="mt-1 text-[10px] text-gray-400">Coming soon</p>
+          <HaulingRouteSelect
+            id="approve-route"
+            requestId={request.requestId}
+            value={routeId}
+            onChange={setRouteId}
+            disabled={isSubmitting}
+          />
         </div>
 
         {errorMessage !== undefined && errorMessage !== "" && (
