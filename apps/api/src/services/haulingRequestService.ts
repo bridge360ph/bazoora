@@ -701,20 +701,22 @@ export async function getHaulingFeasibility(
     ? toManilaDateKey(request.pickupDate)
     : null;
 
-  // Pickup date
+  // Pickup date. A missing or past date is a warning, not a failure: the
+  // admin picks the collection date when creating the route, so a request
+  // reviewed late can still be approved.
   if (!collectionDate) {
     checks.push({
       key: "date",
       label: "Pickup date",
-      status: "fail",
-      message: "The request has no preferred pickup date.",
+      status: "warn",
+      message: "The request has no preferred pickup date. Choose a collection date when creating the route.",
     });
   } else if (collectionDate < todayKey) {
     checks.push({
       key: "date",
       label: "Pickup date",
-      status: "fail",
-      message: `The preferred pickup date (${formatDateKey(collectionDate)}) has passed.`,
+      status: "warn",
+      message: `The preferred pickup date (${formatDateKey(collectionDate)}) has passed. Choose a later collection date when creating the route.`,
     });
   } else {
     const otherRequests = await prisma.haulingRequest.findMany({
@@ -899,6 +901,7 @@ export async function createPaidRouteForRequest(
           },
           data: {
             routeId: created.id,
+            routeAssignedAt: new Date(),
             ...(wasPending && {
               status: HaulingRequestStatus.APPROVED,
               approvedBy: createdBy,
@@ -915,7 +918,9 @@ export async function createPaidRouteForRequest(
           );
         }
 
-        const when = formatRouteForMessage(created, request.pickupDate);
+        // A Paid route runs on its own date, so the time it was assigned does
+        // not change when it is collected.
+        const when = formatRouteForMessage(created, request.pickupDate, null);
 
         const notification = await createDirectNotification(tx, {
           userId: request.userId,
