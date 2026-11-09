@@ -45,6 +45,18 @@ export function RouteStopsEditor({ stops, onChange, barangay }: RouteStopsEditor
   const [isPinning, setIsPinning] = useState(false);
   const [locatingId, setLocatingId] = useState<string | null>(null);
   const searchRequestRef = useRef(0);
+  // The latest stops, for changes that finish after an address lookup. Two
+  // quick map clicks, or a rename during a lookup, must not undo each other.
+  const latestStopsRef = useRef(stops);
+
+  useEffect(() => {
+    latestStopsRef.current = stops;
+  }, [stops]);
+
+  function commitStops(next: EditableRouteStop[]) {
+    latestStopsRef.current = next;
+    onChange(next);
+  }
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -93,7 +105,7 @@ export function RouteStopsEditor({ stops, onChange, barangay }: RouteStopsEditor
   }
 
   function addStop(stop: Omit<EditableRouteStop, "id">) {
-    onChange([...stops, { ...stop, id: newStopId() }]);
+    commitStops([...latestStopsRef.current, { ...stop, id: newStopId() }]);
   }
 
   function pickSuggestion(result: GeocodeResult) {
@@ -129,8 +141,8 @@ export function RouteStopsEditor({ stops, onChange, barangay }: RouteStopsEditor
       const [match] = await geocode(query, { limit: 1, countryCodes: "ph" });
 
       if (match) {
-        onChange(
-          stops.map((current) =>
+        commitStops(
+          latestStopsRef.current.map((current) =>
             current.id === stop.id
               ? { ...current, address: match.display_name, lat: match.lat, lng: match.lon }
               : current,
@@ -147,21 +159,21 @@ export function RouteStopsEditor({ stops, onChange, barangay }: RouteStopsEditor
   }
 
   function renameStop(id: string, name: string) {
-    onChange(stops.map((stop) => (stop.id === id ? { ...stop, name } : stop)));
+    commitStops(latestStopsRef.current.map((stop) => (stop.id === id ? { ...stop, name } : stop)));
   }
 
   function moveStop(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= stops.length) return;
 
-    const next = [...stops];
+    const next = [...latestStopsRef.current];
     const [moved] = next.splice(index, 1);
     if (moved) next.splice(target, 0, moved);
-    onChange(next);
+    commitStops(next);
   }
 
   function removeStop(id: string) {
-    onChange(stops.filter((stop) => stop.id !== id));
+    commitStops(latestStopsRef.current.filter((stop) => stop.id !== id));
   }
 
   const located = stops.filter(isLocatedStop);
