@@ -1,5 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, FilterByDropdown, PaginationControls, StatCard } from "@bazoora/ui";
+import {
+  CalendarDays,
+  Plus,
+  Route as RouteIcon,
+  UserPlus,
+  UserRound,
+} from "lucide-react";
+import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
+import { AdminTabs } from "@/components/admin/AdminTabs";
+import {
+  AdminEmptySlot,
+  AdminLoadingList,
+  AdminNotice,
+  AdminPill,
+  AdminSearchInput,
+  BUTTON_CLASSES,
+} from "@/components/admin/AdminControls";
+import { AdminListCard, AdminMeta } from "@/components/admin/AdminListCard";
+import { AdminPagination, paginate } from "@/components/admin/AdminPagination";
 import type {
   DriverFormValue,
   FleetAssignmentOption,
@@ -39,7 +57,7 @@ const emptyDriverForm: DriverFormValue = {
   password: "",
 };
 
-const TRUCKS_PAGE_SIZE = 5;
+const TRUCKS_PAGE_SIZE = 10;
 
 const statusFilters: TruckStatusFilter[] = [
   "All",
@@ -61,6 +79,7 @@ export function AdminFleetManagementPage() {
   const [statusFilter, setStatusFilter] = useState<TruckStatusFilter>("All");
   const [searchValue, setSearchValue] = useState("");
   const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(TRUCKS_PAGE_SIZE);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
   const [truckForm, setTruckForm] = useState<TruckFormValue>(emptyTruckForm);
@@ -125,38 +144,38 @@ export function AdminFleetManagementPage() {
     };
   }, []);
 
-  const filteredTrucks = useMemo(() => {
-    return trucks.filter((truck) => {
-      const matchesStatus =
-        statusFilter === "All" || truck.status === statusFilter;
+  // Search applies before the status tabs, so each tab count shows what
+  // that tab would list.
+  const searchedTrucks = useMemo(() => {
+    const normalizedSearch = searchValue.trim().toLowerCase();
 
-      const normalizedSearch = searchValue.trim().toLowerCase();
-      const matchesSearch =
+    return trucks.filter(
+      (truck) =>
         normalizedSearch.length === 0 ||
         truck.id.toLowerCase().includes(normalizedSearch) ||
         truck.plateNumber.toLowerCase().includes(normalizedSearch) ||
         truck.model.toLowerCase().includes(normalizedSearch) ||
-        truck.assignedDriver.toLowerCase().includes(normalizedSearch);
+        truck.assignedDriver.toLowerCase().includes(normalizedSearch),
+    );
+  }, [searchValue, trucks]);
 
-      return matchesStatus && matchesSearch;
-    });
-  }, [searchValue, statusFilter, trucks]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTrucks.length / TRUCKS_PAGE_SIZE),
+  const filteredTrucks = useMemo(
+    () =>
+      statusFilter === "All"
+        ? searchedTrucks
+        : searchedTrucks.filter((truck) => truck.status === statusFilter),
+    [searchedTrucks, statusFilter],
   );
 
-  const paginatedTrucks = filteredTrucks.slice(
-    (page - 1) * TRUCKS_PAGE_SIZE,
-    page * TRUCKS_PAGE_SIZE,
-  );
+  const statusCounts: Record<TruckStatusFilter, number> = {
+    All: searchedTrucks.length,
+    Active: searchedTrucks.filter((truck) => truck.status === "Active").length,
+    Idle: searchedTrucks.filter((truck) => truck.status === "Idle").length,
+    "Under Maintenance": searchedTrucks.filter((truck) => truck.status === "Under Maintenance")
+      .length,
+  };
 
-  const activeCount = trucks.filter((truck) => truck.status === "Active").length;
-  const idleCount = trucks.filter((truck) => truck.status === "Idle").length;
-  const maintenanceCount = trucks.filter(
-    (truck) => truck.status === "Under Maintenance",
-  ).length;
+  const pagination = paginate(filteredTrucks, page, rowsPerPage);
 
   function openRegisterModal() {
     setTruckForm(emptyTruckForm);
@@ -353,182 +372,134 @@ export function AdminFleetManagementPage() {
   }
 
   return (
-    <div className="p-6">
-      <section className="mb-5 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="m-0 text-2xl font-extrabold text-gray-900">
-            Fleet Management
-          </h1>
-          <p className="mt-[6px] text-[13px] text-gray-500">
-            Manage garbage trucks, truck status, and truck assignments.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {canAddDriver && (
-            <Button variant="secondary" onClick={openAddDriverModal}>
-              + Add Driver
-            </Button>
-          )}
-          <Button onClick={openRegisterModal}>+ Register Truck</Button>
-        </div>
-      </section>
-
-      {requestError && (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {requestError}
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="mb-4 rounded-md border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
-          Loading fleet records...
-        </div>
-      )}
-
-      <section className="mb-4 grid gap-[14px] [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
-        <StatCard label="Active" value={activeCount} />
-        <StatCard label="Idle" value={idleCount} />
-        <StatCard label="Under Maintenance" value={maintenanceCount} />
-      </section>
-
-      <section className="flex flex-wrap items-stretch">
-        <FilterByDropdown
-          label="Filter by Status"
-          value={statusFilter}
-          options={statusFilters}
-          allValue="All"
+    <AdminPage fill>
+      <AdminPanel className="h-full min-h-0">
+        <AdminTabs
+          tabs={statusFilters.map((filter) => ({
+            value: filter,
+            label: filter === "All" ? "ALL" : filter.toUpperCase(),
+            count: statusCounts[filter],
+          }))}
+          active={statusFilter}
           onChange={(value) => {
             setStatusFilter(value);
             setPage(1);
           }}
-        />
-
-        <input
-          value={searchValue}
-          onChange={(event) => {
-            setSearchValue(event.target.value);
-            setPage(1);
-          }}
-          placeholder="Search truck by ID, plate no., model, or driver..."
-          className="min-w-[240px] flex-1 border border-gray-300 px-3 py-[10px] text-[13px] outline-none"
-        />
-      </section>
-
-      <section className="overflow-hidden rounded-b-[10px] border border-gray-200 bg-white">
-        <div className="px-[14px] py-[18px] text-[14px] font-bold text-gray-900">
-          Fleet List
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-[880px] w-full border-collapse">
-            <thead>
-              <tr className="bg-[#145c38]">
-                {[
-                  "Truck ID",
-                  "Plate No.",
-                  "Model",
-                  "Capacity",
-                  "Truck Status",
-                  "Assigned Driver",
-                  "Registered",
-                  "Actions",
-                ].map((heading) => (
-                  <th
-                    key={heading}
-                    className="whitespace-nowrap px-[14px] py-[10px] text-left text-[12px] font-bold text-white"
-                  >
-                    {heading}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {paginatedTrucks.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="p-7 text-center text-[13px] text-gray-400"
-                  >
-                    No trucks match the current filter.
-                  </td>
-                </tr>
-              ) : (
-                paginatedTrucks.map((truck) => (
-                  <tr key={truck.id} className="border-b border-gray-200">
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.id}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.plateNumber}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.model}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.capacity}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      <TruckStatusPill status={truck.status} />
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.assignedDriver}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      {truck.registeredDate}
-                    </td>
-                    <td className="whitespace-nowrap px-[14px] py-[10px] text-[13px] text-gray-900">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            openEditModal(truck);
-                          }}
-                        >
-                          Edit
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            openAssignModal(truck);
-                          }}
-                        >
-                          Assign
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-600!"
-                          onClick={() => {
-                            openRemoveModal(truck);
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+          actions={
+            <>
+              {canAddDriver && (
+                <button type="button" onClick={openAddDriverModal} className={BUTTON_CLASSES.ghost}>
+                  <UserPlus className="h-3.5 w-3.5" />
+                  Add Driver
+                </button>
               )}
-            </tbody>
-          </table>
-        </div>
+              <button type="button" onClick={openRegisterModal} className={BUTTON_CLASSES.primary}>
+                <Plus className="h-3.5 w-3.5" />
+                Register Truck
+              </button>
+            </>
+          }
+        />
 
-        <div className="px-0 pt-[10px] pb-[18px]">
-          <PaginationControls
-            page={page}
-            totalPages={totalPages}
-            onPrev={() => setPage((current) => Math.max(1, current - 1))}
-            onNext={() =>
-              setPage((current) => Math.min(totalPages, current + 1))
-            }
+        <div className="shrink-0 px-6 pt-5">
+          <AdminSearchInput
+            value={searchValue}
+            onChange={(value) => {
+              setSearchValue(value);
+              setPage(1);
+            }}
+            placeholder="Search truck by ID, plate no., model, or driver"
           />
         </div>
-      </section>
+
+        <div className="flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
+          {requestError && (
+            <div className="mb-3">
+              <AdminNotice tone="error" onDismiss={() => setRequestError("")}>
+                {requestError}
+              </AdminNotice>
+            </div>
+          )}
+
+          {isLoading ? (
+            <AdminLoadingList />
+          ) : (
+            <>
+              <div className="flex min-h-0 flex-auto flex-col gap-3 overflow-y-auto pr-1">
+                {pagination.pageItems.map((truck) => (
+                  <AdminListCard
+                    key={truck.id}
+                    accentClassName={truckAccentClass(truck.status)}
+                    onOpen={() => openEditModal(truck)}
+                    aside={
+                      <>
+                        <TruckStatusPill status={truck.status} />
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => openEditModal(truck)} className={BUTTON_CLASSES.link}>
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void openAssignModal(truck);
+                            }}
+                            className={BUTTON_CLASSES.link}
+                          >
+                            Assign
+                          </button>
+                          <button type="button" onClick={() => openRemoveModal(truck)} className={BUTTON_CLASSES.linkDanger}>
+                            Remove
+                          </button>
+                        </div>
+                      </>
+                    }
+                  >
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-sm font-bold text-gray-800">{truck.plateNumber}</p>
+                      {truck.model && <AdminPill>{truck.model}</AdminPill>}
+                      {truck.capacity && <AdminPill>{truck.capacity}</AdminPill>}
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-gray-500">ID: {truck.id}</p>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-600">
+                      <AdminMeta icon={<UserRound className="h-3 w-3 shrink-0 text-gray-400" />}>
+                        {truck.assignedDriver || "No driver yet"}
+                      </AdminMeta>
+                      {truck.assignedRoute && (
+                        <AdminMeta icon={<RouteIcon className="h-3 w-3 shrink-0 text-gray-400" />}>
+                          {truck.assignedRoute}
+                        </AdminMeta>
+                      )}
+                      <AdminMeta icon={<CalendarDays className="h-3 w-3 shrink-0 text-gray-400" />}>
+                        Registered {truck.registeredDate}
+                      </AdminMeta>
+                    </div>
+                  </AdminListCard>
+                ))}
+
+                {pagination.total === 0 ? (
+                  <AdminEmptySlot>
+                    {trucks.length === 0
+                      ? "No trucks yet. Register one to get started."
+                      : "No trucks match the current filter."}
+                  </AdminEmptySlot>
+                ) : (
+                  pagination.page === pagination.totalPages && <AdminEmptySlot>No more trucks</AdminEmptySlot>
+                )}
+              </div>
+
+              <AdminPagination
+                {...pagination}
+                onPageChange={setPage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(rows) => {
+                  setRowsPerPage(rows);
+                  setPage(1);
+                }}
+              />
+            </>
+          )}
+        </div>
+      </AdminPanel>
 
       {modalMode === "register" && (
         <TruckFormModal
@@ -592,7 +563,13 @@ export function AdminFleetManagementPage() {
           onClose={closeModal}
         />
       )}
-    </div>
+    </AdminPage>
   );
+}
+
+function truckAccentClass(status: Truck["status"]): string {
+  if (status === "Active") return "border-l-emerald-400";
+  if (status === "Idle") return "border-l-amber-400";
+  return "border-l-red-400";
 }
 

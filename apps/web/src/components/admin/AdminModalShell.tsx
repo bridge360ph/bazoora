@@ -2,7 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 /**
- * Modal frame for the admin hauling request windows. Matches the resident
+ * Modal frame for every admin window. Matches the resident
  * RequestDetailsModal: small caps eyebrow, bold title, close button, white
  * rounded panel on a dimmed backdrop.
  */
@@ -105,11 +105,4 @@ export function DetailField({
   );
 }
 
-const buttonBase =
-  "inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50";
-
-export const BUTTON_CLASSES = {
-  primary: `${buttonBase} bg-brand-dark text-white hover:bg-brand-secondary`,
-  danger: `${buttonBase} bg-danger text-white hover:opacity-90`,
-  ghost: `${buttonBase} border border-gray-200 bg-white text-gray-700 hover:bg-gray-50`,
-} as const;
+export { BUTTON_CLASSES } from "./AdminControls";

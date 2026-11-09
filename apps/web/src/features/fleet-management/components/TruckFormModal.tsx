@@ -35,7 +35,7 @@ const ALLOWED_TRUCK_STATUSES: TruckStatus[] = [
 ];
 
 const inputBaseClass =
-  "box-border w-full rounded-[7px] border bg-white px-[10px] py-2 text-[13px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2";
+  "h-9 w-full rounded-md border bg-white px-3 text-xs text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2";
 
 export function TruckFormModal({
   title,
@@ -79,7 +79,7 @@ export function TruckFormModal({
     return `${inputBaseClass} ${
       hasError
         ? "border-red-500 focus:border-red-500 focus:ring-red-100"
-        : "border-gray-300 focus:border-brand focus:ring-brand/15"
+        : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
     }`;
   }
 

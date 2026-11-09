@@ -22,7 +22,7 @@ import { RouteStopsEditor } from "./RouteStopsEditor";
 const MANILA_OFFSET_MS = 8 * 60 * 60 * 1000;
 
 const inputClassName =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900";
+  "h-9 w-full rounded-md border border-surface-border bg-white px-3 text-xs text-gray-900 outline-none focus:border-brand-secondary";
 
 /** Today in Philippine time as YYYY-MM-DD. */
 function manilaToday(): string {
@@ -203,7 +203,7 @@ export function PaidRouteFormModal({
       )}
 
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+        <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
           <span>Hauling Request</span>
           {initialRequest ? (
             <p className="rounded-md bg-gray-50 px-3 py-2 text-sm font-normal text-gray-700">
@@ -311,7 +311,7 @@ export function PaidRouteFormModal({
 
             {/* Not a FormField: that renders a <label>, which would swallow
                 clicks on the map and the stop buttons inside it. */}
-            <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+            <div className="flex flex-col gap-1.5 text-xs font-medium text-gray-700 [&>span:first-child]:text-[10px] [&>span:first-child]:font-semibold [&>span:first-child]:tracking-wider [&>span:first-child]:text-gray-400 [&>span:first-child]:uppercase">
               <span>Checkpoints (pickup addresses)</span>
               {feasibility.pickupStops === null ? (
                 <p className="text-sm font-normal text-gray-500">

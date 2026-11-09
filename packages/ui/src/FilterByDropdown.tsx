@@ -29,7 +29,11 @@ export function FilterByDropdown<T extends string>({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="flex h-full min-w-[170px] items-center justify-between gap-2 rounded-lg bg-[#062f22] px-4 py-2.5 text-sm font-medium text-white"
+        className={`flex h-9 min-w-40 cursor-pointer items-center justify-between gap-2 rounded-md border px-3 text-xs font-medium transition ${
+          value === allValue
+            ? "border-surface-border bg-white text-gray-700 hover:border-brand-secondary"
+            : "border-brand-dark bg-brand-dark text-white"
+        }`}
       >
         {displayLabel}
         <svg className="h-3 w-3" viewBox="0 0 10 6" fill="currentColor">
@@ -38,7 +42,7 @@ export function FilterByDropdown<T extends string>({
       </button>
 
       {isOpen && (
-        <div className="absolute z-10 mt-1 w-full min-w-[170px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 w-full min-w-48 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg">
           {options.map((option) => (
             <button
               key={option}
@@ -47,7 +51,9 @@ export function FilterByDropdown<T extends string>({
                 onChange(option);
                 setIsOpen(false);
               }}
-              className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+              className={`block w-full cursor-pointer px-3 py-2 text-left text-xs hover:bg-gray-50 ${
+                option === value ? "font-semibold text-brand-dark" : "text-gray-700"
+              }`}
             >
               {option}
             </button>

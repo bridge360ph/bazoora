@@ -14,8 +14,8 @@ export function FormField({
   error,
 }: FormFieldProps) {
   return (
-    <label className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
-      <span className="inline-flex items-center">
+    <label className="flex flex-col gap-1.5 text-xs font-medium text-gray-700">
+      <span className="inline-flex items-center text-[10px] font-semibold tracking-wider text-gray-400 uppercase">
         {label}
 
         {required && (

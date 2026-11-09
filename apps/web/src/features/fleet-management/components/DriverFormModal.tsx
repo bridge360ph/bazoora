@@ -17,7 +17,7 @@ type DriverFormErrors = Partial<Record<keyof DriverFormValue, string>>;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const inputBaseClass =
-  "box-border w-full rounded-[7px] border bg-white px-[10px] py-2 text-[13px] text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2";
+  "h-9 w-full rounded-md border bg-white px-3 text-xs text-gray-900 outline-none transition placeholder:text-gray-400 focus:ring-2";
 
 // Mirrors the API's password rules in apps/api/src/lib/password.ts so the
 // admin sees the problem before submitting.
@@ -104,7 +104,7 @@ export function DriverFormModal({
     return `${inputBaseClass} ${
       hasError
         ? "border-red-500 focus:border-red-500 focus:ring-red-100"
-        : "border-gray-300 focus:border-brand focus:ring-brand/15"
+        : "border-surface-border focus:border-brand-secondary focus:ring-brand/10"
     }`;
   }
 
@@ -194,7 +194,7 @@ export function DriverFormModal({
               onClick={() => {
                 setShowPassword((current) => !current);
               }}
-              className="shrink-0 rounded-[7px] border border-gray-300 px-3 text-[12px] font-medium text-gray-700 hover:bg-gray-50"
+              className="h-9 shrink-0 cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50"
             >
               {showPassword ? "Hide" : "Show"}
             </button>

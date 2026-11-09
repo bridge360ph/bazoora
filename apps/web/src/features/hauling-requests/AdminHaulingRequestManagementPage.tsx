@@ -1,12 +1,15 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { HaulingRequest, HaulingRequestStatus } from "@bazoora/shared";
+import { CalendarClock, ChevronRight, MapPin } from "lucide-react";
+import { AdminPage, AdminPanel } from "@/components/admin/AdminPage";
+import { AdminTabs } from "@/components/admin/AdminTabs";
 import {
-  CalendarClock,
-  ChevronLeft,
-  ChevronRight,
-  MapPin,
-  RefreshCw,
-} from "lucide-react";
+  AdminEmptySlot,
+  AdminLoadingList,
+  AdminNotice,
+  AdminRefreshButton,
+} from "@/components/admin/AdminControls";
+import { AdminPagination } from "@/components/admin/AdminPagination";
 
 import { useHaulingRequests } from "./hooks/useHaulingRequests";
 import { useDenyHaulingRequest } from "./hooks/useDenyHaulingRequest";
@@ -161,8 +164,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     setCurrentPage(Math.min(Math.max(nextPage, 1), totalPages));
   }
 
-  function handleRowsPerPageChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextRowsPerPage = Number(event.target.value);
+  function handleRowsPerPageChange(nextRowsPerPage: number) {
     setRowsPerPage(nextRowsPerPage);
     setCurrentPage(Math.floor(startIndex / nextRowsPerPage) + 1);
   }
@@ -232,36 +234,24 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   }
 
   return (
-    <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-surface p-5">
-      <div className="mx-auto flex h-full w-full max-w-350 flex-col">
-        <section className="flex h-full min-h-0 w-full flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
-          {/* Status tabs */}
-          <div className="relative flex shrink-0 items-end border-b border-gray-100 pt-6">
-            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto px-3 sm:justify-center sm:gap-12 sm:px-14">
-            {STATUS_TABS.map((tab) => (
-              <TabButton
-                key={tab.value}
-                isActive={statusTab === tab.value}
-                count={statusCounts[tab.value]}
-                highlight={tab.value === "PENDING"}
-                onClick={() => changeStatusTab(tab.value)}
-              >
-                {tab.label}
-              </TabButton>
-            ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void refetch()}
-              disabled={isFetching}
-              aria-label="Refresh requests"
-              title="Refresh"
-              className="mb-2 mr-3 shrink-0 rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:opacity-50 sm:absolute sm:right-5 sm:top-5 sm:m-0"
-            >
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            </button>
-          </div>
+    <AdminPage fill>
+        <AdminPanel className="h-full min-h-0">
+          <AdminTabs
+            tabs={STATUS_TABS.map((tab) => ({
+              ...tab,
+              count: statusCounts[tab.value],
+              highlight: tab.value === "PENDING",
+            }))}
+            active={statusTab}
+            onChange={changeStatusTab}
+            actions={
+              <AdminRefreshButton
+                onClick={() => void refetch()}
+                isRefreshing={isFetching}
+                label="Refresh requests"
+              />
+            }
+          />
 
           {/* Filters */}
           <div className="shrink-0 px-6 pt-5">
@@ -281,31 +271,17 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
           {/* List */}
           <div key={statusTab} className="report-slide-in flex min-h-0 flex-auto flex-col px-6 pb-6 pt-4">
             {successMessage && (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-emerald-50 px-4 py-2 text-xs text-emerald-800">
-                <span>{successMessage}</span>
-                <button
-                  type="button"
-                  onClick={() => setSuccessMessage(null)}
-                  className="cursor-pointer font-semibold"
-                >
-                  Dismiss
-                </button>
+              <div className="mb-3">
+                <AdminNotice tone="success" onDismiss={() => setSuccessMessage(null)}>
+                  {successMessage}
+                </AdminNotice>
               </div>
             )}
 
-            {isLoading && (
-              <div className="flex flex-auto flex-col gap-3">
-                {Array.from({ length: 4 }, (_, index) => (
-                  <div
-                    key={index}
-                    className="h-20 animate-pulse rounded-md border border-gray-100 bg-gray-50"
-                  />
-                ))}
-              </div>
-            )}
+            {isLoading && <AdminLoadingList />}
 
             {isError && (
-              <EmptySlot>
+              <AdminEmptySlot>
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-red-600">
                     Couldn&apos;t load hauling requests
@@ -319,7 +295,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
                     Retry
                   </button>
                 </div>
-              </EmptySlot>
+              </AdminEmptySlot>
             )}
 
             {!isLoading && !isError && (
@@ -339,70 +315,31 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
                   ))}
 
                   {totalRequests === 0 ? (
-                    <EmptySlot>
+                    <AdminEmptySlot>
                       {statusTab === "PENDING"
                         ? "No pending requests. You're all caught up."
                         : "No hauling requests to display."}
-                    </EmptySlot>
+                    </AdminEmptySlot>
                   ) : (
-                    page === totalPages && <EmptySlot>No more requests</EmptySlot>
+                    page === totalPages && <AdminEmptySlot>No more requests</AdminEmptySlot>
                   )}
                 </div>
 
-                {/* Pagination, same as the resident request history */}
-                <div className="mt-3 flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                  <p className="min-w-32 text-[10px] text-gray-500" aria-live="polite">
-                    {totalRequests > 0 &&
-                      `Showing ${startIndex + 1}–${endIndex} of ${totalRequests}`}
-                  </p>
-
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      disabled={page === 1}
-                      onClick={() => goToPage(page - 1, "right")}
-                      className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    <span className="flex h-7 min-w-7 items-center justify-center rounded-md bg-surface-border px-2 text-xs font-semibold text-brand-dark">
-                      {page}
-                    </span>
-                    <span className="-ml-2 text-[10px] text-gray-400">of {totalPages}</span>
-
-                    <button
-                      type="button"
-                      disabled={page >= totalPages}
-                      onClick={() => goToPage(page + 1, "left")}
-                      className="text-gray-500 hover:text-gray-800 disabled:opacity-30"
-                      aria-label="Next page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <label className="flex min-w-32 items-center justify-end gap-2 text-[10px] text-gray-500">
-                    Rows per page
-                    <select
-                      value={rowsPerPage}
-                      onChange={handleRowsPerPageChange}
-                      className="h-7 rounded-md border border-gray-200 bg-white px-2 text-[10px] text-gray-700 outline-none"
-                    >
-                      {HAULING_REQUESTS_PAGE_SIZE_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                <AdminPagination
+                  page={page}
+                  totalPages={totalPages}
+                  total={totalRequests}
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  onPageChange={(nextPage) => goToPage(nextPage, nextPage > page ? "left" : "right")}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={handleRowsPerPageChange}
+                  pageSizeOptions={HAULING_REQUESTS_PAGE_SIZE_OPTIONS}
+                />
               </>
             )}
           </div>
-        </section>
-      </div>
+        </AdminPanel>
 
       {modalMode === "detail" && selectedRequest && (
         <HaulingRequestDetailModal
@@ -454,46 +391,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
           }
         />
       )}
-    </div>
-  );
-}
-
-function TabButton({
-  isActive,
-  count,
-  highlight,
-  onClick,
-  children,
-}: {
-  isActive: boolean;
-  count: number;
-  highlight: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}): ReactNode {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap px-3 pb-3 text-xs font-bold sm:px-5 ${
-        isActive ? "text-gray-900" : "text-gray-500 hover:text-gray-700"
-      }`}
-    >
-      {children}
-      <span
-        className={`rounded-full px-1.5 py-px text-[10px] font-bold ${
-          highlight && count > 0
-            ? "bg-orange-100 text-orange-700"
-            : "bg-gray-100 text-gray-500"
-        }`}
-      >
-        {count}
-      </span>
-
-      {isActive && (
-        <span className="absolute bottom-0 left-0 right-0 h-px bg-brand-dark" />
-      )}
-    </button>
+    </AdminPage>
   );
 }
 
@@ -574,14 +472,5 @@ function RequestCard({
         </span>
       </div>
     </button>
-  );
-}
-
-/** Fills the leftover space in the list so the panel keeps the same height on every page. */
-function EmptySlot({ children }: { children: ReactNode }): ReactNode {
-  return (
-    <div className="flex min-h-20 flex-auto items-center justify-center rounded-md border border-dashed border-gray-200 px-4 text-center text-xs text-gray-400">
-      {children}
-    </div>
   );
 }
