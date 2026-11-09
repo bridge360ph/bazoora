@@ -5,7 +5,7 @@ import type { HaulingRequest, Route } from "@bazoora/shared";
 import { CalendarClock, ChevronRight, MapPin } from "lucide-react";
 
 import { AdminPage, AdminPanel, AdminPanelHeader } from "@/components/admin/AdminPage";
-import { AdminEmptySlot, AdminStat } from "@/components/admin/AdminControls";
+import { AdminEmptySlot, AdminStat, BUTTON_CLASSES } from "@/components/admin/AdminControls";
 import { getAnalyticsOverview } from "@/features/analytics/api";
 import { useHaulingRequests } from "@/features/hauling-requests/hooks/useHaulingRequests";
 import { HaulingStatusBadge } from "@/features/hauling-requests/components/HaulingStatusBadge";
@@ -28,12 +28,30 @@ const ROUTE_STATUSES: Route["status"][] = ["Not Started", "In Progress", "Comple
  * Hauling Requests, Route Management and Analytics pages.
  */
 export function AdminDashboard() {
-  const { data: requests = [], isLoading: requestsLoading } = useHaulingRequests();
-  const { data: routes = [], isLoading: routesLoading } = useRoutes();
-  const { data: overview } = useQuery({
+  const {
+    data: requests = [],
+    isLoading: requestsLoading,
+    isError: requestsFailed,
+    refetch: refetchRequests,
+  } = useHaulingRequests();
+  const {
+    data: routes = [],
+    isLoading: routesLoading,
+    isError: routesFailed,
+    refetch: refetchRoutes,
+  } = useRoutes();
+  const {
+    data: overview,
+    isError: overviewFailed,
+    refetch: refetchOverview,
+  } = useQuery({
     queryKey: ["analytics-overview"],
     queryFn: getAnalyticsOverview,
   });
+  // A failed load shows a dash and an error, never a zero that reads as
+  // "nothing to do".
+  const requestsUnknown = requestsLoading || requestsFailed;
+  const routesUnknown = routesLoading || routesFailed;
 
   const active = requests.filter((request) => !request.archived);
   const pending = active
@@ -49,23 +67,35 @@ export function AdminDashboard() {
       <section className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <AdminStat
           label="Pending Requests"
-          value={requestsLoading ? "-" : pending.length}
-          hint="Waiting for a feasibility check"
+          value={requestsUnknown ? "-" : pending.length}
+          hint={requestsFailed ? "Could not load requests" : "Waiting for a feasibility check"}
         />
         <AdminStat
           label="Approved, No Route"
-          value={requestsLoading ? "-" : approvedWithoutRoute}
-          hint="Approved requests not on a route yet"
+          value={requestsUnknown ? "-" : approvedWithoutRoute}
+          hint={requestsFailed ? "Could not load requests" : "Approved requests not on a route yet"}
         />
         <AdminStat
           label="Routes In Progress"
-          value={routesLoading ? "-" : inProgressRoutes.length}
-          hint={routesLoading ? undefined : `${routes.length} routes in total`}
+          value={routesUnknown ? "-" : inProgressRoutes.length}
+          hint={
+            routesFailed
+              ? "Could not load routes"
+              : routesLoading
+                ? undefined
+                : `${routes.length} routes in total`
+          }
         />
         <AdminStat
           label="Trucks Assigned"
           value={overview ? `${overview.totals.assignedTrucks} / ${overview.totals.trucks}` : "-"}
-          hint={overview ? `${overview.totals.ecoAides} Eco-Aides` : undefined}
+          hint={
+            overview
+              ? `${overview.totals.ecoAides} Eco-Aides`
+              : overviewFailed
+                ? "Could not load the fleet"
+                : undefined
+          }
         />
       </section>
 
@@ -80,6 +110,13 @@ export function AdminDashboard() {
           <div className="flex flex-col gap-3 p-5">
             {requestsLoading ? (
               <AdminEmptySlot>Loading requests...</AdminEmptySlot>
+            ) : requestsFailed ? (
+              <LoadError
+                what="hauling requests"
+                onRetry={() => {
+                  void refetchRequests();
+                }}
+              />
             ) : pending.length === 0 ? (
               <AdminEmptySlot>No pending requests. You&apos;re all caught up.</AdminEmptySlot>
             ) : (
@@ -97,6 +134,7 @@ export function AdminDashboard() {
             actions={<ViewAll to="/admin/routes" />}
           />
           <div className="flex flex-col gap-2 p-5">
+            {routesFailed && <LoadError what="routes" onRetry={refetchRoutes} />}
             {ROUTE_STATUSES.map((status) => (
               <div
                 key={status}
@@ -104,7 +142,7 @@ export function AdminDashboard() {
               >
                 <RouteStatusPill status={status} />
                 <span className="text-lg font-bold text-gray-800">
-                  {routesLoading ? "-" : routes.filter((route) => route.status === status).length}
+                  {routesUnknown ? "-" : routes.filter((route) => route.status === status).length}
                 </span>
               </div>
             ))}
@@ -122,6 +160,8 @@ export function AdminDashboard() {
           <div className="flex flex-col gap-3 p-5">
             {routesLoading ? (
               <AdminEmptySlot>Loading routes...</AdminEmptySlot>
+            ) : routesFailed ? (
+              <LoadError what="routes" onRetry={refetchRoutes} />
             ) : inProgressRoutes.length === 0 ? (
               <AdminEmptySlot>No routes are running right now.</AdminEmptySlot>
             ) : (
@@ -151,7 +191,14 @@ export function AdminDashboard() {
             actions={<ViewAll to="/admin/eco-aides" />}
           />
           <div className="flex flex-col gap-2 p-5">
-            {!overview ? (
+            {overviewFailed ? (
+              <LoadError
+                what="Eco-Aides"
+                onRetry={() => {
+                  void refetchOverview();
+                }}
+              />
+            ) : !overview ? (
               <AdminEmptySlot>Loading Eco-Aides...</AdminEmptySlot>
             ) : overview.ecoAideAvailability.length === 0 ? (
               <AdminEmptySlot>No Eco-Aides yet.</AdminEmptySlot>
@@ -170,6 +217,21 @@ export function AdminDashboard() {
         </AdminPanel>
       </div>
     </AdminPage>
+  );
+}
+
+/** Shown instead of an empty list when a section failed to load. */
+function LoadError({ what, onRetry }: { what: string; onRetry: () => void }): ReactNode {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-4 text-center text-xs text-red-700"
+    >
+      Couldn&apos;t load {what}.
+      <button type="button" onClick={onRetry} className={BUTTON_CLASSES.ghost}>
+        Retry
+      </button>
+    </div>
   );
 }
 
