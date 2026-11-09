@@ -1,4 +1,5 @@
-import { BRANCH_IDS, branchName, routeBranchId, type WasteType } from "@bazoora/shared";
+import { BRANCH_IDS, type WasteType } from "@bazoora/shared";
+import { branchName, routeBranchId } from "./branches.js";
 
 export const WASTE_TYPE_VALUES: readonly WasteType[] = [
   "BIODEGRADABLE",
@@ -10,7 +11,7 @@ export const WASTE_TYPE_VALUES: readonly WasteType[] = [
 const WASTE_TYPE_LABELS: Record<WasteType, string> = {
   BIODEGRADABLE: "Biodegradable",
   RESIDUAL: "Residual",
-  NON_BIODEGRADABLE: "Non-biodegradable",
+  NON_BIODEGRADABLE: "Non-Biodegradable",
   HAZARDOUS: "Hazardous",
 };
 
@@ -40,7 +41,8 @@ export function wasteTypeMismatchMessage(wasteType: string): string {
  * A weekly (Free) route is served by trucks from the branch it starts from.
  * Returns the reason a truck cannot take the route, or null when it can.
  * Paid routes are planned from the truck's own branch, so any branch works.
- * Older routes with no saved branch use the branch nearest their stops.
+ * Older routes with no saved branch use the branch nearest their stops. A
+ * route with neither takes the branch of the truck it is given.
  */
 export function branchMismatchReason(
   truck: { branchId: string | null },
@@ -52,18 +54,9 @@ export function branchMismatchReason(
     return "This truck has no branch yet. Set its branch in Fleet Management first.";
   }
 
-  const routeBranch = routeBranchId({
-    startBranchId: route.startBranchId,
-    stopLocations: Array.isArray(route.stopLocations)
-      ? (route.stopLocations as { lat: number; lng: number }[])
-      : null,
-  });
+  const routeBranch = routeBranchId(route);
 
-  if (!routeBranch) {
-    return "This route has no branch yet. Place its stops on the map in Route Management and save it first.";
-  }
-
-  if (routeBranch !== truck.branchId) {
+  if (routeBranch && routeBranch !== truck.branchId) {
     return `This route is run from ${branchName(routeBranch)}, but the truck is from ${branchName(truck.branchId)}. Pick a truck from ${branchName(routeBranch)}.`;
   }
 
