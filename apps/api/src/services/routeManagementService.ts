@@ -1,7 +1,8 @@
 import { prisma } from "@bazoora/db";
 import { Prisma } from "@prisma/client";
 import type { Route } from "@prisma/client";
-import { nearestBranchId, type RouteStatus, type RouteStopLocation } from "@bazoora/shared";
+import type { RouteStatus, RouteStopLocation } from "@bazoora/shared";
+import { nearestBranch } from "../lib/branches.js";
 import { getNextSequence } from "../lib/counter.js";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
@@ -404,8 +405,7 @@ export async function createRoute(
         data: {
           ...data,
           // Without a branch, the route is run from the branch nearest its stops.
-          startBranchId:
-            data.startBranchId ?? nearestBranchId(stopLocations ?? []),
+          startBranchId: data.startBranchId ?? nearestBranch(stopLocations ?? []),
           ...(stopLocations?.length && {
             stopLocations: toJson(stopLocations),
           }),
@@ -545,13 +545,18 @@ export async function updateRoute(
         ...(data.assignedEcoAideId !== undefined && {
           assignedEcoAideId: data.assignedEcoAideId,
         }),
-        ...(data.startBranchId
-          ? { startBranchId: data.startBranchId }
-          : // A route with no branch takes the branch nearest its new stops.
-            !existingRoute.startBranchId &&
-            stopLocations?.length && {
-              startBranchId: nearestBranchId(stopLocations),
-            }),
+        // An explicit value, null included, replaces the branch. Null with new
+        // stops falls back to the branch nearest them, since a route with
+        // stops always has a nearest branch. Left out, a route with no branch
+        // takes the branch nearest its new stops.
+        ...(data.startBranchId !== undefined
+          ? {
+              startBranchId:
+                data.startBranchId ?? (stopLocations?.length ? nearestBranch(stopLocations) : null),
+            }
+          : !existingRoute.startBranchId && stopLocations?.length
+            ? { startBranchId: nearestBranch(stopLocations) }
+            : {}),
         ...(removeTruck && { assignedTruckId: null }),
       },
       include: routeAssignmentInclude,

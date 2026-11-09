@@ -139,7 +139,7 @@ async function getCompatibleRoute(
 
 const WASTE_TYPE_LABELS: Record<string, string> = {
   RESIDUAL: "Residual waste",
-  NON_BIODEGRADABLE: "Non-biodegradable waste",
+  NON_BIODEGRADABLE: "Non-Biodegradable waste",
   HAZARDOUS: "Hazardous waste",
   BIODEGRADABLE: "Biodegradable waste",
 };

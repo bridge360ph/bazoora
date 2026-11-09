@@ -122,10 +122,13 @@ export function nearestBranchId(
  * The branch a route is run from: its saved branch, or for older routes the
  * branch nearest its stops. Null when neither is known.
  */
-export function routeBranchId(route: {
-  startBranchId: string | null;
-  stopLocations: readonly { lat: number; lng: number }[] | null;
-}): BranchId | null {
+export function routeBranchId(
+  route: {
+    startBranchId: string | null;
+    stopLocations: readonly { lat: number; lng: number }[] | null;
+  },
+  branches: readonly BranchInfo[] = BRANCH_LIST,
+): BranchId | null {
   if (isBranchId(route.startBranchId)) return route.startBranchId;
-  return nearestBranchId(route.stopLocations ?? []);
+  return nearestBranchId(route.stopLocations ?? [], branches);
 }
