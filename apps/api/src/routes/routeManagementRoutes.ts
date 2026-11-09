@@ -264,7 +264,7 @@ export function routeManagementRoutes(
         id: string;
       };
 
-      const result = await deleteRoute(id);
+      const result = await deleteRoute(id, request.user.sub);
 
       if (result === "not_found") {
         return reply.status(404).send({

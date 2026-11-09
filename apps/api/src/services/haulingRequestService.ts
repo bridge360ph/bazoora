@@ -128,7 +128,7 @@ function formatPickupDate(date: Date | null): string {
   });
 }
 
-function describeRequest(request: {
+export function describeRequest(request: {
   requestNumber: string;
   wasteType: string;
   pickupDate: Date | null;
