@@ -97,13 +97,19 @@ export async function checkPickupPath(request: HaulingRequest): Promise<PickupPa
   const stops = await locatePickups(request);
   const missing = stops.filter((stop) => stop.lat === null || stop.lng === null);
 
-  if (stops.length === 0 || missing.length > 0) {
+  if (stops.length === 0) {
+    return { status: "fail", message: "The request has no pickup address.", stops };
+  }
+
+  // A warning, not a failure: the admin can place these stops by hand in the
+  // route form, so the request can still be approved.
+  if (missing.length > 0) {
     return {
-      status: "fail",
+      status: "warn",
       message:
         missing.length === 1 && stops.length === 1
-          ? "The pickup address could not be found on the map."
-          : `${missing.length} of ${stops.length} pickup addresses could not be found on the map.`,
+          ? "The pickup address could not be found on the map. Place it by hand when creating the route."
+          : `${missing.length} of ${stops.length} pickup addresses could not be found on the map. Place them by hand when creating the route.`,
       stops,
     };
   }
