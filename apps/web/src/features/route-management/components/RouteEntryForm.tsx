@@ -191,9 +191,9 @@ export function RouteEntryForm({
 
       return {
         ...next,
-        // A new barangay gets its own collection points.
+        // A new barangay gets its own collection points and branch.
         ...(key === "barangay" &&
-          value !== currentValue.barangay && { stops: [], waypoints: "" }),
+          value !== currentValue.barangay && { stops: [], waypoints: "", startBranchId: null }),
         name: buildFreeRouteName(
           next.barangay,
           next.wasteType,
@@ -310,8 +310,10 @@ export function RouteEntryForm({
   );
   const selectedTruck = trucks.find((truck) => truck.id === formValue.assignedTruckId);
   const truckBranch = branchById(selectedTruck?.branchId);
-  // A weekly route is run from the branch nearest its barangay (or its stops
-  // until the barangay is found). Only trucks from that branch are offered.
+  // A weekly route is run from its saved branch. Without one, the branch
+  // nearest its barangay (or its stops until the barangay is found) is used.
+  // This is the same order the API and the Assign Truck window use. Only
+  // trucks from that branch are offered.
   const areaBranch =
     isFree && area
       ? branchById(nearestBranchId([{ lat: area.center[0], lng: area.center[1] }], BRANCHES))
@@ -323,9 +325,7 @@ export function RouteEntryForm({
     ),
   );
   const savedBranch = branchById(formValue.startBranchId);
-  const effectiveBranchId =
-    (isFree ? (areaBranch ?? stopsBranch ?? savedBranch) : (savedBranch ?? stopsBranch))?.id ??
-    null;
+  const effectiveBranchId = (savedBranch ?? areaBranch ?? stopsBranch)?.id ?? null;
   // The garage the route path starts from: the truck's branch once a truck
   // is picked, otherwise the route's branch.
   const routeBranch = truckBranch ?? branchById(effectiveBranchId);

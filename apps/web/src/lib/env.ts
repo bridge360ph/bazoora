@@ -9,7 +9,7 @@ const envSchema = z.object({
   NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: z.string().default(""),
   // Where collection trucks start from; used to optimize the order of route
   // stops. Defaults to Makati City Hall until the real depot is set.
-  DEPOT_NAME: z.string().default("Depot (Makati)"),
+  DEPOT_NAME: z.string().default("Head Office (Makati)"),
   DEPOT_LAT: z.coerce.number().min(-90).max(90).default(14.5547),
   DEPOT_LNG: z.coerce.number().min(-180).max(180).default(121.0244),
 });
