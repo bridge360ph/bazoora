@@ -66,7 +66,7 @@ async function locate(
         return { lat, lng };
       }
     } catch {
-      // Fall through to the next query, then to the placeholder position.
+      // Fall through to the next query. Without a match the stop is left out.
     }
   }
 
@@ -76,14 +76,14 @@ async function locate(
 /**
  * Turns the route's waypoints and today's hauling requests into map stops.
  * Waypoints come first in the order the admin entered them, then each pickup
- * address of each hauling request. A place that cannot be found is placed
- * near `anchor` so the driver can still see and reorder it.
+ * address of each hauling request. A place that cannot be found on the map
+ * is left out, never given a made-up position, and counted in `unlocated` so
+ * the driver is told.
  */
 export async function buildAssignedRouteStops(
   route: Route,
   haulingStops: HaulingRouteStop[],
-  anchor: [number, number],
-): Promise<AssignedRouteStop[]> {
+): Promise<{ stops: AssignedRouteStop[]; unlocated: string[] }> {
   const entries: {
     name: string;
     detail: string;
@@ -126,9 +126,10 @@ export async function buildAssignedRouteStops(
   }
 
   const stops: AssignedRouteStop[] = [];
+  const unlocated: string[] = [];
   let lookups = 0;
 
-  for (const [index, entry] of entries.entries()) {
+  for (const entry of entries) {
     let position = entry.position ?? null;
 
     if (!position) {
@@ -139,16 +140,22 @@ export async function buildAssignedRouteStops(
       position = await locate(entry.query, entry.fallback);
     }
 
+    if (!position) {
+      unlocated.push(entry.name);
+      continue;
+    }
+
+    const number = stops.length + 1;
     stops.push({
-      id: `assigned-${index + 1}`,
-      number: String(index + 1).padStart(2, "0"),
+      id: `assigned-${number}`,
+      number: String(number).padStart(2, "0"),
       name: entry.name,
       detail: entry.detail,
-      lat: position?.lat ?? anchor[0] + (index + 1) * 0.0025,
-      lng: position?.lng ?? anchor[1] + (index + 1) * 0.0025,
+      lat: position.lat,
+      lng: position.lng,
       status: "pending",
     });
   }
 
-  return stops;
+  return { stops, unlocated };
 }

@@ -101,7 +101,11 @@ export default function DriverRoute(): React.ReactNode {
   const [routeLoadState, setRouteLoadState] = useState<
     "idle" | "loading" | "loaded" | "none" | "error"
   >("idle");
-  const [haulingStopCount, setHaulingStopCount] = useState(0);
+  // Null until counted. A resumed route or a failed load never claims "0".
+  const [haulingStopCount, setHaulingStopCount] = useState<number | null>(null);
+  const [haulingLoadFailed, setHaulingLoadFailed] = useState(false);
+  // Stops that could not be found on the map and were left out.
+  const [unlocatedStops, setUnlocatedStops] = useState<string[]>([]);
   const [truckChecked, setTruckChecked] = useState(false);
   const restoredPlanRef = useRef(false);
   const assignedRouteRequestedRef = useRef(false);
@@ -204,15 +208,25 @@ export default function DriverRoute(): React.ReactNode {
           return;
         }
 
-        const haulingStops = await fetchMyHaulingStops().catch(() => []);
-        const assignedStops = await buildAssignedRouteStops(
+        let haulingStops: Awaited<ReturnType<typeof fetchMyHaulingStops>> = [];
+        let haulingFailed = false;
+
+        try {
+          haulingStops = await fetchMyHaulingStops();
+        } catch (error) {
+          console.error("Failed to load today's hauling requests", error);
+          haulingFailed = true;
+        }
+
+        const { stops: assignedStops, unlocated } = await buildAssignedRouteStops(
           route,
           haulingStops,
-          gpsPos ?? [13.8248, 121.3964],
         );
 
         setAssignedRoute(route);
-        setHaulingStopCount(haulingStops.length);
+        setHaulingLoadFailed(haulingFailed);
+        setHaulingStopCount(haulingFailed ? null : haulingStops.length);
+        setUnlocatedStops(unlocated);
         // Keep any stop the driver clicked in while the route was loading.
         setStops((current) => (current.length > 0 ? current : assignedStops));
         setRouteLoadState("loaded");
@@ -1348,11 +1362,24 @@ export default function DriverRoute(): React.ReactNode {
                   {assignedRoute.routeDisplayNumber} · {assignedRoute.name}
                 </p>
                 <p className="text-[10px] text-gray-500">
-                  {assignedRoute.collectionDay} · {assignedRoute.startTime} ·{" "}
-                  {haulingStopCount === 1
-                    ? "1 hauling request today"
-                    : `${haulingStopCount} hauling requests today`}
+                  {assignedRoute.collectionDay} · {assignedRoute.startTime}
+                  {haulingStopCount !== null &&
+                    (haulingStopCount === 1
+                      ? " · 1 hauling request today"
+                      : ` · ${haulingStopCount} hauling requests today`)}
                 </p>
+                {haulingLoadFailed && (
+                  <p className="mt-1 text-[10px] text-red-600">
+                    Today&apos;s hauling requests could not be loaded, so they are not on the list.
+                  </p>
+                )}
+                {unlocatedStops.length > 0 && (
+                  <p className="mt-1 text-[10px] text-amber-700">
+                    {unlocatedStops.length === 1
+                      ? `1 stop could not be found on the map and was left out: ${unlocatedStops[0]}.`
+                      : `${unlocatedStops.length} stops could not be found on the map and were left out: ${unlocatedStops.join(", ")}.`}
+                  </p>
+                )}
               </>
             ) : routeLoadState === "error" ? (
               <p className="mt-1 text-xs text-red-600">
