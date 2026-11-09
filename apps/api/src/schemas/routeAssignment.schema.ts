@@ -16,3 +16,23 @@ export const assignEcoAideSchema = {
     },
   },
 } as const;
+
+export const assignTruckSchema = {
+  params: {
+    type: "object",
+    required: ["id"],
+    properties: {
+      id: { type: "string" },
+    },
+  },
+  body: {
+    type: "object",
+    additionalProperties: false,
+    required: ["truckId"],
+    properties: {
+      truckId: {
+        type: ["string", "null"],
+      },
+    },
+  },
+} as const;
