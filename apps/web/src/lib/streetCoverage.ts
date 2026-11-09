@@ -10,6 +10,8 @@ export interface CoveragePlan {
   /** Street points the path passes, in driving order. */
   points: StreetPoint[];
   streetCount: number;
+  /** Street lookups the routing server did not answer. Some streets may be missing. */
+  skipped: number;
   meters: number;
   seconds: number;
   /** True when part of the path is a straight line because the routing service did not answer. */
@@ -87,7 +89,7 @@ function orderPoints(points: { lat: number; lng: number }[]): number[] {
  * in chunks.
  */
 export async function planStreetCoverage(area: AreaBoundary): Promise<CoveragePlan | null> {
-  const streets = await sampleStreetPoints(area);
+  const { points: streets, skipped } = await sampleStreetPoints(area);
   if (streets.length === 0) return null;
 
   const branch = nearestBranches([{ lat: area.center[0], lng: area.center[1] }], 1)[0];
@@ -135,6 +137,7 @@ export async function planStreetCoverage(area: AreaBoundary): Promise<CoveragePl
     path,
     points: ordered,
     streetCount: new Set(ordered.map((point) => point.name).filter(Boolean)).size,
+    skipped,
     meters,
     seconds,
     estimated,

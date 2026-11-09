@@ -190,6 +190,8 @@ export function RouteEntryForm({
     status: "idle" | "loading" | "streets" | "center" | "error";
     count: number;
     branchName: string | null;
+    /** Street lookups the routing server did not answer. */
+    skipped?: number;
   }>({ forArea: "", status: "idle", count: 0, branchName: null });
   const areaKey = isFree && area ? `${formValue.barangay}|${area.center.join(",")}` : "";
 
@@ -215,6 +217,7 @@ export function RouteEntryForm({
         status: result.source,
         count: result.stops.length,
         branchName: result.branchName,
+        skipped: result.skipped,
       });
     } catch {
       setGeneration({ forArea, status: "error", count: 0, branchName: null });
@@ -319,7 +322,11 @@ export function RouteEntryForm({
                   : generation.status === "streets"
                     ? `${generation.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
                         generation.branchName ? `, ordered from ${generation.branchName}` : ""
-                      }. You can still add, move or remove stops.`
+                      }. You can still add, move or remove stops.${
+                        generation.skipped
+                          ? ` ${generation.skipped} spots could not be checked, so some streets may be missing. Try Regenerate.`
+                          : ""
+                      }`
                     : "Collection points come from the barangay's streets. You can still add, move or remove stops."}
         </p>
       )}

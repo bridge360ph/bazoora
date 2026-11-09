@@ -256,6 +256,10 @@ export function RouteStopsEditor({
               plan.estimated
                 ? " Part of the path is a straight line because the routing service did not answer."
                 : ""
+            }${
+              plan.skipped > 0
+                ? ` ${plan.skipped} spots could not be checked, so some streets may be missing.`
+                : ""
             }`,
           );
           setIsOptimizing(false);

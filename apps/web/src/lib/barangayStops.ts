@@ -61,6 +61,8 @@ export interface GeneratedRoute {
   stops: GeneratedStop[];
   /** "streets" when built from the barangay's streets, "center" when only its centre was available. */
   source: "streets" | "center";
+  /** Street lookups the routing server did not answer. Some streets may be missing. */
+  skipped: number;
   branchName: string | null;
 }
 
@@ -74,10 +76,11 @@ export async function generateBarangayStops(
   barangayLabel: string,
 ): Promise<GeneratedRoute> {
   const barangayName = barangayLabel.split(",")[0]?.trim() || barangayLabel;
-  let streetPoints: Awaited<ReturnType<typeof sampleStreetPoints>>;
+  let streetPoints: Awaited<ReturnType<typeof sampleStreetPoints>>["points"];
+  let skipped = 0;
 
   try {
-    streetPoints = await sampleStreetPoints(area);
+    ({ points: streetPoints, skipped } = await sampleStreetPoints(area));
   } catch {
     streetPoints = [];
   }
@@ -104,6 +107,7 @@ export async function generateBarangayStops(
         },
       ],
       source: "center",
+      skipped,
       branchName: null,
     };
   }
@@ -116,5 +120,5 @@ export async function generateBarangayStops(
       })
     : stops;
 
-  return { stops: ordered, source: "streets", branchName: plan?.branch.name ?? null };
+  return { stops: ordered, source: "streets", skipped, branchName: plan?.branch.name ?? null };
 }
