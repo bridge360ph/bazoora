@@ -1,11 +1,15 @@
 /* eslint-disable */
 import type { FastifyPluginAsync } from "fastify";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@bazoora/db";
 import { emitTruckLocation } from "../plugins/socket.js";
 import { authGuard, requireRole } from "../lib/auth.js";
 
-// In-memory store for planned routes
-const plannedRoutes = new Map<string, any[]>();
+// The driver's planned stops are stored on the truck as JSON. Anything that
+// is not a list (null on a truck with no route) is returned as no stops.
+function readPlannedRoute(value: unknown): any[] {
+  return Array.isArray(value) ? value : [];
+}
 
 const latestLocationInclude = {
   driverLocations: {
@@ -31,7 +35,7 @@ function formatTruck(t: any) {
           timestamp: location.updatedAt.toISOString(),
         }
       : null,
-    plannedRoute: plannedRoutes.get(t.id) || [],
+    plannedRoute: readPlannedRoute(t.plannedRoute),
     organizationId: "org-1",
   };
 }
@@ -145,7 +149,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
                 timestamp: location.updatedAt.toISOString(),
               }
             : null,
-          plannedRoute: plannedRoutes.get(truck.id) || [],
+          plannedRoute: readPlannedRoute(truck.plannedRoute),
           organizationId: "org-1",
         },
       });
@@ -257,6 +261,9 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
   );
 
   // PATCH /trucks/:id
+  // Admins can update any truck. The assigned driver can save their own
+  // planned stops and mark the truck active when starting a route; before
+  // this, every save from the driver app was refused with a 403.
   app.patch(
     "/:id",
     {
@@ -266,6 +273,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
           "SUPER_ADMIN",
           "GOVERNMENT_ADMIN",
           "HAULING_ADMIN",
+          "DRIVER",
         ),
       ],
     },
@@ -279,7 +287,7 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
 
       const existingTruck = await prisma.truck.findUnique({
         where: { id },
-        select: { id: true },
+        select: { id: true, assignedDriverId: true },
       });
 
       if (!existingTruck) {
@@ -289,16 +297,31 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const updated = await prisma.truck.update({
-        where: { id },
-        data: {
-          status: body.status === "active" ? "Active" : "Idle",
-        },
-      });
-
-      if (body.plannedRoute) {
-        plannedRoutes.set(id, body.plannedRoute);
+      if (
+        req.user.role === "DRIVER" &&
+        existingTruck.assignedDriverId !== req.user.sub
+      ) {
+        return reply.code(403).send({
+          success: false,
+          error: "You may only update your assigned truck.",
+        });
       }
+
+      // Only change the status when one is sent. Saving stops mid-route sends
+      // just plannedRoute, and used to flip an active truck to Idle.
+      const data: Prisma.TruckUpdateInput = {
+        ...(body.status !== undefined && {
+          status: body.status === "active" ? "Active" : "Idle",
+        }),
+        ...(Array.isArray(body.plannedRoute) && {
+          plannedRoute: body.plannedRoute as Prisma.InputJsonValue,
+        }),
+      };
+
+      const updated =
+        Object.keys(data).length === 0
+          ? await prisma.truck.findUniqueOrThrow({ where: { id } })
+          : await prisma.truck.update({ where: { id }, data });
 
       return reply.send({
         success: true,
@@ -354,10 +377,9 @@ export const trucksRoutes: FastifyPluginAsync = async (app) => {
         where: { id },
         data: {
           status: "Idle",
+          plannedRoute: Prisma.DbNull,
         },
       });
-
-      plannedRoutes.delete(id);
 
       return reply.send({
         success: true,
