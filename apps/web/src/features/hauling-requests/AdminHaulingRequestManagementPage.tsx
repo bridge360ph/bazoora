@@ -105,9 +105,13 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     const search = searchValue.trim().toLowerCase();
 
     return [...requests].sort(compareRequests).filter((request) => {
+      // Search covers the request itself too, so pending and denied requests,
+      // which have no route yet, still match.
       const searchMatches =
         search === "" ||
         [
+          request.requestNumber,
+          request.requestAddress,
           request.route?.routeDisplayNumber,
           request.route?.name,
           request.route?.ecoAideName,
@@ -145,6 +149,10 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   );
 
   const totalRequests = visibleRequests.length;
+  // An empty list while searching or filtering says so, instead of claiming
+  // there is nothing to do.
+  const isFiltering =
+    searchValue.trim() !== "" || selectedSenders.length > 0 || selectedWasteTypes.length > 0;
   const totalPages = Math.max(1, Math.ceil(totalRequests / rowsPerPage));
   // Keeps the page valid if the list shrinks after approving or denying.
   const page = Math.min(currentPage, totalPages);
@@ -333,9 +341,11 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
 
                   {totalRequests === 0 ? (
                     <EmptySlot>
-                      {statusTab === "PENDING"
-                        ? "No pending requests. You're all caught up."
-                        : "No hauling requests to display."}
+                      {isFiltering
+                        ? "No requests match your search or filters."
+                        : statusTab === "PENDING"
+                          ? "No pending requests. You're all caught up."
+                          : "No hauling requests to display."}
                     </EmptySlot>
                   ) : (
                     page === totalPages && <EmptySlot>No more requests</EmptySlot>

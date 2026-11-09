@@ -52,7 +52,7 @@ export function HaulingRequestFiltersBar({
   onSearchChange,
 }: HaulingRequestFiltersBarProps) {
   const hasActiveFilters =
-    selectedSenders.length > 0 || selectedWasteTypes.length > 0;
+    selectedSenders.length > 0 || selectedWasteTypes.length > 0 || searchValue.trim() !== "";
 
   return (
     <div>
@@ -81,7 +81,7 @@ export function HaulingRequestFiltersBar({
             type="search"
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search route or eco-aide (e.g. RT-001)"
+            placeholder="Search request no., address, route or eco-aide"
             className="h-9 w-full rounded-md border border-surface-border bg-white pl-9 pr-3 text-xs text-gray-800 placeholder:text-gray-400"
           />
         </div>
