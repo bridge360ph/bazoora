@@ -16,6 +16,7 @@ import { AdminPagination, paginate } from "@/components/admin/AdminPagination";
 import { AdminModalShell } from "@/components/admin/AdminModalShell";
 import { FLEET_DRIVERS_QUERY_KEY, deleteDriver, fetchDrivers } from "../fleet.api";
 import type { FleetDriver } from "../fleet.types";
+import { TruckBranchMeta } from "./TruckBranchBadges";
 
 type DriverFilter = "all" | "withTruck" | "noTruck";
 
@@ -289,6 +290,7 @@ function DriverCard({ driver, onRemove }: { driver: FleetDriver; onRemove: () =>
             ? `${truck.truckNumber ?? "Truck"} (${truck.plateNumber}) · ${truck.status}`
             : "No truck yet"}
         </AdminMeta>
+        {truck && <TruckBranchMeta branchId={truck.branchId} />}
         {truck && (
           <AdminMeta icon={<RouteIcon className="h-3 w-3 shrink-0 text-gray-400" />}>
             {truck.route ? `${truck.route.routeDisplayNumber} · ${truck.route.name}` : "Truck not on a route"}

@@ -24,6 +24,12 @@ import {
 import { generateHaulingRequestNumber } from "../lib/displayId.js";
 import { getNextSequence } from "../lib/counter.js";
 import {
+  toWasteType,
+  truckCarries,
+  wasteTypeLabel,
+  wasteTypeMismatchMessage,
+} from "../lib/truckWasteTypes.js";
+import {
   createPresignedImageUpload,
   resolveUploadedImageUrl,
 } from "../lib/s3ImageUpload.js";
@@ -132,7 +138,7 @@ async function getCompatibleRoute(
 
 const WASTE_TYPE_LABELS: Record<string, string> = {
   RESIDUAL: "Residual waste",
-  NON_BIODEGRADABLE: "Non-biodegradable waste",
+  NON_BIODEGRADABLE: "Non-Biodegradable waste",
   HAZARDOUS: "Hazardous waste",
   BIODEGRADABLE: "Biodegradable waste",
 };
@@ -627,13 +633,21 @@ export async function getMyRouteHaulingStops(
   return stops;
 }
 
-/** Trucks that can take a Paid route: Active, with a driver, and on no route. */
-async function findAvailablePaidRouteTrucks(): Promise<AvailablePaidRouteTruck[]> {
+/**
+ * Trucks that can take a Paid route: Active, with a driver, on no route,
+ * with a branch set, and carrying the request's waste type. The browser
+ * then picks the one with the shortest drive to the pickup.
+ */
+async function findAvailablePaidRouteTrucks(
+  wasteType: string,
+): Promise<AvailablePaidRouteTruck[]> {
   const trucks = await prisma.truck.findMany({
     where: {
       status: "Active",
       assignedDriverId: { not: null },
       assignedRoute: { is: null },
+      branchId: { not: null },
+      wasteType,
     },
     orderBy: {
       createdAt: "asc",
@@ -642,6 +656,8 @@ async function findAvailablePaidRouteTrucks(): Promise<AvailablePaidRouteTruck[]
       id: true,
       truckNumber: true,
       plateNumber: true,
+      branchId: true,
+      wasteType: true,
       assignedDriver: {
         select: {
           name: true,
@@ -650,12 +666,20 @@ async function findAvailablePaidRouteTrucks(): Promise<AvailablePaidRouteTruck[]
     },
   });
 
-  return trucks.map((truck) => ({
-    id: truck.id,
-    truckNumber: truck.truckNumber,
-    plateNumber: truck.plateNumber,
-    driverName: truck.assignedDriver?.name ?? null,
-  }));
+  return trucks.flatMap((truck) =>
+    truck.branchId
+      ? [
+          {
+            id: truck.id,
+            truckNumber: truck.truckNumber,
+            plateNumber: truck.plateNumber,
+            driverName: truck.assignedDriver?.name ?? null,
+            branchId: truck.branchId,
+            wasteType: toWasteType(truck.wasteType) ?? (wasteType as HaulingWasteType),
+          },
+        ]
+      : [],
+  );
 }
 
 function formatDateKey(dateKey: string): string {
@@ -746,8 +770,10 @@ export async function getHaulingFeasibility(
     );
   }
 
-  // Truck and driver
-  const availableTrucks = await findAvailablePaidRouteTrucks();
+  // Truck and driver. The browser replaces a pass with the nearest truck
+  // and its drive time to the pickup.
+  const availableTrucks = await findAvailablePaidRouteTrucks(request.wasteType);
+  const wasteLabel = wasteTypeLabel(request.wasteType);
 
   checks.push(
     availableTrucks.length > 0
@@ -756,15 +782,16 @@ export async function getHaulingFeasibility(
           label: "Truck and driver",
           status: "pass",
           message: `${availableTrucks.length} ${
-            availableTrucks.length === 1 ? "truck is" : "trucks are"
-          } free with a driver.`,
+            availableTrucks.length === 1
+              ? "truck is free with a driver and carries"
+              : "trucks are free with a driver and carry"
+          } ${wasteLabel} waste.`,
         }
       : {
           key: "truck",
           label: "Truck and driver",
           status: "fail",
-          message:
-            "No truck is free. Every Active truck with a driver is already on a route.",
+          message: `No free truck with a driver carries ${wasteLabel} waste. Trucks with no branch set are not counted.`,
         },
   );
 
@@ -828,6 +855,8 @@ export async function createPaidRouteForRequest(
       id: true,
       status: true,
       assignedDriverId: true,
+      branchId: true,
+      wasteType: true,
       assignedRoute: {
         select: {
           name: true,
@@ -838,6 +867,17 @@ export async function createPaidRouteForRequest(
 
   if (!truck) {
     throw new HaulingRouteError("The selected truck could not be found.", 404);
+  }
+
+  if (!truck.branchId) {
+    throw new HaulingRouteError(
+      "The selected truck has no branch. Set its branch in Fleet Management first.",
+      409,
+    );
+  }
+
+  if (!truckCarries(truck, request.wasteType)) {
+    throw new HaulingRouteError(wasteTypeMismatchMessage(request.wasteType), 409);
   }
 
   if (truck.status !== "Active" || !truck.assignedDriverId) {
@@ -880,6 +920,8 @@ export async function createPaidRouteForRequest(
           },
           data: {
             assignedTruckId: truck.id,
+            // The route path starts from the truck's branch.
+            startBranchId: truck.branchId,
           },
         });
 

@@ -8,6 +8,12 @@ import type {
 } from "@bazoora/shared";
 import { mapRouteToResponse } from "../lib/routeManagementMapper.js";
 import { routeAssignmentInclude } from "../lib/routeIncludes.js";
+import {
+  branchMismatchReason,
+  toWasteType,
+  truckCarries,
+  wasteTypeMismatchMessage,
+} from "../lib/truckWasteTypes.js";
 
 /**
  * Lets the route handler map errors to the right HTTP status instead of
@@ -181,69 +187,104 @@ export async function assignTruck(
   routeId: string,
   data: AssignTruckRequest,
 ) {
-  const route = await prisma.route.findUnique({
-    where: {
-      id: routeId,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (!route) {
-    throw new RouteAssignmentError(
-      "The selected route could not be found.",
-      404,
-    );
-  }
-
-  if (data.truckId) {
-    const truck = await prisma.truck.findUnique({
-      where: {
-        id: data.truckId,
-      },
-      select: {
-        id: true,
-        assignedRoute: {
+  try {
+    // The checks and the write share one serializable transaction, so a truck
+    // or route changed in between cannot slip through.
+    return await prisma.$transaction(
+      async (tx) => {
+        const route = await tx.route.findUnique({
+          where: {
+            id: routeId,
+          },
           select: {
             id: true,
-            name: true,
+            wasteType: true,
+            routeType: true,
+            startBranchId: true,
+            stopLocations: true,
           },
-        },
+        });
+
+        if (!route) {
+          throw new RouteAssignmentError(
+            "The selected route could not be found.",
+            404,
+          );
+        }
+
+        let startBranchId: string | null = null;
+
+        if (data.truckId) {
+          const truck = await tx.truck.findUnique({
+            where: {
+              id: data.truckId,
+            },
+            select: {
+              id: true,
+              branchId: true,
+              wasteType: true,
+              assignedRoute: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          });
+
+          if (!truck) {
+            throw new RouteAssignmentError(
+              "The selected truck could not be found.",
+              404,
+            );
+          }
+
+          if (truck.assignedRoute && truck.assignedRoute.id !== routeId) {
+            throw new RouteAssignmentError(
+              `This truck is already assigned to ${truck.assignedRoute.name}.`,
+              409,
+            );
+          }
+
+          if (!truckCarries(truck, route.wasteType)) {
+            throw new RouteAssignmentError(wasteTypeMismatchMessage(route.wasteType), 409);
+          }
+
+          const branchReason = branchMismatchReason(truck, route);
+          if (branchReason) {
+            throw new RouteAssignmentError(branchReason, 409);
+          }
+
+          startBranchId = truck.branchId;
+        }
+
+        const updatedRoute = await tx.route.update({
+          where: {
+            id: routeId,
+          },
+          data: {
+            assignedTruckId: data.truckId,
+            // The route path starts from the truck's branch.
+            ...(startBranchId && { startBranchId }),
+          },
+          include: routeAssignmentInclude,
+        });
+
+        return mapRouteToResponse(updatedRoute);
       },
-    });
-
-    if (!truck) {
-      throw new RouteAssignmentError(
-        "The selected truck could not be found.",
-        404,
-      );
-    }
-
-    if (truck.assignedRoute && truck.assignedRoute.id !== routeId) {
-      throw new RouteAssignmentError(
-        `This truck is already assigned to ${truck.assignedRoute.name}.`,
-        409,
-      );
-    }
-  }
-
-  try {
-    const updatedRoute = await prisma.route.update({
-      where: {
-        id: routeId,
-      },
-      data: {
-        assignedTruckId: data.truckId,
-      },
-      include: routeAssignmentInclude,
-    });
-
-    return mapRouteToResponse(updatedRoute);
+      { isolationLevel: "Serializable" },
+    );
   } catch (error) {
     if (isUniqueConstraintError(error)) {
       throw new RouteAssignmentError(
         "This truck is already assigned to another route.",
+        409,
+      );
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      throw new RouteAssignmentError(
+        "The truck or route was changed by someone else at the same time. Please try again.",
         409,
       );
     }
@@ -267,6 +308,8 @@ export async function listTruckOptions(): Promise<RouteTruckOption[]> {
       truckNumber: true,
       plateNumber: true,
       status: true,
+      branchId: true,
+      wasteType: true,
       assignedRoute: {
         select: {
           id: true,
@@ -281,5 +324,7 @@ export async function listTruckOptions(): Promise<RouteTruckOption[]> {
     plateNumber: truck.plateNumber,
     status: truck.status,
     assignedRouteId: truck.assignedRoute?.id ?? null,
+    branchId: truck.branchId,
+    wasteType: toWasteType(truck.wasteType),
   }));
 }

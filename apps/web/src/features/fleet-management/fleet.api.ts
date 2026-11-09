@@ -16,8 +16,22 @@ type ApiResponse<T> = {
 
 type ApiErrorBody = {
   error?: string;
+  /** Set by Fastify when the body fails the schema; `error` is then only "Bad Request". */
+  message?: string;
   passwordErrors?: string[];
 };
+
+/** Fastify's schema messages, such as "body/branchId must be equal to one of the allowed values". */
+function describeValidationError(message: string): string {
+  // The page sent a field the server does not accept, usually because the
+  // page is older than the server.
+  if (/wasteTypes|additional properties/.test(message)) {
+    return "Some of the truck details were not accepted. Refresh the page and try again.";
+  }
+  if (/branchId/.test(message)) return "Select the truck's branch.";
+  if (/wasteType/.test(message)) return "Select the waste type the truck carries.";
+  return message;
+}
 
 /**
  * Axios rejects on 4xx/5xx with a generic "Request failed with status code"
@@ -29,6 +43,10 @@ function toFleetError(error: unknown): Error {
 
     if (body?.passwordErrors && body.passwordErrors.length > 0) {
       return new Error(body.passwordErrors.join(" "));
+    }
+
+    if (error.response?.status === 400 && body?.message) {
+      return new Error(describeValidationError(body.message));
     }
 
     if (body?.error) {
@@ -77,6 +95,8 @@ function toTruckPayload(formValue: TruckFormValue) {
     capacity: formValue.capacity,
     status: formValue.status,
     assignedDriverId: formValue.assignedDriverId ?? null,
+    branchId: formValue.branchId,
+    wasteType: formValue.wasteType,
   };
 }
 
@@ -98,6 +118,7 @@ export function updateTruck(
 export function updateTruckAssignment(
   truckDatabaseId: string,
   routeId: string,
+  /** Optional until Eco-Aide assignment is ready. */
   ecoAideId: string,
 ) {
   return apiRequest<Truck>(
@@ -105,7 +126,7 @@ export function updateTruckAssignment(
     `/admin/fleet/${truckDatabaseId}/assignment`,
     {
       routeId,
-      ecoAideId,
+      ...(ecoAideId && { ecoAideId }),
     },
   );
 }

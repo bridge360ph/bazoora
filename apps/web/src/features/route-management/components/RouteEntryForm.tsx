@@ -1,4 +1,5 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { LoaderCircle } from "lucide-react";
 import { FormField } from "@bazoora/ui";
 import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import {
@@ -17,13 +18,18 @@ import {
 } from "../route.types.ts";
 import { isInsideArea, type AreaBoundary } from "@/lib/area";
 import { generateBarangayStops } from "@/lib/barangayStops";
+import { BRANCHES, branchById } from "@/lib/branches";
+import { nearestBranchId } from "@bazoora/shared";
 import { RouteStopsEditor } from "./RouteStopsEditor";
 import { BarangayPicker } from "./BarangayPicker";
 import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
 import {
-  formatTruckOption,
+  formatTruckWithBranch,
   getAvailableEcoAides,
   getAvailableTrucks,
+  getTrucksForBranch,
+  getTrucksForWasteType,
+  sortTrucksByBranch,
 } from "../../route-assignment/routeAssignmentApi";
 import { useTruckOptions } from "../../route-assignment/hooks/useTruckOptions";
 
@@ -167,13 +173,27 @@ export function RouteEntryForm({
     setFormValue((currentValue) => {
       const next = { ...currentValue, [key]: value };
 
+      // The route path starts from the picked truck's branch.
+      if (key === "assignedTruckId") {
+        const truckBranch = trucks.find((truck) => truck.id === value)?.branchId;
+        if (branchById(truckBranch)) next.startBranchId = truckBranch ?? null;
+      }
+
+      // A truck that does not carry the new waste type is taken off.
+      if (key === "wasteType" && next.assignedTruckId) {
+        const truck = trucks.find((option) => option.id === next.assignedTruckId);
+        if (truck && truck.wasteType !== value) {
+          next.assignedTruckId = null;
+        }
+      }
+
       if (next.routeType === "Paid") return next;
 
       return {
         ...next,
-        // A new barangay gets its own collection points.
+        // A new barangay gets its own collection points and branch.
         ...(key === "barangay" &&
-          value !== currentValue.barangay && { stops: [], waypoints: "" }),
+          value !== currentValue.barangay && { stops: [], waypoints: "", startBranchId: null }),
         name: buildFreeRouteName(
           next.barangay,
           next.wasteType,
@@ -191,7 +211,20 @@ export function RouteEntryForm({
     count: number;
     branchName: string | null;
   }>({ forArea: "", status: "idle", count: 0, branchName: null });
-  const areaKey = isFree && area ? `${formValue.barangay}|${area.center.join(",")}` : "";
+  // Empty while the barangay outline is loading, so the previous barangay's
+  // outline is never used for the new one.
+  const areaKey =
+    isFree && area && !isAreaLoading ? `${formValue.barangay}|${area.center.join(",")}` : "";
+  // The barangay currently picked. A generation started for an earlier one
+  // is dropped when it finishes.
+  const latestAreaKeyRef = useRef(areaKey);
+  useEffect(() => {
+    latestAreaKeyRef.current = areaKey;
+  }, [areaKey]);
+  const currentGeneration =
+    generation.forArea === areaKey
+      ? generation
+      : { forArea: areaKey, status: "idle" as const, count: 0, branchName: null };
 
   async function generateStops() {
     if (!area || !areaKey) return;
@@ -200,7 +233,9 @@ export function RouteEntryForm({
     setGeneration({ forArea, status: "loading", count: 0, branchName: null });
 
     try {
-      const result = await generateBarangayStops(area, formValue.barangay);
+      const result = await generateBarangayStops(area, formValue.barangay, routeBranch);
+      // The barangay was changed while this one was loading.
+      if (latestAreaKeyRef.current !== forArea) return;
       const stamp = Date.now().toString(36);
 
       setFormValue((current) => ({
@@ -209,17 +244,29 @@ export function RouteEntryForm({
           id: `gen-${stamp}-${index}`,
           ...stop,
         })),
+        startBranchId: result.branch?.id ?? current.startBranchId,
       }));
       setGeneration({
         forArea,
         status: result.source,
         count: result.stops.length,
-        branchName: result.branchName,
+        branchName: result.branch?.name ?? null,
       });
     } catch {
+      if (latestAreaKeyRef.current !== forArea) return;
       setGeneration({ forArea, status: "error", count: 0, branchName: null });
     }
   }
+
+  function resetStops() {
+    setFormValue((current) => ({ ...current, stops: [], waypoints: "" }));
+    setGeneration({ forArea: areaKey, status: "idle", count: 0, branchName: null });
+  }
+
+  const isPreparingStops =
+    isFree &&
+    formValue.barangay !== "" &&
+    (isAreaLoading || currentGeneration.status === "loading");
 
   // A new route generates its collection points once its barangay is found.
   // Routes that already have stops keep them until Regenerate is clicked.
@@ -250,8 +297,56 @@ export function RouteEntryForm({
     isError: trucksErrored,
   } = useTruckOptions();
 
-  // A new route has no id yet, so only free trucks are offered.
-  const availableTrucks = getAvailableTrucks(trucks, editingRouteId ?? "");
+  // A new route has no id yet, so only free trucks are offered. Of those,
+  // only trucks carrying the route's waste type, nearest branch first.
+  const freeTrucks = getAvailableTrucks(trucks, editingRouteId ?? "");
+  const wasteMatches = getTrucksForWasteType(
+    freeTrucks,
+    formValue.wasteType,
+    formValue.assignedTruckId,
+  );
+  const selectedTruck = trucks.find((truck) => truck.id === formValue.assignedTruckId);
+  const truckBranch = branchById(selectedTruck?.branchId);
+  // A weekly route is run from its saved branch. Without one, the branch
+  // nearest its barangay (or its stops until the barangay is found) is used.
+  // This is the same order the API and the Assign Truck window use. Only
+  // trucks from that branch are offered.
+  const areaBranch =
+    isFree && area
+      ? branchById(nearestBranchId([{ lat: area.center[0], lng: area.center[1] }], BRANCHES))
+      : null;
+  const stopsBranch = branchById(
+    nearestBranchId(
+      formValue.stops.filter(isLocatedStop).map((stop) => ({ lat: stop.lat, lng: stop.lng })),
+      BRANCHES,
+    ),
+  );
+  const savedBranch = branchById(formValue.startBranchId);
+  const effectiveBranchId = (savedBranch ?? areaBranch ?? stopsBranch)?.id ?? null;
+  // The garage the route path starts from: the truck's branch once a truck
+  // is picked, otherwise the route's branch.
+  const routeBranch = truckBranch ?? branchById(effectiveBranchId);
+  const availableTrucks = sortTrucksByBranch(
+    getTrucksForBranch(
+      wasteMatches,
+      formValue.routeType,
+      effectiveBranchId,
+      formValue.assignedTruckId,
+    ),
+    effectiveBranchId,
+  );
+  const hiddenTruckCount = freeTrucks.length - wasteMatches.length;
+  const otherBranchTruckCount = wasteMatches.length - availableTrucks.length;
+  const routeBranchId = routeBranch?.id ?? null;
+
+  // Keep the saved branch in step with the route's branch.
+  useEffect(() => {
+    if (!routeBranchId || formValue.startBranchId === routeBranchId) return;
+    const timer = setTimeout(() => {
+      setFormValue((current) => ({ ...current, startBranchId: routeBranchId }));
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [routeBranchId, formValue.startBranchId, setFormValue]);
   // Only flag a field once the user has put something in it — an empty,
   // untouched form shouldn't open with validation errors already showing.
   const showNameError =
@@ -295,45 +390,78 @@ export function RouteEntryForm({
             *
           </span>
         </span>
-        {isFree && area && (
-          <button
-            type="button"
-            onClick={() => void generateStops()}
-            disabled={generation.status === "loading"}
-            className="cursor-pointer text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-60"
-          >
-            {formValue.stops.length > 0 ? "Regenerate from barangay" : "Generate from barangay"}
-          </button>
-        )}
+        <span className="inline-flex items-center gap-3">
+          {formValue.stops.length > 0 && (
+            <button
+              type="button"
+              onClick={resetStops}
+              disabled={isPreparingStops}
+              className="cursor-pointer text-xs font-semibold text-red-600 hover:underline disabled:cursor-wait disabled:opacity-60"
+            >
+              Reset collection points
+            </button>
+          )}
+          {isFree && areaKey && (
+            <button
+              type="button"
+              onClick={() => void generateStops()}
+              disabled={isPreparingStops}
+              className="cursor-pointer text-xs font-semibold text-brand hover:underline disabled:cursor-wait disabled:opacity-60"
+            >
+              {formValue.stops.length > 0 ? "Regenerate from barangay" : "Generate from barangay"}
+            </button>
+          )}
+        </span>
       </span>
       {isFree && (
         <p className="text-xs font-normal text-gray-500">
           {!formValue.barangay
             ? "Pick a barangay. Its streets become the collection points automatically."
-            : generation.status === "loading"
-              ? "Finding the streets in this barangay..."
-              : generation.status === "error"
+            : isAreaLoading
+              ? `Finding ${barangayNameOf(formValue.barangay)} on the map...`
+              : currentGeneration.status === "loading"
+              ? `Finding the streets in ${barangayNameOf(formValue.barangay)}...`
+              : currentGeneration.status === "error"
                 ? "The streets could not be loaded. Try Regenerate, or add stops by hand."
-                : generation.status === "center"
+                : currentGeneration.status === "center"
                   ? "No named streets were found, so the barangay centre was added. Add more stops by hand if needed."
-                  : generation.status === "streets"
-                    ? `${generation.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
-                        generation.branchName ? `, ordered from ${generation.branchName}` : ""
+                  : currentGeneration.status === "streets"
+                    ? `${currentGeneration.count} collection points from the streets of ${barangayNameOf(formValue.barangay)}${
+                        currentGeneration.branchName ? `, ordered from ${currentGeneration.branchName}` : ""
                       }. You can still add, move or remove stops.`
                     : "Collection points come from the barangay's streets. You can still add, move or remove stops."}
         </p>
       )}
+      <div className="relative">
+      {isPreparingStops && (
+        <div
+          role="status"
+          className="absolute inset-0 z-[1000] flex flex-col items-center justify-center gap-2 rounded-md bg-white/85 text-sm font-medium text-gray-700"
+        >
+          <LoaderCircle className="h-6 w-6 animate-spin text-brand" aria-hidden="true" />
+          {isAreaLoading
+            ? `Finding ${barangayNameOf(formValue.barangay)} on the map...`
+            : `Generating collection points for ${barangayNameOf(formValue.barangay)}...`}
+        </div>
+      )}
       <RouteStopsEditor
+        // A new barangay starts the editor fresh, without the old path or summary.
+        key={formValue.barangay}
         stops={formValue.stops}
         onChange={(stops) => {
           updateField("stops", stops);
         }}
         barangay={formValue.barangay}
+        startBranch={routeBranch}
+        onPlannedBranchChange={(branch) => {
+          updateField("startBranchId", branch.id);
+        }}
         {...(isFree && {
-          area,
+          area: areaKey ? area : null,
           areaName: barangayNameOf(formValue.barangay) || "the barangay",
         })}
       />
+      </div>
       {unlocatedCount > 0 && (
         <p className="text-xs text-amber-700">
           {unlocatedCount === 1
@@ -564,13 +692,40 @@ export function RouteEntryForm({
               <option value="">Unassigned</option>
               {availableTrucks.map((truck) => (
                 <option key={truck.id} value={truck.id}>
-                  {formatTruckOption(truck)} · {truck.status}
+                  {formatTruckWithBranch(truck)} · {truck.status}
                 </option>
               ))}
             </select>
-            {availableTrucks.length === 0 && (
+            {availableTrucks.length === 0 ? (
               <p className="mt-1 text-xs text-gray-500">
-                All trucks are already assigned to other routes.
+                {freeTrucks.length === 0
+                  ? "All trucks are already assigned to other routes."
+                  : routeBranch && formValue.routeType !== "Paid"
+                    ? `No free truck from ${routeBranch.name} carries this waste type.`
+                    : "No free truck carries this waste type. Add it to a truck in Fleet Management."}
+              </p>
+            ) : (
+              hiddenTruckCount > 0 && (
+                <p className="mt-1 text-xs font-normal text-gray-500">
+                  {hiddenTruckCount === 1 ? "1 free truck is" : `${hiddenTruckCount} free trucks are`}{" "}
+                  hidden because {hiddenTruckCount === 1 ? "it does" : "they do"} not carry this
+                  waste type.
+                </p>
+              )
+            )}
+            {otherBranchTruckCount > 0 && routeBranch && (
+              <p className="mt-1 text-xs font-normal text-gray-500">
+                This route is run from {routeBranch.name}.{" "}
+                {otherBranchTruckCount === 1
+                  ? "1 truck from another branch is"
+                  : `${otherBranchTruckCount} trucks from other branches are`}{" "}
+                hidden.
+              </p>
+            )}
+            {selectedTruck && !truckBranch && (
+              <p className="mt-1 text-xs text-amber-700">
+                This truck has no branch yet. Set it in Fleet Management so the route path has a
+                starting point.
               </p>
             )}
           </>

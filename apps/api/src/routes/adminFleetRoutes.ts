@@ -1,9 +1,19 @@
 import type { FastifyPluginCallback } from "fastify";
+import { routeBranchId } from "../lib/branches.js";
 import { prisma } from "@bazoora/db";
 import { authGuard, requireRole } from "../lib/auth.js";
 import type { Prisma } from "@bazoora/db";
 import { getNextSequence } from "../lib/counter.js";
 import { generateRouteNumber, generateTruckNumber } from "../lib/displayId.js";
+import {
+  branchIdSchema,
+  branchMismatchReason,
+  toWasteType,
+  truckCarries,
+  wasteTypeLabel,
+  wasteTypeMismatchMessage,
+  wasteTypeSchema,
+} from "../lib/truckWasteTypes.js";
 
 type TruckInput = {
   plateNumber: string;
@@ -11,6 +21,8 @@ type TruckInput = {
   capacity: string;
   status: "Active" | "Idle" | "Under Maintenance";
   assignedDriverId?: string;
+  branchId: string;
+  wasteType: string;
 };
 
 type TruckWithRelations = Prisma.TruckGetPayload<{
@@ -23,6 +35,19 @@ type TruckWithRelations = Prisma.TruckGetPayload<{
     };
   };
 }>;
+
+/** A check made inside a transaction that refuses the change (409). */
+class FleetConflictError extends Error {}
+
+/**
+ * Checks and writes run in one serializable transaction, so a route or truck
+ * changed by someone else in between makes the transaction fail (P2034)
+ * instead of saving a truck that no longer matches its route.
+ */
+const SERIALIZABLE = { isolationLevel: "Serializable" } as const;
+
+const CONCURRENT_CHANGE_MESSAGE =
+  "The truck or route was changed by someone else at the same time. Please try again.";
 
 function getPrismaErrorCode(error: unknown) {
   if (
@@ -47,6 +72,8 @@ function formatTruck(truck: TruckWithRelations) {
     model: truck.model ?? "",
     capacity: truck.capacity ?? "",
     status: truck.status,
+    branchId: truck.branchId,
+    wasteType: toWasteType(truck.wasteType),
     assignedDriver: truck.assignedDriver?.name ?? "Unassigned",
     assignedDriverId: truck.assignedDriverId ?? undefined,
     registeredDate: truck.createdAt.toLocaleDateString("en-GB"),
@@ -73,7 +100,7 @@ const truckInclude = {
 const truckBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["plateNumber", "model", "capacity", "status"],
+  required: ["plateNumber", "model", "capacity", "status", "branchId", "wasteType"],
   properties: {
     plateNumber: { type: "string", minLength: 1, maxLength: 20 },
     model: { type: "string", minLength: 1, maxLength: 100 },
@@ -83,6 +110,8 @@ const truckBodySchema = {
       enum: ["Active", "Idle", "Under Maintenance"],
     },
     assignedDriverId: { type: ["string", "null"] },
+    branchId: branchIdSchema,
+    wasteType: wasteTypeSchema,
   },
 } as const;
 
@@ -95,10 +124,11 @@ const truckParamsSchema = {
 const truckAssignmentBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["routeId", "ecoAideId"],
+  required: ["routeId"],
   properties: {
     routeId: { type: "string", minLength: 1 },
-    ecoAideId: { type: "string", minLength: 1 },
+    // Optional until Eco-Aide assignment is ready.
+    ecoAideId: { type: ["string", "null"] },
   },
 } as const;
 
@@ -157,6 +187,7 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
             truckNumber: true,
             plateNumber: true,
             status: true,
+            branchId: true,
             assignedRoute: {
               select: {
                 routeNumber: true,
@@ -186,6 +217,8 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
                 truckNumber: truck.truckNumber,
                 plateNumber: truck.plateNumber,
                 status: truck.status,
+                // A driver works from their truck's branch.
+                branchId: truck.branchId,
                 route: route
                   ? {
                       routeDisplayNumber: generateRouteNumber(route.routeNumber),
@@ -276,6 +309,10 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
           id: true,
           routeNumber: true,
           name: true,
+          wasteType: true,
+          routeType: true,
+          startBranchId: true,
+          stopLocations: true,
         },
       }),
       prisma.user.findMany({
@@ -304,6 +341,10 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
         routes: routes.map((route) => ({
           id: route.id,
           label: `RT-${String(route.routeNumber).padStart(3, "0")} - ${route.name}`,
+          wasteType: route.wasteType,
+          routeType: route.routeType,
+          // Older routes with no saved branch use the branch nearest their stops.
+          startBranchId: routeBranchId(route),
         })),
         ecoAides: ecoAides.map((ecoAide) => ({
           id: ecoAide.id,
@@ -335,6 +376,8 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
             capacity: body.capacity.trim(),
             status: body.status,
             assignedDriverId: body.assignedDriverId || null,
+            branchId: body.branchId,
+            wasteType: body.wasteType,
           },
           include: truckInclude,
         });
@@ -364,23 +407,60 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     const body = request.body as TruckInput;
 
     try {
-      const truck = await prisma.truck.update({
-        where: { id },
-        data: {
-          plateNumber: body.plateNumber.trim().toUpperCase(),
-          model: body.model.trim(),
-          capacity: body.capacity.trim(),
-          status: body.status,
-          assignedDriverId: body.assignedDriverId || null,
-        },
-        include: truckInclude,
-      });
+      const truck = await prisma.$transaction(async (tx) => {
+        // A truck on a route must keep carrying that route's waste type.
+        const current = await tx.truck.findUnique({
+          where: { id },
+          select: {
+            assignedRoute: { select: { id: true, name: true, wasteType: true } },
+          },
+        });
+        const route = current?.assignedRoute;
+
+        if (route && body.wasteType !== route.wasteType) {
+          throw new FleetConflictError(
+            `This truck is on ${route.name}, which collects ${wasteTypeLabel(route.wasteType)} waste. Keep that waste type, or assign another truck to the route first.`,
+          );
+        }
+
+        const updated = await tx.truck.update({
+          where: { id },
+          data: {
+            plateNumber: body.plateNumber.trim().toUpperCase(),
+            model: body.model.trim(),
+            capacity: body.capacity.trim(),
+            status: body.status,
+            assignedDriverId: body.assignedDriverId || null,
+            branchId: body.branchId,
+            wasteType: body.wasteType,
+          },
+          include: truckInclude,
+        });
+
+        // The route path starts from the truck's branch.
+        if (route) {
+          await tx.route.update({
+            where: { id: route.id },
+            data: { startBranchId: body.branchId },
+          });
+        }
+
+        return updated;
+      }, SERIALIZABLE);
 
       return {
         success: true,
         data: formatTruck(truck),
       };
     } catch (error: unknown) {
+      if (error instanceof FleetConflictError) {
+        return reply.code(409).send({ success: false, error: error.message });
+      }
+
+      if (getPrismaErrorCode(error) === "P2034") {
+        return reply.code(409).send({ success: false, error: CONCURRENT_CHANGE_MESSAGE });
+      }
+
       if (getPrismaErrorCode(error) === "P2025") {
         return reply.code(404).send({
           success: false,
@@ -452,23 +532,46 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
     const { id } = request.params as { id: string };
     const body = request.body as {
       routeId: string;
-      ecoAideId: string;
+      ecoAideId?: string | null;
     };
 
     try {
-      await prisma.$transaction([
-        prisma.route.updateMany({
+      await prisma.$transaction(async (tx) => {
+        const [assigningTruck, targetRoute] = await Promise.all([
+          tx.truck.findUnique({
+            where: { id },
+            select: { branchId: true, wasteType: true },
+          }),
+          tx.route.findUnique({
+            where: { id: body.routeId },
+            select: { wasteType: true, routeType: true, startBranchId: true, stopLocations: true },
+          }),
+        ]);
+
+        if (assigningTruck && targetRoute && !truckCarries(assigningTruck, targetRoute.wasteType)) {
+          throw new FleetConflictError(wasteTypeMismatchMessage(targetRoute.wasteType));
+        }
+
+        const branchReason =
+          assigningTruck && targetRoute ? branchMismatchReason(assigningTruck, targetRoute) : null;
+
+        if (branchReason) {
+          throw new FleetConflictError(branchReason);
+        }
+
+        await tx.route.updateMany({
           where: { assignedTruckId: id },
           data: { assignedTruckId: null },
-        }),
-        prisma.route.update({
+        });
+        await tx.route.update({
           where: { id: body.routeId },
           data: {
             assignedTruckId: id,
-            assignedEcoAideId: body.ecoAideId,
+            ...(body.ecoAideId && { assignedEcoAideId: body.ecoAideId }),
+            ...(assigningTruck?.branchId && { startBranchId: assigningTruck.branchId }),
           },
-        }),
-      ]);
+        });
+      }, SERIALIZABLE);
 
       const truck = await prisma.truck.findUnique({
         where: { id },
@@ -492,6 +595,14 @@ export const adminFleetRoutes: FastifyPluginCallback = (app, _options, done) => 
           success: false,
           error: "The selected truck, route, or Eco-Aide was not found.",
         });
+      }
+
+      if (error instanceof FleetConflictError) {
+        return reply.code(409).send({ success: false, error: error.message });
+      }
+
+      if (getPrismaErrorCode(error) === "P2034") {
+        return reply.code(409).send({ success: false, error: CONCURRENT_CHANGE_MESSAGE });
       }
 
       if (getPrismaErrorCode(error) === "P2002") {
