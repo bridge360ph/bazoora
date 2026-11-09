@@ -6,6 +6,7 @@ import {
   uploadHaulingRequestPhoto,
 } from "@/features/hauling-requests/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { useSavedAddress } from "@/features/settings/useSavedAddress";
 
 import {
   MAX_NOTE_LENGTH,
@@ -51,6 +52,7 @@ export default function NewRequestForm({
   const [success, setSuccess] = useState(false);
 
   const pickups = usePickupAddresses({ onError: setError });
+  const { savedAddress, isLoading: isSavedAddressLoading } = useSavedAddress();
   const photo = usePhotoAttachment({ onError: setError });
 
   function resetForm() {
@@ -187,7 +189,7 @@ export default function NewRequestForm({
           </div>
 
           <div className="mt-4">
-            <FieldLabel htmlFor="request-details">Request Details</FieldLabel>
+            <FieldLabel htmlFor="request-details">Request Details (optional)</FieldLabel>
             <textarea
               id="request-details"
               value={note}
@@ -243,6 +245,11 @@ export default function NewRequestForm({
             onRemove={pickups.removeAddress}
             keepStopOrder={keepStopOrder}
             onKeepStopOrderChange={setKeepStopOrder}
+            savedAddress={savedAddress?.label ?? null}
+            isSavedAddressLoading={isSavedAddressLoading}
+            onUseSavedAddress={() => {
+              if (savedAddress) void pickups.applySavedAddress(savedAddress);
+            }}
           />
 
           <PickupMap
