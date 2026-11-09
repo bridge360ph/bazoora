@@ -6,6 +6,11 @@
  * runs, so the scheduled collection is the route's next run on or after the
  * preferred date, at the route's start time. Dates are compared in Philippine
  * time (UTC+8, no daylight saving), which is where routes run.
+ *
+ * `notBefore` is when the request was put on the route. A request approved
+ * after its preferred date is scheduled for the route's next run from that
+ * day instead, so it never names a collection that has already passed. It is
+ * a fixed moment, so the scheduled date does not move as time goes on.
  */
 
 const MANILA_OFFSET_HOURS = 8;
@@ -25,6 +30,7 @@ const START_TIME_PATTERN = /^(\d{1,2}):(\d{2})/;
 export function getScheduledCollectionAt(
   preferredPickup: Date | null,
   route: { collectionDay: string; startTime: string },
+  notBefore: Date | null = null,
 ): Date | null {
   if (!preferredPickup) {
     return null;
@@ -44,10 +50,12 @@ export function getScheduledCollectionAt(
     return null;
   }
 
+  // The preferred date is the earliest acceptable day, not always the start.
+  const anchor =
+    notBefore && notBefore.getTime() > preferredPickup.getTime() ? notBefore : preferredPickup;
+
   // Shift into Manila time so getUTC* reads the Philippine calendar day.
-  const manila = new Date(
-    preferredPickup.getTime() + MANILA_OFFSET_HOURS * 60 * 60 * 1000,
-  );
+  const manila = new Date(anchor.getTime() + MANILA_OFFSET_HOURS * 60 * 60 * 1000);
   const daysUntilRoute = (routeWeekday - manila.getUTCDay() + 7) % 7;
 
   return new Date(

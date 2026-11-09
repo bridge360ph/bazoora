@@ -102,7 +102,11 @@ export function mapHaulingRequest(
         wasteType: request.route.wasteType as WasteType,
         ecoAideName: request.route.assignedEcoAide?.name ?? null,
         scheduledCollectionAt:
-          getScheduledCollectionAt(request.pickupDate, request.route)?.toISOString() ??
+          getScheduledCollectionAt(
+            request.pickupDate,
+            request.route,
+            request.routeAssignedAt,
+          )?.toISOString() ??
           null,
       },
     }),

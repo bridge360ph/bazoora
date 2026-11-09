@@ -204,6 +204,9 @@ model HaulingRequest {
   // Set when an admin assigns an approved request to a collection route.
   // Cleared automatically if the route is deleted.
   routeId        String?
+  // When the request was put on its current route. The scheduled collection
+  // is never earlier than this, so a late approval never names a past date.
+  routeAssignedAt DateTime?
   route          Route?               @relation("RouteHaulingRequests", fields: [routeId], references: [id], onDelete: SetNull)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt

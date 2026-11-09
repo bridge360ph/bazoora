@@ -53,9 +53,10 @@ function formatRouteForMessage(
     startTime: string;
   },
   preferredPickup: Date | null,
+  routeAssignedAt: Date | null,
 ): string {
   const routeLabel = `${generateRouteNumber(route.routeNumber)} ${route.name}`;
-  const scheduled = getScheduledCollectionAt(preferredPickup, route);
+  const scheduled = getScheduledCollectionAt(preferredPickup, route, routeAssignedAt);
 
   if (!scheduled) {
     return `${routeLabel} (${route.collectionDay})`;
@@ -291,14 +292,15 @@ export async function approveHaulingRequest(
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const now = new Date();
     const updated = await decidePendingRequest(
       tx,
       id,
       {
         status: HaulingRequestStatus.APPROVED,
         approvedBy,
-        approvedAt: new Date(),
-        ...(route && { routeId: route.id }),
+        approvedAt: now,
+        ...(route && { routeId: route.id, routeAssignedAt: now }),
       },
       "approved",
     );
@@ -313,7 +315,7 @@ export async function approveHaulingRequest(
       type: HAULING_NOTIFICATION_TYPES.approved,
       title: "Hauling request approved",
       message: route
-        ? `${describeRequest(updated)} has been approved and will be collected by ${formatRouteForMessage(route, updated.pickupDate)}.`
+        ? `${describeRequest(updated)} has been approved and will be collected by ${formatRouteForMessage(route, updated.pickupDate, updated.routeAssignedAt)}.`
         : `${describeRequest(updated)} has been approved. It now appears on your schedule.`,
     });
 
@@ -437,6 +439,11 @@ export async function assignHaulingRequestRoute(
       },
       data: {
         routeId,
+        // A new route starts a new schedule from today. The same route keeps
+        // its date.
+        ...(routeId !== previousRouteId && {
+          routeAssignedAt: routeId ? new Date() : null,
+        }),
       },
       include: haulingRequestInclude,
     });
@@ -454,7 +461,7 @@ export async function assignHaulingRequestRoute(
           title: previousRouteId
             ? "Collection schedule updated"
             : "Hauling request scheduled",
-          message: `${describeRequest(updated)} will be collected by ${formatRouteForMessage(route, updated.pickupDate)}.`,
+          message: `${describeRequest(updated)} will be collected by ${formatRouteForMessage(route, updated.pickupDate, updated.routeAssignedAt)}.`,
         })
       : await createDirectNotification(tx, {
           userId: updated.userId,
