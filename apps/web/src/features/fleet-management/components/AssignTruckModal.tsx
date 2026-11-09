@@ -40,16 +40,20 @@ export function AssignTruckModal({
   const [errors, setErrors] =
     useState<AssignmentErrors>({});
   const truckBranch = branchById(truck.branchId);
+  // A truck needs both a branch and a waste type before it can take a route.
+  const truckReady = truckBranch !== null && truck.wasteType !== null;
   // Only routes for this truck's waste type, and weekly routes run from its
   // branch. Paid routes start from the truck's own branch, so any branch works.
   const sameWaste = (route: FleetAssignmentOption) =>
     !route.wasteType || truck.wasteType === route.wasteType;
   // startBranchId comes from the API: the saved branch, or for older routes
-  // the branch nearest their stops. A weekly route with neither is hidden.
+  // the branch nearest their stops. A weekly route with neither takes this
+  // truck's branch when it is assigned.
   const sameBranch = (route: FleetAssignmentOption) =>
     route.routeType === "Paid" ||
+    !route.startBranchId ||
     (truckBranch !== null && route.startBranchId === truckBranch.id);
-  const matchingRoutes = truckBranch
+  const matchingRoutes = truckReady
     ? routeOptions.filter(
         (route) => route.id === truck.assignedRouteId || (sameWaste(route) && sameBranch(route)),
       )
@@ -143,19 +147,24 @@ export function AssignTruckModal({
           {matchingRoutes.map((route) => (
             <option key={route.id} value={route.id}>
               {route.label}
+              {route.routeType !== "Paid" && !route.startBranchId ? " · No branch yet" : ""}
             </option>
           ))}
         </select>
         <span className="text-[11px] font-normal text-gray-500 mb-3">
-          {truckBranch
-            ? `Showing routes run from ${truckBranch.name} for this truck's waste type.`
-            : "Set this truck's branch and waste type with Edit before assigning it to a route."}
-          {truckBranch && otherBranchCount > 0 &&
+          {!truckBranch && !truck.wasteType
+            ? "Set this truck's branch and waste type with Edit before assigning it to a route."
+            : !truckBranch
+              ? "Set this truck's branch with Edit before assigning it to a route."
+              : !truck.wasteType
+                ? "Set this truck's waste type with Edit before assigning it to a route."
+                : `Showing routes run from ${truckBranch.name} for this truck's waste type. A route with no branch yet takes this truck's branch.`}
+          {truckReady && otherBranchCount > 0 &&
             ` ${otherBranchCount === 1 ? "1 route from another branch is" : `${otherBranchCount} routes from other branches are`} hidden.`}
-          {truckBranch && matchingRoutes.length === 0 &&
-            ` No route matches yet. Create one in Route Management.`}
-          {truckBranch && otherWasteCount > 0 &&
+          {truckReady && otherWasteCount > 0 &&
             ` ${otherWasteCount === 1 ? "1 route for another waste type is" : `${otherWasteCount} routes for other waste types are`} hidden.`}
+          {truckReady && matchingRoutes.length === 0 &&
+            " No route matches yet. Create one in Route Management."}
         </span>
       </FormField>
 

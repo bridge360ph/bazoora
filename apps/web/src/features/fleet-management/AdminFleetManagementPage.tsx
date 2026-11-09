@@ -85,7 +85,8 @@ const emptyTruckForm: TruckFormValue = {
   assignedDriver: "",
 };
 
-// "" lists every branch; "none" lists trucks with no branch set yet.
+// "" lists every branch; "none" lists trucks still missing a branch or a
+// waste type, the same trucks the setup notice counts.
 const NO_BRANCH_FILTER = "none";
 
 export function AdminFleetManagementPage() {
@@ -170,7 +171,7 @@ export function AdminFleetManagementPage() {
       (truck) =>
         (branchFilter === "" ||
           (branchFilter === NO_BRANCH_FILTER
-            ? branchById(truck.branchId) === null
+            ? branchById(truck.branchId) === null || truck.wasteType === null
             : truck.branchId === branchFilter)) &&
         (normalizedSearch.length === 0 ||
           truck.id.toLowerCase().includes(normalizedSearch) ||
@@ -236,7 +237,8 @@ export function AdminFleetManagementPage() {
 
       setSelectedTruck(truck);
       setAssignedRoute(truck.assignedRouteId ?? "");
-      setAssignedEcoAide(truck.assignedEcoAideId ?? "");
+      // Eco-Aide assignment is not built yet, so nothing is pre-filled.
+      setAssignedEcoAide("");
       setModalError("");
       setModalMode("assign");
     } catch (error) {
@@ -396,10 +398,13 @@ export function AdminFleetManagementPage() {
     try {
       setModalError("");
 
+      // The Eco-Aide field is disabled until Eco-Aide assignment is built, so
+      // no Eco-Aide is sent. A pre-filled one would collide with the route
+      // that Eco-Aide is already on.
       const updatedTruck = await updateTruckAssignment(
         selectedTruck.databaseId,
         assignedRoute,
-        assignedEcoAide,
+        "",
       );
 
       setTrucks((currentTrucks) =>
@@ -477,7 +482,7 @@ export function AdminFleetManagementPage() {
             className={`${INPUT_CLASSES} cursor-pointer sm:w-56`}
           >
             <option value="">All branches</option>
-            <option value={NO_BRANCH_FILTER}>No branch set</option>
+            <option value={NO_BRANCH_FILTER}>Needs branch or waste type</option>
             {BRANCHES.map((branch) => (
               <option key={branch.id} value={branch.id}>
                 {branch.name}
