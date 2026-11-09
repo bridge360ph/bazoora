@@ -23,9 +23,10 @@ type ApiErrorBody = {
 
 /** Fastify's schema messages, such as "body/branchId must be equal to one of the allowed values". */
 function describeValidationError(message: string): string {
-  // An API still running an earlier version of this change.
+  // The page sent a field the server does not accept, usually because the
+  // page is older than the server.
   if (/wasteTypes|additional properties/.test(message)) {
-    return "The server did not accept the truck's branch or waste type. Restart the API so it has the latest changes, then try again.";
+    return "Some of the truck details were not accepted. Refresh the page and try again.";
   }
   if (/branchId/.test(message)) return "Select the truck's branch.";
   if (/wasteType/.test(message)) return "Select the waste type the truck carries.";
