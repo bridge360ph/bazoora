@@ -1,7 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
-import type { RouteFormValue, RouteStatusFilter } from "./route.types";
+import type {
+  EditableRouteStop,
+  RouteFormValue,
+  RouteStatusFilter,
+} from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
 import { useUpdateRoute } from "./hooks/useUpdateRoute";
@@ -37,7 +41,33 @@ const emptyRouteForm: RouteFormValue = {
   routeType: "Free",
   assignedEcoAideId: null,
   assignedTruckId: null,
+  stops: [],
 };
+
+/**
+ * Stops for the edit form. Routes saved with map positions use them; older
+ * routes only have waypoint names, which show as stops still to be located.
+ */
+function toEditableStops(route: Route): EditableRouteStop[] {
+  if (route.stopLocations && route.stopLocations.length > 0) {
+    return route.stopLocations.map((stop, index) => ({
+      id: `saved-${index}`,
+      ...stop,
+    }));
+  }
+
+  return route.waypoints
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name, index) => ({
+      id: `legacy-${index}`,
+      name,
+      address: "",
+      lat: null,
+      lng: null,
+    }));
+}
 
 export function AdminRouteManagementPage() {
   const { data: routes, isLoading, isError, error, refetch } = useRoutes();
@@ -134,6 +164,7 @@ export function AdminRouteManagementPage() {
       routeType: route.routeType,
       assignedEcoAideId: route.assignedEcoAideId ?? null,
       assignedTruckId: route.assignedTruckId ?? null,
+      stops: toEditableStops(route),
     });
     assignTruckMutation.reset();
     setModalMode("edit");
