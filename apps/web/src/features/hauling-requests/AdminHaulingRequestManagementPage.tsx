@@ -11,10 +11,12 @@ import {
 import { useHaulingRequests } from "./hooks/useHaulingRequests";
 import { useApproveHaulingRequest } from "./hooks/useApproveHaulingRequest";
 import { useDenyHaulingRequest } from "./hooks/useDenyHaulingRequest";
+import { useAssignHaulingRequestRoute } from "./hooks/useAssignHaulingRequestRoute";
 import { HaulingRequestFiltersBar } from "./components/HaulingRequestFiltersBar";
 import { HaulingRequestDetailModal } from "./components/HaulingRequestDetailModal";
 import { ApproveHaulingRequestModal } from "./components/ApproveHaulingRequestModal";
 import { DenyHaulingRequestModal } from "./components/DenyHaulingRequestModal";
+import { AssignHaulingRouteModal } from "./components/AssignHaulingRouteModal";
 import {
   HaulingStatusBadge,
   statusBorderClass,
@@ -30,7 +32,11 @@ import {
   SENDER_DISPLAY,
   WASTE_TYPE_DISPLAY,
 } from "./haulingRequestManagement.constants.ts";
-import { formatDateTime, getPickupAddresses } from "./haulingRequestFormat";
+import {
+  formatDateTime,
+  formatScheduledCollection,
+  getPickupAddresses,
+} from "./haulingRequestFormat";
 
 type StatusTab = "ALL" | HaulingRequestStatus;
 type SlideDirection = "left" | "right";
@@ -68,6 +74,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   } = useHaulingRequests();
   const approveMutation = useApproveHaulingRequest();
   const denyMutation = useDenyHaulingRequest();
+  const assignRouteMutation = useAssignHaulingRequestRoute();
 
   const [statusTab, setStatusTab] = useState<StatusTab>("PENDING");
 
@@ -78,6 +85,7 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   const [selectedWasteTypes, setSelectedWasteTypes] = useState<
     WasteTypeValue[]
   >([]);
+  const [searchValue, setSearchValue] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState<number>(
@@ -94,7 +102,21 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   const filteredByAttributes = useMemo(() => {
     if (!requests) return [];
 
+    const search = searchValue.trim().toLowerCase();
+
     return [...requests].sort(compareRequests).filter((request) => {
+      // Search covers the request itself too, so pending and denied requests,
+      // which have no route yet, still match.
+      const searchMatches =
+        search === "" ||
+        [
+          request.requestNumber,
+          request.requestAddress,
+          request.route?.routeDisplayNumber,
+          request.route?.name,
+          request.route?.ecoAideName,
+        ].some((value) => value?.toLowerCase().includes(search) ?? false);
+
       const senderMatches =
         selectedSenders.length === 0 ||
         selectedSenders.includes(request.senderType);
@@ -103,9 +125,9 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
         selectedWasteTypes.length === 0 ||
         selectedWasteTypes.includes(request.wasteType);
 
-      return senderMatches && wasteTypeMatches;
+      return searchMatches && senderMatches && wasteTypeMatches;
     });
-  }, [requests, selectedSenders, selectedWasteTypes]);
+  }, [requests, searchValue, selectedSenders, selectedWasteTypes]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<StatusTab, number> = {
@@ -127,6 +149,10 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
   );
 
   const totalRequests = visibleRequests.length;
+  // An empty list while searching or filtering says so, instead of claiming
+  // there is nothing to do.
+  const isFiltering =
+    searchValue.trim() !== "" || selectedSenders.length > 0 || selectedWasteTypes.length > 0;
   const totalPages = Math.max(1, Math.ceil(totalRequests / rowsPerPage));
   // Keeps the page valid if the list shrinks after approving or denying.
   const page = Math.min(currentPage, totalPages);
@@ -180,6 +206,12 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     resetPage();
     setSelectedSenders([]);
     setSelectedWasteTypes([]);
+    setSearchValue("");
+  }
+
+  function changeSearch(value: string) {
+    resetPage();
+    setSearchValue(value);
   }
 
   function changeStatusTab(tab: StatusTab) {
@@ -198,10 +230,15 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
     // Clear any previous error so it doesn't show on the next request opened.
     approveMutation.reset();
     denyMutation.reset();
+    assignRouteMutation.reset();
   }
 
-  function handleApprove(requestId: string) {
-    approveMutation.mutate(requestId, { onSuccess: closeModal });
+  function handleApprove(requestId: string, routeId: string | null) {
+    approveMutation.mutate({ requestId, routeId }, { onSuccess: closeModal });
+  }
+
+  function handleAssignRoute(requestId: string, routeId: string | null) {
+    assignRouteMutation.mutate({ requestId, routeId }, { onSuccess: closeModal });
   }
 
   function handleDeny(requestId: string, denialReason: string) {
@@ -250,6 +287,8 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
               onToggleWasteType={toggleWasteType}
               onClearWasteTypes={clearWasteTypes}
               onClearAll={clearAllFilters}
+              searchValue={searchValue}
+              onSearchChange={changeSearch}
             />
           </div>
 
@@ -302,9 +341,11 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
 
                   {totalRequests === 0 ? (
                     <EmptySlot>
-                      {statusTab === "PENDING"
-                        ? "No pending requests. You're all caught up."
-                        : "No hauling requests to display."}
+                      {isFiltering
+                        ? "No requests match your search or filters."
+                        : statusTab === "PENDING"
+                          ? "No pending requests. You're all caught up."
+                          : "No hauling requests to display."}
                     </EmptySlot>
                   ) : (
                     page === totalPages && <EmptySlot>No more requests</EmptySlot>
@@ -372,6 +413,21 @@ export function AdminHaulingRequestManagementPage(): ReactNode {
           onClose={closeModal}
           onApproveClick={() => setModalMode("approve")}
           onDenyClick={() => setModalMode("deny")}
+          onAssignRouteClick={() => setModalMode("assignRoute")}
+        />
+      )}
+
+      {modalMode === "assignRoute" && selectedRequest && (
+        <AssignHaulingRouteModal
+          request={selectedRequest}
+          onClose={closeModal}
+          onConfirm={handleAssignRoute}
+          isSubmitting={assignRouteMutation.isPending}
+          errorMessage={
+            assignRouteMutation.error instanceof Error
+              ? assignRouteMutation.error.message
+              : undefined
+          }
         />
       )}
 
@@ -491,8 +547,20 @@ function RequestCard({
 
           <span className="flex shrink-0 items-center gap-1">
             <CalendarClock className="h-3 w-3 text-gray-400" />
-            {formatDateTime(request.pickupDate)}
+            {request.route?.scheduledCollectionAt
+              ? `Scheduled ${formatScheduledCollection(request.route.scheduledCollectionAt)}`
+              : `Preferred ${formatDateTime(request.pickupDate)}`}
           </span>
+
+          {request.status === "APPROVED" && (
+            <span
+              className={`shrink-0 ${request.route ? "text-gray-600" : "font-medium text-amber-700"}`}
+            >
+              {request.route
+                ? `${request.route.routeDisplayNumber} · ${request.route.name}`
+                : "No route yet"}
+            </span>
+          )}
         </div>
       </div>
 

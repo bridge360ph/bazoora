@@ -1,8 +1,18 @@
 import { prisma } from "@bazoora/db";
 import type { Prisma } from "@bazoora/db";
 import { HaulingRequestStatus } from "@prisma/client";
-import type { CreateHaulingRequestInput } from "@bazoora/shared";
-import { mapHaulingRequest } from "../lib/haulingRequestMapper.js";
+import type {
+  CreateHaulingRequestInput,
+  HaulingRouteOption,
+  HaulingWasteType,
+} from "@bazoora/shared";
+import {
+  haulingRequestInclude,
+  mapHaulingRequest,
+} from "../lib/haulingRequestMapper.js";
+import { canRouteCollectWaste } from "../lib/haulingRouteCompatibility.js";
+import { generateRouteNumber } from "../lib/displayId.js";
+import { getScheduledCollectionAt } from "../lib/haulingSchedule.js";
 import { generateHaulingRequestNumber } from "../lib/displayId.js";
 import { getNextSequence } from "../lib/counter.js";
 import {
@@ -20,6 +30,85 @@ export const DENIAL_REASON_MAX_LENGTH = 500;
 
 /** Thrown for a denial reason that is too short once trimmed, or too long. */
 export class InvalidDenialReasonError extends Error {}
+
+/**
+ * Thrown when a route cannot be assigned to a hauling request. Carries the
+ * HTTP status so the route handler can answer 404 or 409 instead of 500.
+ */
+export class HaulingRouteError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "HaulingRouteError";
+    this.statusCode = statusCode;
+  }
+}
+
+function formatRouteForMessage(
+  route: {
+    routeNumber: number;
+    name: string;
+    collectionDay: string;
+    startTime: string;
+  },
+  preferredPickup: Date | null,
+  routeAssignedAt: Date | null,
+): string {
+  const routeLabel = `${generateRouteNumber(route.routeNumber)} ${route.name}`;
+  const scheduled = getScheduledCollectionAt(preferredPickup, route, routeAssignedAt);
+
+  if (!scheduled) {
+    return `${routeLabel} (${route.collectionDay})`;
+  }
+
+  const when = scheduled.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return `${routeLabel} on ${when}`;
+}
+
+/**
+ * Loads a route and checks it can collect the request's waste type.
+ * Collection is segregated, so a mismatched route is refused.
+ */
+async function getCompatibleRoute(
+  routeId: string,
+  requestWasteType: HaulingWasteType,
+) {
+  const route = await prisma.route.findUnique({
+    where: {
+      id: routeId,
+    },
+    select: {
+      id: true,
+      routeNumber: true,
+      name: true,
+      collectionDay: true,
+      startTime: true,
+      wasteType: true,
+    },
+  });
+
+  if (!route) {
+    throw new HaulingRouteError("The selected route could not be found.", 404);
+  }
+
+  if (!canRouteCollectWaste(route.wasteType, requestWasteType)) {
+    throw new HaulingRouteError(
+      `${generateRouteNumber(route.routeNumber)} collects ${route.wasteType} waste, which does not match this request.`,
+      409,
+    );
+  }
+
+  return route;
+}
 
 const WASTE_TYPE_LABELS: Record<string, string> = {
   RESIDUAL: "residual waste",
@@ -63,6 +152,7 @@ export async function getHaulingRequests(
       orderBy: {
         createdAt: "desc",
       },
+      include: haulingRequestInclude,
     });
 
   return requests.map(mapHaulingRequest);
@@ -141,7 +231,7 @@ export class HaulingRequestNotPendingError extends Error {}
 async function decidePendingRequest(
   tx: Prisma.TransactionClient,
   id: string,
-  data: Prisma.HaulingRequestUpdateManyMutationInput,
+  data: Prisma.HaulingRequestUncheckedUpdateManyInput,
   action: "approved" | "denied",
 ) {
   const { count } = await tx.haulingRequest.updateMany({
@@ -156,6 +246,7 @@ async function decidePendingRequest(
     where: {
       requestId: id,
     },
+    include: haulingRequestInclude,
   });
 
   if (!request) {
@@ -172,20 +263,44 @@ async function decidePendingRequest(
 }
 
 /**
- * Approve a hauling request, recording which admin approved it.
+ * Approve a hauling request, recording which admin approved it. A route can
+ * be assigned at the same time, or later with assignHaulingRequestRoute when
+ * no suitable route exists yet.
  */
 export async function approveHaulingRequest(
   id: string,
   approvedBy: string,
+  routeId?: string | null,
 ) {
+  let route: Awaited<ReturnType<typeof getCompatibleRoute>> | null = null;
+
+  if (routeId) {
+    const existing = await prisma.haulingRequest.findUnique({
+      where: {
+        requestId: id,
+      },
+      select: {
+        wasteType: true,
+      },
+    });
+
+    if (!existing) {
+      return null;
+    }
+
+    route = await getCompatibleRoute(routeId, existing.wasteType);
+  }
+
   const result = await prisma.$transaction(async (tx) => {
+    const now = new Date();
     const updated = await decidePendingRequest(
       tx,
       id,
       {
         status: HaulingRequestStatus.APPROVED,
         approvedBy,
-        approvedAt: new Date(),
+        approvedAt: now,
+        ...(route && { routeId: route.id, routeAssignedAt: now }),
       },
       "approved",
     );
@@ -199,7 +314,9 @@ export async function approveHaulingRequest(
       createdById: approvedBy,
       type: HAULING_NOTIFICATION_TYPES.approved,
       title: "Hauling request approved",
-      message: `${describeRequest(updated)} has been approved. It now appears on your schedule.`,
+      message: route
+        ? `${describeRequest(updated)} has been approved and will be collected by ${formatRouteForMessage(route, updated.pickupDate, updated.routeAssignedAt)}.`
+        : `${describeRequest(updated)} has been approved. It now appears on your schedule.`,
     });
 
     return { request: updated, notification: created };
@@ -276,4 +393,142 @@ export async function denyHaulingRequest(
  */
 export async function createHaulingRequestPhotoUpload(fileType: string) {
   return createPresignedImageUpload("hauling-requests", fileType);
+}
+
+/**
+ * Assigns, changes or clears the route of an approved hauling request. Used
+ * when no route was picked at approval time, or the plan changes. The
+ * requester is notified whenever their collection schedule actually changes.
+ */
+export async function assignHaulingRequestRoute(
+  id: string,
+  routeId: string | null,
+  assignedBy: string,
+) {
+  const request = await prisma.haulingRequest.findUnique({
+    where: {
+      requestId: id,
+    },
+    select: {
+      status: true,
+      wasteType: true,
+      routeId: true,
+    },
+  });
+
+  if (!request) {
+    return null;
+  }
+
+  if (request.status !== HaulingRequestStatus.APPROVED) {
+    throw new HaulingRouteError(
+      "Only approved requests can be assigned to a route.",
+      409,
+    );
+  }
+
+  const route = routeId
+    ? await getCompatibleRoute(routeId, request.wasteType)
+    : null;
+  const previousRouteId = request.routeId;
+
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.haulingRequest.update({
+      where: {
+        requestId: id,
+      },
+      data: {
+        routeId,
+        // A new route starts a new schedule from today. The same route keeps
+        // its date.
+        ...(routeId !== previousRouteId && {
+          routeAssignedAt: routeId ? new Date() : null,
+        }),
+      },
+      include: haulingRequestInclude,
+    });
+
+    // Saving the same route again changes nothing for the requester.
+    if (routeId === previousRouteId) {
+      return { request: updated, notification: null };
+    }
+
+    const notification = route
+      ? await createDirectNotification(tx, {
+          userId: updated.userId,
+          createdById: assignedBy,
+          type: HAULING_NOTIFICATION_TYPES.scheduled,
+          title: previousRouteId
+            ? "Collection schedule updated"
+            : "Hauling request scheduled",
+          message: `${describeRequest(updated)} will be collected by ${formatRouteForMessage(route, updated.pickupDate, updated.routeAssignedAt)}.`,
+        })
+      : await createDirectNotification(tx, {
+          userId: updated.userId,
+          createdById: assignedBy,
+          type: HAULING_NOTIFICATION_TYPES.scheduled,
+          title: "Collection schedule removed",
+          message: `${describeRequest(updated)} is no longer on a collection route. You will be notified once it is scheduled again.`,
+        });
+
+    return { request: updated, notification };
+  });
+
+  if (result.notification) {
+    emitNotificationCreated(result.notification);
+  }
+
+  return mapHaulingRequest(result.request);
+}
+
+/**
+ * Routes that can collect a request's waste type, for the admin route
+ * dropdown. Returns null when the request does not exist.
+ */
+export async function getHaulingRouteOptions(
+  id: string,
+): Promise<HaulingRouteOption[] | null> {
+  const request = await prisma.haulingRequest.findUnique({
+    where: {
+      requestId: id,
+    },
+    select: {
+      wasteType: true,
+    },
+  });
+
+  if (!request) {
+    return null;
+  }
+
+  const routes = await prisma.route.findMany({
+    orderBy: {
+      routeNumber: "asc",
+    },
+    select: {
+      id: true,
+      routeNumber: true,
+      name: true,
+      barangay: true,
+      collectionDay: true,
+      wasteType: true,
+      assignedEcoAide: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  return routes
+    .filter((route) => canRouteCollectWaste(route.wasteType, request.wasteType))
+    .map((route) => ({
+      id: route.id,
+      routeDisplayNumber: generateRouteNumber(route.routeNumber),
+      name: route.name,
+      barangay: route.barangay,
+      collectionDay: route.collectionDay as HaulingRouteOption["collectionDay"],
+      wasteType: route.wasteType as HaulingRouteOption["wasteType"],
+      ecoAideName: route.assignedEcoAide?.name ?? null,
+    }));
 }
