@@ -23,6 +23,7 @@ import {
   getHaulingRequests,
   HaulingRequestNotPendingError,
   InvalidDenialReasonError,
+  PickupDateInPastError,
 } from "../services/haulingRequestService.js";
 
 const adminRoles = [
@@ -89,18 +90,26 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
         requireRole(...requesterRoles),
       ],
     },
-    async (request) => {
+    async (request, reply) => {
       const body = request.body as CreateHaulingRequestInput;
 
-      // The sender type follows the account, not the request body, so a
-      // business account is always filed as BUSINESS.
-      return await createHaulingRequest(
-        {
-          ...body,
-          senderType: request.user.role === "BUSINESS" ? "BUSINESS" : "RESIDENT",
-        },
-        request.user.sub,
-      );
+      try {
+        // The sender type follows the account, not the request body, so a
+        // business account is always filed as BUSINESS.
+        return await createHaulingRequest(
+          {
+            ...body,
+            senderType: request.user.role === "BUSINESS" ? "BUSINESS" : "RESIDENT",
+          },
+          request.user.sub,
+        );
+      } catch (error) {
+        if (error instanceof PickupDateInPastError) {
+          return reply.status(400).send({ message: error.message });
+        }
+
+        throw error;
+      }
     },
   );
 

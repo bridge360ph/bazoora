@@ -49,6 +49,18 @@ export function validateRequest({
     return "Please select a pickup date.";
   }
 
+  // The input's `min` is fixed when the form renders, so a form left open
+  // can still hold a time that has since passed. Check against now on submit.
+  const pickupTime = new Date(pickupDate).getTime();
+
+  if (Number.isNaN(pickupTime)) {
+    return "Please select a valid pickup date.";
+  }
+
+  if (pickupTime < Date.now()) {
+    return "Pickup date cannot be in the past. Please choose a later time.";
+  }
+
   return null;
 }
 

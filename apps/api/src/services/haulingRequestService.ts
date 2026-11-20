@@ -21,6 +21,15 @@ export const DENIAL_REASON_MAX_LENGTH = 500;
 /** Thrown for a denial reason that is too short once trimmed, or too long. */
 export class InvalidDenialReasonError extends Error {}
 
+/**
+ * Leeway for a pickup date that is only just in the past: the form's minimum
+ * is the minute it was rendered, and the client clock may run a little behind.
+ */
+const PICKUP_DATE_GRACE_MS = 5 * 60_000;
+
+/** Thrown when a new request asks for a pickup that has already passed. */
+export class PickupDateInPastError extends Error {}
+
 const WASTE_TYPE_LABELS: Record<string, string> = {
   RESIDUAL: "residual waste",
   NON_BIODEGRADABLE: "non-biodegradable waste",
@@ -75,6 +84,14 @@ export async function createHaulingRequest(
   data: CreateHaulingRequestInput,
   userId: string,
 ) {
+  // The route schema only checks the format, so a pickup date from last year
+  // would otherwise be filed and sit in the admin queue as if it were upcoming.
+  const pickupDate = new Date(data.pickupDate);
+
+  if (pickupDate.getTime() < Date.now() - PICKUP_DATE_GRACE_MS) {
+    throw new PickupDateInPastError("Pickup date cannot be in the past");
+  }
+
   const request = await prisma.$transaction(async (tx) => {
     const sequence = await getNextSequence(
       tx,
@@ -97,7 +114,7 @@ export async function createHaulingRequest(
 
         wasteType: data.wasteType,
 
-        pickupDate: new Date(data.pickupDate),
+        pickupDate,
 
         // Only a URL we issued for this feature is stored; anything else
         // (another site, a javascript: URL) becomes null.
