@@ -1,14 +1,24 @@
 import type { FastifyPluginCallback } from "fastify";
 import type {
   CreateIncidentReportInput,
+  IncidentReportFilters,
   PresignedUploadUrlRequest,
+  UpdateIncidentReportInput,
 } from "@bazoora/shared";
 import { authGuard, requireRole } from "../lib/auth.js";
 import {
+  listIncidentReportsSchema,
+  updateIncidentReportSchema,
+} from "../schemas/incidentReport.schema.js";
+import {
   createIncidentReport,
+  getIncidentReports,
   getIncidentReportsByUser,
   generateUploadPresignedUrl,
+  IncidentReportClosedError,
+  IncidentReportConflictError,
   UnsupportedUploadTypeError,
+  updateIncidentReport,
 } from "../services/incidentReportService.js";
 
 const allowedRoles = [
@@ -19,11 +29,63 @@ const allowedRoles = [
   "HAULING_ADMIN",
 ] as const;
 
+const adminRoles = [
+  "SUPER_ADMIN",
+  "GOVERNMENT_ADMIN",
+  "HAULING_ADMIN",
+] as const;
+
 export const incidentReportRoutes: FastifyPluginCallback = (
   app,
   _opts,
   done,
 ) => {
+  // ADMIN: LIST ALL INCIDENT REPORTS, OPTIONALLY FILTERED
+  app.get(
+    "/",
+    {
+      schema: listIncidentReportsSchema,
+      preHandler: [authGuard, requireRole(...adminRoles)],
+    },
+    async (request) => {
+      return await getIncidentReports(request.query as IncidentReportFilters);
+    },
+  );
+
+  // ADMIN: UPDATE STATUS AND/OR ADMIN NOTES
+  app.patch(
+    "/:id",
+    {
+      schema: updateIncidentReportSchema,
+      preHandler: [authGuard, requireRole(...adminRoles)],
+    },
+    async (request, reply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as UpdateIncidentReportInput;
+
+      try {
+        const report = await updateIncidentReport(id, body);
+
+        if (!report) {
+          return reply.status(404).send({
+            message: "Incident report not found",
+          });
+        }
+
+        return report;
+      } catch (error) {
+        if (
+          error instanceof IncidentReportClosedError ||
+          error instanceof IncidentReportConflictError
+        ) {
+          return reply.status(409).send({ message: error.message });
+        }
+
+        throw error;
+      }
+    },
+  );
+
   // GET ALL INCIDENTS FILED BY AUTHENTICATED USER
   app.get(
     "/me",

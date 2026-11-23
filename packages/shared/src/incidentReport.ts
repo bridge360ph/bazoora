@@ -18,6 +18,7 @@ export interface IncidentReport {
   reporterId: string;
   reporterName?: string;
   routeId?: string;
+  routeName?: string;
   stopName?: string;
   category: string;
   description: string;
@@ -27,6 +28,22 @@ export interface IncidentReport {
   resolvedAt?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Admin update to an incident report. Send at least one field. A report that
+ * is RESOLVED or DENIED is closed: its status can no longer change, but its
+ * admin notes can still be edited.
+ */
+export interface UpdateIncidentReportInput {
+  status?: IncidentStatus;
+  /** An empty string clears the notes. */
+  adminNotes?: string;
+}
+
+export interface IncidentReportFilters {
+  status?: IncidentStatus;
+  category?: string;
 }
 
 export interface PresignedUploadUrlRequest {
