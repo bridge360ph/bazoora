@@ -23,6 +23,7 @@ import { AdminAnalyticsPage } from "./features/analytics/AdminAnalyticsPage";
 import { AdminFleetManagementPage } from "./features/fleet-management/AdminFleetManagementPage";
 import { AdminRouteManagementPage } from "./features/route-management/AdminRouteManagementPage";
 import { AdminHaulingRequestManagementPage } from "./features/hauling-requests/AdminHaulingRequestManagementPage";
+import { AdminIncidentReportsPage } from "./features/incident-reports/AdminIncidentReportsPage";
 import { SettingsPage } from "./features/settings/components/SettingsPage";
 import { NotificationsPage } from "./features/notifications/components/NotificationsPage";
 import { NotificationListener } from "./features/notifications/components/NotificationListener";
@@ -183,6 +184,7 @@ function AppContent() {
               <Route path="fleet" element={<AdminFleetManagementPage />} />
               <Route path="routes" element={<AdminRouteManagementPage />} />
               <Route path="hauling" element={<AdminHaulingRequestManagementPage />} />
+              <Route path="incidents" element={<AdminIncidentReportsPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="settings" element={<SettingsPage />} />

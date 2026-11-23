@@ -4,6 +4,7 @@ import {
   FleetManagementIcon,
   RouteManagementIcon,
   HaulingRequestManagementIcon,
+  IncidentReportsIcon,
   AnalyticsIcon,
   NotificationsIcon,
   SettingsIcon,
@@ -45,6 +46,11 @@ export const adminNavItems: NavItem[] = [
     to: "/admin/hauling",
     label: "Hauling Request Management",
     icon: HaulingRequestManagementIcon,
+  },
+  {
+    to: "/admin/incidents",
+    label: "Incident Reports",
+    icon: IncidentReportsIcon,
   },
   {
     to: "/admin/analytics",
