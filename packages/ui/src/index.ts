@@ -1,4 +1,4 @@
-export { Button } from "./Button";
+export { Button, Spinner } from "./Button";
 export { DashboardCard } from "./DashboardCard";
 export { default as DataTable } from "./DataTable";
 export type { Column } from "./DataTable";
