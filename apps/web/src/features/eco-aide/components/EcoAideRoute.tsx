@@ -58,6 +58,7 @@ export default function EcoAideRoute(): React.ReactNode {
   const watchIdRef = useRef<number | null>(null);
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+  const [isResettingRun, setIsResettingRun] = useState<boolean>(false);
 
   useEffect(() => {
     gpsPosRef.current = gpsPos;
@@ -517,9 +518,15 @@ export default function EcoAideRoute(): React.ReactNode {
                   <p className="text-xs font-bold text-emerald-800">All stops completed successfully.</p>
                 </div>
                 <Button
+                  loading={isResettingRun}
                   onClick={async () => {
-                    await updateBackendRouteStatus("Not Started");
-                    await loadAssignedRoute(true);
+                    setIsResettingRun(true);
+                    try {
+                      await updateBackendRouteStatus("Not Started");
+                      await loadAssignedRoute(true);
+                    } finally {
+                      setIsResettingRun(false);
+                    }
                   }}
                   style={{ color: "#1f2937", backgroundColor: "#f3f4f6" }}
                   className="h-11 w-full rounded-2xl border border-gray-200 text-xs font-bold shadow-sm transition-colors hover:bg-gray-200"
