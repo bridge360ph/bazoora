@@ -77,6 +77,9 @@ export function AdminFleetManagementPage() {
   const [driverForm, setDriverForm] = useState<DriverFormValue>(emptyDriverForm);
   const [modalError, setModalError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  // The truck whose Assign button is loading assignment options, so that
+  // button shows a spinner until the modal can open.
+  const [loadingAssignFor, setLoadingAssignFor] = useState<string | null>(null);
   const userRole = useAuthStore((state) => state.user?.role);
   const canAddDriver = userRole !== undefined && DRIVER_CREATOR_ROLES.includes(userRole);
 
@@ -161,11 +164,13 @@ export function AdminFleetManagementPage() {
   function openRegisterModal() {
     setTruckForm(emptyTruckForm);
     setSelectedTruck(null);
+    setModalError("");
     setModalMode("register");
   }
 
   function openEditModal(truck: Truck) {
     setSelectedTruck(truck);
+    setModalError("");
     setTruckForm({
       plateNumber: truck.plateNumber,
       model: truck.model,
@@ -178,7 +183,12 @@ export function AdminFleetManagementPage() {
   }
 
   async function openAssignModal(truck: Truck) {
+    if (loadingAssignFor) {
+      return;
+    }
+
     try {
+      setLoadingAssignFor(truck.databaseId);
       setRequestError("");
 
       const assignmentOptions = await fetchFleetAssignmentOptions();
@@ -190,6 +200,7 @@ export function AdminFleetManagementPage() {
       setSelectedTruck(truck);
       setAssignedRoute(truck.assignedRouteId ?? "");
       setAssignedEcoAide(truck.assignedEcoAideId ?? "");
+      setModalError("");
       setModalMode("assign");
     } catch (error) {
       setRequestError(
@@ -197,6 +208,8 @@ export function AdminFleetManagementPage() {
           ? error.message
           : "Unable to load Fleet assignment options.",
       );
+    } finally {
+      setLoadingAssignFor(null);
     }
   }
 
@@ -275,17 +288,20 @@ export function AdminFleetManagementPage() {
 
   async function registerTruck() {
     try {
-      setRequestError("");
+      setIsSaving(true);
+      setModalError("");
 
       const createdTruck = await createTruck(truckForm);
       setTrucks((currentTrucks) => [createdTruck, ...currentTrucks]);
-      closeModal();
+      setModalMode(null);
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck could not be registered.",
       );
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -295,7 +311,8 @@ export function AdminFleetManagementPage() {
     }
 
     try {
-      setRequestError("");
+      setIsSaving(true);
+      setModalError("");
 
       const updatedTruck = await updateTruck(
         selectedTruck.databaseId,
@@ -310,13 +327,16 @@ export function AdminFleetManagementPage() {
         ),
       );
 
-      closeModal();
+      setSelectedTruck(null);
+      setModalMode(null);
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck could not be updated.",
       );
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -326,7 +346,8 @@ export function AdminFleetManagementPage() {
     }
 
     try {
-      setRequestError("");
+      setIsSaving(true);
+      setModalError("");
 
       const updatedTruck = await updateTruckAssignment(
         selectedTruck.databaseId,
@@ -342,13 +363,16 @@ export function AdminFleetManagementPage() {
         ),
       );
 
-      closeModal();
+      setSelectedTruck(null);
+      setModalMode(null);
     } catch (error) {
-      setRequestError(
+      setModalError(
         error instanceof Error
           ? error.message
           : "The truck assignment could not be saved.",
       );
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -492,8 +516,13 @@ export function AdminFleetManagementPage() {
                         <Button
                           size="sm"
                           variant="secondary"
+                          loading={loadingAssignFor === truck.databaseId}
+                          disabled={
+                            loadingAssignFor !== null &&
+                            loadingAssignFor !== truck.databaseId
+                          }
                           onClick={() => {
-                            openAssignModal(truck);
+                            void openAssignModal(truck);
                           }}
                         >
                           Assign
@@ -535,9 +564,13 @@ export function AdminFleetManagementPage() {
           title="Register Garbage Truck"
           formValue={truckForm}
           setFormValue={setTruckForm}
-          saveLabel="Register"
+          saveLabel={isSaving ? "Registering..." : "Register"}
           driverOptions={driverOptions}
-          onSave={registerTruck}
+          isSaving={isSaving}
+          error={modalError}
+          onSave={() => {
+            void registerTruck();
+          }}
           onClose={closeModal}
         />
       )}
@@ -547,9 +580,13 @@ export function AdminFleetManagementPage() {
           title="Edit Garbage Truck"
           formValue={truckForm}
           setFormValue={setTruckForm}
-          saveLabel="Save"
+          saveLabel={isSaving ? "Saving..." : "Save"}
           driverOptions={driverOptions}
-          onSave={saveEditedTruck}
+          isSaving={isSaving}
+          error={modalError}
+          onSave={() => {
+            void saveEditedTruck();
+          }}
           onClose={closeModal}
         />
       )}
@@ -588,7 +625,11 @@ export function AdminFleetManagementPage() {
           setAssignedEcoAide={setAssignedEcoAide}
           routeOptions={routeOptions}
           ecoAideOptions={ecoAideOptions}
-          onSave={saveTruckAssignment}
+          isSaving={isSaving}
+          error={modalError}
+          onSave={() => {
+            void saveTruckAssignment();
+          }}
           onClose={closeModal}
         />
       )}

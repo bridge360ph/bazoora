@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import type { Route } from "@bazoora/shared";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { Button, StatCard } from "@bazoora/ui";
 import { PhilippineAddressFields } from "../../settings/components/PhilippineAddressFields";
+import { getApiErrorMessage } from "../../settings/api";
 import {
   archiveEcoAide,
   createEcoAide,
@@ -65,6 +67,19 @@ function mapApiEcoAide(apiEcoAide: ApiEcoAide): EcoAide {
 }
 
 
+/**
+ * The server's message when the API sent one, the message of an error this
+ * page threw itself, and otherwise the fallback (axios's own "Request failed
+ * with status code 500" means nothing to an admin).
+ */
+function describeActionError(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    return getApiErrorMessage(error, fallback);
+  }
+
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 const emptyEcoAideForm: EcoAideFormValue = {
   name: "",
   status: "Active",
@@ -90,6 +105,8 @@ export function EcoAideManagementPage() {
   const [formValue, setFormValue] =
     useState<EcoAideFormValue>(emptyEcoAideForm);
   const [reason, setReason] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -231,9 +248,42 @@ export function EcoAideManagementPage() {
   }
 
   function closeModal() {
+    // Closing mid-save would hide whether the change went through.
+    if (isSaving) {
+      return;
+    }
+
     setSelectedEcoAide(null);
     setModalMode(null);
     setReason("");
+    setActionError("");
+  }
+
+  /**
+   * Runs a modal's save/confirm action with a busy state. On success the
+   * modal closes; on failure it stays open and shows why.
+   */
+  async function runModalAction(
+    action: () => Promise<void>,
+    fallbackError: string,
+  ) {
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    setActionError("");
+
+    try {
+      await action();
+      setSelectedEcoAide(null);
+      setModalMode(null);
+      setReason("");
+    } catch (error) {
+      setActionError(describeActionError(error, fallbackError));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function saveEditedEcoAide(
@@ -303,8 +353,6 @@ export function EcoAideManagementPage() {
 
     const refreshedEcoAides = await getEcoAides();
     setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
-
-    closeModal();
   }
 
   async function createEcoAideAccount(
@@ -359,8 +407,6 @@ export function EcoAideManagementPage() {
 
     const refreshedEcoAides = await getEcoAides();
     setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
-
-    closeModal();
   }
 
   async function confirmArchive() {
@@ -372,8 +418,6 @@ export function EcoAideManagementPage() {
 
     const refreshedEcoAides = await getEcoAides();
     setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
-
-    closeModal();
   }
 
   async function confirmStatusChange(
@@ -391,8 +435,6 @@ export function EcoAideManagementPage() {
 
     const refreshedEcoAides = await getEcoAides();
     setEcoAides(refreshedEcoAides.map(mapApiEcoAide));
-
-    closeModal();
   }
 
   return (
@@ -485,7 +527,14 @@ export function EcoAideManagementPage() {
           setFormValue={setFormValue}
           routes={routes}
           trucks={trucks}
-          onSave={saveEditedEcoAide}
+          isSaving={isSaving}
+          error={actionError}
+          onSave={(value) => {
+            void runModalAction(
+              () => saveEditedEcoAide(value),
+              "The Eco-Aide profile could not be saved.",
+            );
+          }}
           onClose={closeModal}
         />
       )}
@@ -498,7 +547,14 @@ export function EcoAideManagementPage() {
           setFormValue={setFormValue}
           routes={routes}
           trucks={trucks}
-          onSave={createEcoAideAccount}
+          isSaving={isSaving}
+          error={actionError}
+          onSave={(value) => {
+            void runModalAction(
+              () => createEcoAideAccount(value),
+              "The Eco-Aide account could not be created.",
+            );
+          }}
           onClose={closeModal}
           saveLabel="Create"
         />
@@ -513,8 +569,13 @@ export function EcoAideManagementPage() {
           reason={reason}
           setReason={setReason}
           confirmLabel="Confirm"
+          isSaving={isSaving}
+          error={actionError}
           onConfirm={() => {
-            confirmStatusChange("Suspended");
+            void runModalAction(
+              () => confirmStatusChange("Suspended"),
+              "The Eco-Aide could not be suspended.",
+            );
           }}
           onClose={closeModal}
         />
@@ -529,8 +590,13 @@ export function EcoAideManagementPage() {
           reason={reason}
           setReason={setReason}
           confirmLabel="Confirm"
+          isSaving={isSaving}
+          error={actionError}
           onConfirm={() => {
-            confirmStatusChange("Deactivated");
+            void runModalAction(
+              () => confirmStatusChange("Deactivated"),
+              "The Eco-Aide could not be deactivated.",
+            );
           }}
           onClose={closeModal}
         />
@@ -544,8 +610,13 @@ export function EcoAideManagementPage() {
           reason={reason}
           setReason={setReason}
           confirmLabel="Archive"
+          isSaving={isSaving}
+          error={actionError}
           onConfirm={() => {
-            void confirmArchive();
+            void runModalAction(
+              confirmArchive,
+              "The Eco-Aide could not be archived.",
+            );
           }}
           onClose={closeModal}
         />
@@ -841,6 +912,8 @@ interface EditEcoAideModalProps {
   >;
   routes: Route[];
   trucks: Truck[];
+  isSaving: boolean;
+  error: string;
   onSave: (validatedValue: EcoAideFormValue) => void;
   onClose: () => void;
   saveLabel?: string;
@@ -853,6 +926,8 @@ function EditEcoAideModal({
   setFormValue,
   routes,
   trucks,
+  isSaving,
+  error,
   onSave,
   onClose,
   saveLabel = "Save",
@@ -1623,12 +1698,21 @@ function EditEcoAideModal({
           )}
         </div>
 
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+          >
+            {error}
+          </p>
+        )}
+
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={handleSubmit}>
+          <Button onClick={handleSubmit} loading={isSaving}>
             {saveLabel}
           </Button>
 
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={onClose} disabled={isSaving}>
             Close
           </Button>
         </div>
@@ -1645,6 +1729,8 @@ interface ConfirmActionModalProps {
   reason: string;
   setReason: (reason: string) => void;
   confirmLabel: string;
+  isSaving: boolean;
+  error: string;
   onConfirm: () => void;
   onClose: () => void;
 }
@@ -1657,6 +1743,8 @@ function ConfirmActionModal({
   reason,
   setReason,
   confirmLabel,
+  isSaving,
+  error,
   onConfirm,
   onClose,
 }: ConfirmActionModalProps) {
@@ -1681,9 +1769,20 @@ function ConfirmActionModal({
           />
         </label>
 
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+          >
+            {error}
+          </p>
+        )}
+
         <div className="mt-[22px] flex flex-wrap justify-center gap-2.5">
-          <Button onClick={onConfirm}> {confirmLabel}</Button>
-          <Button variant="secondary" onClick={onClose}>
+          <Button onClick={onConfirm} loading={isSaving}>
+            {confirmLabel}
+          </Button>
+          <Button variant="secondary" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
         </div>
