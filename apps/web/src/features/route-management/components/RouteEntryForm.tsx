@@ -2,7 +2,8 @@ import type { Dispatch, SetStateAction } from "react";
 import { FormField } from "@bazoora/ui";
 import type { Route, WasteType, CollectionDay } from "@bazoora/shared";
 import { WASTE_TYPES,COLLECTION_DAYS } from "../routeFilters.constants.ts";
-import type { RouteFormValue } from "../route.types.ts";
+import { isLocatedStop, type RouteFormValue } from "../route.types.ts";
+import { RouteStopsEditor } from "./RouteStopsEditor";
 import { useEcoAideOptions } from "../../route-assignment/hooks/useEcoAideOptions";
 import {
   formatTruckOption,
@@ -36,13 +37,16 @@ export function getRouteFormValidationError(
     return "Barangay Coverage must be at least 5 characters.";
   }
 
-  const waypointCount = formValue.waypoints
-    .split(",")
-    .map((stop) => stop.trim())
-    .filter(Boolean).length;
-
-  if (waypointCount < 1) {
+  if (formValue.stops.length < 1) {
     return "At least one collection point is required.";
+  }
+
+  if (formValue.stops.some((stop) => !stop.name.trim())) {
+    return "Every collection point needs a name.";
+  }
+
+  if (!formValue.stops.every(isLocatedStop)) {
+    return "Find each collection point on the map, or remove it.";
   }
 
   if (!formValue.wasteType) {
@@ -114,12 +118,9 @@ export function RouteEntryForm({
     formValue.name.length > 0 && formValue.name.trim().length < 5;
   const showBarangayError =
     formValue.barangay.length > 0 && formValue.barangay.trim().length < 5;
-  const waypointCount = formValue.waypoints
-    .split(",")
-    .map((stop) => stop.trim())
-    .filter(Boolean).length;
-  const showWaypointsError =
-    formValue.waypoints.length > 0 && waypointCount < 1;
+  const unlocatedCount = formValue.stops.filter(
+    (stop) => !isLocatedStop(stop),
+  ).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -155,21 +156,30 @@ export function RouteEntryForm({
         )}
       </FormField>
 
-      <FormField label="Waypoints / Collection Points" required>
-        <input
-          value={formValue.waypoints}
-          onChange={(event) => {
-            updateField("waypoints", event.target.value);
+      {/* Not a FormField: that renders a <label>, which would swallow clicks
+          on the map and the stop buttons inside it. */}
+      <div className="flex flex-col gap-1.5 text-[13px] font-medium text-gray-700">
+        <span className="inline-flex items-center">
+          Waypoints / Collection Points
+          <span aria-hidden="true" className="ml-1 text-red-500">
+            *
+          </span>
+        </span>
+        <RouteStopsEditor
+          stops={formValue.stops}
+          onChange={(stops) => {
+            updateField("stops", stops);
           }}
-          placeholder="Enter Waypoints / Collection Points (e.g. Stop A, Stop B, Stop C)"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          barangay={formValue.barangay}
         />
-        {showWaypointsError && (
-          <p className="mt-1 text-xs text-red-600">
-            At least one collection point is required.
+        {unlocatedCount > 0 && (
+          <p className="text-xs text-amber-700">
+            {unlocatedCount === 1
+              ? "1 stop has no map location yet. Use \"Find on map\" or remove it before saving."
+              : `${unlocatedCount} stops have no map location yet. Use "Find on map" or remove them before saving.`}
           </p>
         )}
-      </FormField>
+      </div>
 
       <FormField label="Waste Type">
         <select

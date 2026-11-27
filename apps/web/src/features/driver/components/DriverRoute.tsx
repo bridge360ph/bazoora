@@ -23,6 +23,13 @@ import { env } from "@/lib/env";
 import type { MapMarker, MapRoute } from "@/components/map/smart-map";
 import { compressImage } from "@/lib/image-compress";
 import { calculateRoute } from "@/lib/routing";
+import type { Route } from "@bazoora/shared";
+import { updateRouteStatusRequest } from "@/features/route-management/routeService";
+import {
+  buildAssignedRouteStops,
+  fetchMyHaulingStops,
+  fetchMyRoute,
+} from "../driverRouteStops";
 
 interface Stop {
   id: string;
@@ -88,6 +95,21 @@ export default function DriverRoute(): React.ReactNode {
   >(undefined);
   const [routePath, setRoutePath] = useState<[number, number][]>([]);
 
+  // The admin-assigned route and today's hauling stops pre-fill the plan.
+  // "none" keeps the original click-to-plan mode as a fallback.
+  const [assignedRoute, setAssignedRoute] = useState<Route | null>(null);
+  const [routeLoadState, setRouteLoadState] = useState<
+    "idle" | "loading" | "loaded" | "none" | "error"
+  >("idle");
+  // Null until counted. A resumed route or a failed load never claims "0".
+  const [haulingStopCount, setHaulingStopCount] = useState<number | null>(null);
+  const [haulingLoadFailed, setHaulingLoadFailed] = useState(false);
+  // Stops that could not be found on the map and were left out.
+  const [unlocatedStops, setUnlocatedStops] = useState<string[]>([]);
+  const [truckChecked, setTruckChecked] = useState(false);
+  const restoredPlanRef = useRef(false);
+  const assignedRouteRequestedRef = useRef(false);
+
   const totalRouteDistanceRef = useRef<number>(0);
   const totalRouteDurationRef = useRef<number>(0);
   const totalPathNodesRef = useRef<number>(0);
@@ -108,6 +130,7 @@ export default function DriverRoute(): React.ReactNode {
 
           // Restore saved route if it exists
           if (truck.plannedRoute && truck.plannedRoute.length > 0) {
+            restoredPlanRef.current = true;
             setStops(truck.plannedRoute);
 
             // If already on route, restore UI state
@@ -150,10 +173,71 @@ export default function DriverRoute(): React.ReactNode {
         }
       } catch (error) {
         console.error("Failed to fetch assigned truck", error);
+      } finally {
+        setTruckChecked(true);
       }
     }
     getMyTruck();
   }, [accessToken]);
+
+  /* ── Assigned Route & Today's Hauling Stops ────────────────────── */
+  // Runs once, after the truck check. Stops stay editable in planning mode
+  // before the driver starts. When a route in progress was just restored,
+  // only the route itself is loaded so Finish can mark it Completed.
+  useEffect(() => {
+    if (!truckChecked || assignedRouteRequestedRef.current) {
+      return;
+    }
+
+    assignedRouteRequestedRef.current = true;
+
+    async function loadAssignedRoute() {
+      setRouteLoadState("loading");
+
+      try {
+        const route = await fetchMyRoute();
+
+        if (!route) {
+          setRouteLoadState("none");
+          return;
+        }
+
+        if (restoredPlanRef.current) {
+          setAssignedRoute(route);
+          setRouteLoadState("loaded");
+          return;
+        }
+
+        let haulingStops: Awaited<ReturnType<typeof fetchMyHaulingStops>> = [];
+        let haulingFailed = false;
+
+        try {
+          haulingStops = await fetchMyHaulingStops();
+        } catch (error) {
+          console.error("Failed to load today's hauling requests", error);
+          haulingFailed = true;
+        }
+
+        const { stops: assignedStops, unlocated } = await buildAssignedRouteStops(
+          route,
+          haulingStops,
+        );
+
+        setAssignedRoute(route);
+        setHaulingLoadFailed(haulingFailed);
+        setHaulingStopCount(haulingFailed ? null : haulingStops.length);
+        setUnlocatedStops(unlocated);
+        // Keep any stop the driver clicked in while the route was loading.
+        setStops((current) => (current.length > 0 ? current : assignedStops));
+        setRouteLoadState("loaded");
+      } catch (error) {
+        console.error("Failed to load assigned route", error);
+        setRouteLoadState("error");
+      }
+    }
+
+    void loadAssignedRoute();
+  }, [truckChecked]);
 
   /* ── Auto-Drive Simulation ────────────────────────── */
   const simulationPathRef = useRef<[number, number][]>([]);
@@ -508,6 +592,17 @@ export default function DriverRoute(): React.ReactNode {
       if (!json.success) throw new Error(json.message);
 
       setStops(activeStops);
+
+      if (assignedRoute) {
+        updateRouteStatusRequest(assignedRoute.id, "In Progress")
+          .then((route) => setAssignedRoute(route))
+          .catch((error) => {
+            console.error("Failed to mark route in progress", error);
+            toast.error("Route status not updated", {
+              description: "Collection started, but the route was not marked In Progress.",
+            });
+          });
+      }
     } catch (error: any) {
       console.error("Failed to sync route", error);
       toast.error("Sync Failed", {
@@ -625,6 +720,18 @@ export default function DriverRoute(): React.ReactNode {
           Authorization: `Bearer ${accessToken}`,
         },
       });
+
+      if (assignedRoute) {
+        try {
+          const route = await updateRouteStatusRequest(assignedRoute.id, "Completed");
+          setAssignedRoute(route);
+        } catch (error) {
+          console.error("Failed to mark route completed", error);
+          toast.error("Route status not updated", {
+            description: "Collection finished, but the route was not marked Completed.",
+          });
+        }
+      }
       setIsPlanning(true);
       setIsCollecting(false);
       setStops([]);
@@ -1180,7 +1287,9 @@ export default function DriverRoute(): React.ReactNode {
               <div className="flex items-center gap-3 rounded-full bg-[#0f2419] px-4 py-2.5 text-white shadow-xl">
                 <MapPin className="h-3 w-3 animate-pulse text-blue-500" />
                 <span className="text-[11px] font-black tracking-widest uppercase">
-                  Planning Mode: Click map to add stops
+                  {routeLoadState === "loaded"
+                    ? "Planning Mode: Review stops or click map to add more"
+                    : "Planning Mode: Click map to add stops"}
                 </span>
               </div>
             </div>
@@ -1236,6 +1345,51 @@ export default function DriverRoute(): React.ReactNode {
             >
               {isSimulated ? "🤖 SIMULATOR" : "🛰️ REAL GPS"}
             </button>
+          </div>
+
+          {/* Assigned route summary */}
+          <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-2.5">
+            <p className="text-[9px] font-extrabold tracking-widest text-gray-400 uppercase">
+              Assigned Route
+            </p>
+            {routeLoadState === "loading" || routeLoadState === "idle" ? (
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading route stops...
+              </p>
+            ) : assignedRoute ? (
+              <>
+                <p className="mt-1 text-xs font-bold text-gray-900">
+                  {assignedRoute.routeDisplayNumber} · {assignedRoute.name}
+                </p>
+                <p className="text-[10px] text-gray-500">
+                  {assignedRoute.collectionDay} · {assignedRoute.startTime}
+                  {haulingStopCount !== null &&
+                    (haulingStopCount === 1
+                      ? " · 1 hauling request today"
+                      : ` · ${haulingStopCount} hauling requests today`)}
+                </p>
+                {haulingLoadFailed && (
+                  <p className="mt-1 text-[10px] text-red-600">
+                    Today&apos;s hauling requests could not be loaded, so they are not on the list.
+                  </p>
+                )}
+                {unlocatedStops.length > 0 && (
+                  <p className="mt-1 text-[10px] text-amber-700">
+                    {unlocatedStops.length === 1
+                      ? `1 stop could not be found on the map and was left out: ${unlocatedStops[0]}.`
+                      : `${unlocatedStops.length} stops could not be found on the map and were left out: ${unlocatedStops.join(", ")}.`}
+                  </p>
+                )}
+              </>
+            ) : routeLoadState === "error" ? (
+              <p className="mt-1 text-xs text-red-600">
+                Could not load your route. You can still plan stops on the map.
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-500">
+                No route assigned yet. Ask your admin, or plan stops on the map.
+              </p>
+            )}
           </div>
         </div>
 

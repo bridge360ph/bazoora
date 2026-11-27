@@ -68,3 +68,9 @@ export function getScheduledCollectionAt(
     ),
   );
 }
+
+/** The calendar day in Philippine time, as YYYY-MM-DD. */
+export function toManilaDateKey(date: Date): string {
+  const manila = new Date(date.getTime() + MANILA_OFFSET_HOURS * 60 * 60 * 1000);
+  return manila.toISOString().slice(0, 10);
+}

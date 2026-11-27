@@ -25,6 +25,7 @@ import {
   denyHaulingRequest,
   getHaulingRequests,
   getHaulingRouteOptions,
+  getMyRouteHaulingStops,
   HaulingRequestNotPendingError,
   HaulingRouteError,
   InvalidDenialReasonError,
@@ -223,6 +224,21 @@ export const haulingRequestRoutes: FastifyPluginCallback = (
       } catch (error) {
         return sendDecisionError(reply, error);
       }
+    },
+  );
+
+  // Today's hauling stops for the driver or eco-aide on a route. Registered
+  // as a static path, so Fastify matches it before "/:id/..." routes.
+  app.get(
+    "/my-route-stops",
+    {
+      preHandler: [
+        authGuard,
+        requireRole("DRIVER", "ECO_AIDE"),
+      ],
+    },
+    async (request) => {
+      return getMyRouteHaulingStops(request.user.sub, request.user.role);
     },
   );
 
