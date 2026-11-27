@@ -18,6 +18,7 @@ import {
 } from "../schemas/routeManagement.schema.js";
 import {
   createRoute,
+  RouteScheduleClashError,
   deleteRoute,
   getRouteAssignment,
   getRouteById,
@@ -138,9 +139,11 @@ export function routeManagementRoutes(
 
         return reply.send(route);
       } catch (error) {
-        return reply.status(400).send({
-          message: (error as Error).message,
-        });
+        return reply
+          .status(error instanceof RouteScheduleClashError ? 409 : 400)
+          .send({
+            message: (error as Error).message,
+          });
       }
     },
   );
@@ -242,9 +245,11 @@ export function routeManagementRoutes(
 
         return reply.send(route);
       } catch (error) {
-        return reply.status(400).send({
-          message: (error as Error).message,
-        });
+        return reply
+          .status(error instanceof RouteScheduleClashError ? 409 : 400)
+          .send({
+            message: (error as Error).message,
+          });
       }
     },
   );

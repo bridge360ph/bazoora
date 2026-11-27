@@ -16,11 +16,25 @@ export const ROUTE_STATUS_FILTERS: RouteStatusFilter[] = [
 ];
 
 
+// The same four kinds residents pick on a hauling request.
 export const WASTE_TYPES: WasteType[] = [
-  "Regular",
-  "Recyclable",
-  "Regular/Non-Recyclable",
+  "BIODEGRADABLE",
+  "RESIDUAL",
+  "NON_BIODEGRADABLE",
+  "HAZARDOUS",
 ];
+
+export const WASTE_TYPE_LABELS: Record<WasteType, string> = {
+  BIODEGRADABLE: "Biodegradable",
+  RESIDUAL: "Residual",
+  NON_BIODEGRADABLE: "Non-Biodegradable",
+  HAZARDOUS: "Hazardous",
+};
+
+/** A label for a stored waste type, falling back to the raw value. */
+export function formatWasteType(value: string): string {
+  return WASTE_TYPE_LABELS[value as WasteType] ?? value;
+}
 
 
 export const COLLECTION_DAYS: CollectionDay[] = [

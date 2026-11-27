@@ -4,6 +4,7 @@ import type {
 } from "@bazoora/db";
 import type {
   CollectionDay,
+  HaulingPickupLocation,
   HaulingRequest as SharedHaulingRequest,
   WasteType,
 } from "@bazoora/shared";
@@ -19,6 +20,7 @@ export const haulingRequestInclude = {
       name: true,
       collectionDay: true,
       startTime: true,
+      collectionDate: true,
       wasteType: true,
       assignedEcoAide: {
         select: {
@@ -28,6 +30,36 @@ export const haulingRequestInclude = {
     },
   },
 } satisfies Prisma.HaulingRequestInclude;
+
+/**
+ * Reads the stored pickup stops, dropping anything malformed so a bad row
+ * never breaks the whole list.
+ */
+export function readPickupLocations(value: unknown): HaulingPickupLocation[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item: unknown) => {
+    if (typeof item !== "object" || item === null) return [];
+
+    const { address, lat, lng } = item as Record<string, unknown>;
+
+    if (typeof address !== "string") return [];
+
+    const hasPosition =
+      typeof lat === "number" &&
+      typeof lng === "number" &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng);
+
+    return [
+      {
+        address,
+        lat: hasPosition ? lat : null,
+        lng: hasPosition ? lng : null,
+      },
+    ];
+  });
+}
 
 type HaulingRequestWithRoute = PrismaHaulingRequest & {
   route?: Prisma.HaulingRequestGetPayload<{
@@ -46,6 +78,12 @@ export function mapHaulingRequest(
     userId: request.userId,
 
     requestAddress: request.requestAddress,
+
+    keepStopOrder: request.keepStopOrder,
+
+    ...(request.pickupLocations !== null && {
+      pickupLocations: readPickupLocations(request.pickupLocations),
+    }),
 
     senderType: request.senderType,
 

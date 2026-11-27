@@ -19,6 +19,7 @@ import { authPlugin } from "./plugins/auth.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { settingsRoutes } from "./routes/settingsRoutes.js";
 import { incidentReportRoutes } from "./routes/incidentReportRoutes.js";
+import { routingRoutes } from "./routes/routingRoutes.js";
 
 const app = Fastify({
   logger: true,
@@ -85,6 +86,10 @@ const start = async () => {
 
   await app.register(incidentReportRoutes, {
     prefix: "/incidents",
+  });
+
+  await app.register(routingRoutes, {
+    prefix: "/routing",
   });
 
   app.get("/", (): HealthResponse => {

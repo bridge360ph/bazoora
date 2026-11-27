@@ -23,6 +23,7 @@ export interface CreateRouteBody {
   // Optional to match the schema, which does not list it as required.
   assignedEcoAideId?: string | null;
   stopLocations?: RouteStopLocation[];
+  collectionDate?: string | null;
 }
 
 export interface UpdateRouteBody {
@@ -35,6 +36,7 @@ export interface UpdateRouteBody {
   routeType?: string;
   assignedEcoAideId?: string | null;
   stopLocations?: RouteStopLocation[];
+  collectionDate?: string | null;
 }
 
 export const createRouteSchema = {
@@ -62,6 +64,7 @@ export const createRouteSchema = {
       },
       wasteType: {
         type: "string",
+        enum: ["BIODEGRADABLE", "RESIDUAL", "NON_BIODEGRADABLE", "HAZARDOUS"],
       },
       collectionDay: {
         type: "string",
@@ -71,6 +74,11 @@ export const createRouteSchema = {
       },
       routeType: {
         type: "string",
+        enum: ["Free", "Paid"],
+      },
+      collectionDate: {
+        type: ["string", "null"],
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
       },
       assignedEcoAideId: {
         type: ["string", "null"],
@@ -115,6 +123,7 @@ export const updateRouteSchema = {
       },
       wasteType: {
         type: "string",
+        enum: ["BIODEGRADABLE", "RESIDUAL", "NON_BIODEGRADABLE", "HAZARDOUS"],
       },
       collectionDay: {
         type: "string",
@@ -143,7 +152,11 @@ export const updateRouteSchema = {
       },
       routeType: {
         type: "string",
-        minLength: 3,
+        enum: ["Free", "Paid"],
+      },
+      collectionDate: {
+        type: ["string", "null"],
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
       },
     },
   },

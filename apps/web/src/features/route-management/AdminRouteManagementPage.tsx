@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { Button, MapPreviewPlaceholder, PaginationControls, StatCard } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
-import type {
-  EditableRouteStop,
-  RouteFormValue,
-  RouteStatusFilter,
+import {
+  buildFreeRouteName,
+  type EditableRouteStop,
+  type RouteFormValue,
+  type RouteStatusFilter,
 } from "./route.types";
 import { useRoutes } from "./hooks/useRoutes";
 import { useCreateRoute } from "./hooks/useCreateRoute";
@@ -19,9 +20,16 @@ import { AssignEcoAideModal } from "./components/AssignEcoAideModal";
 import { RouteDetailsModal } from "./components/RouteDetailsModal";
 import { AssignRouteTruckModal } from "./components/AssignRouteTruckModal";
 import { DeleteRouteModal } from "./components/DeleteRouteModal";
+import {
+  RouteTypeChooserModal,
+  type RouteKind,
+} from "./components/RouteTypeChooserModal";
+import { PaidRouteFormModal } from "./components/PaidRouteFormModal";
 
 type ModalMode =
+  | "chooseType"
   | "create"
+  | "createPaid"
   | "edit"
   | "assign"
   | "assignTruck"
@@ -35,13 +43,14 @@ const emptyRouteForm: RouteFormValue = {
   name: "",
   barangay: "",
   waypoints: "",
-  wasteType: "Regular",
+  wasteType: "BIODEGRADABLE",
   collectionDay: "Sunday",
   startTime: "",
   routeType: "Free",
   assignedEcoAideId: null,
   assignedTruckId: null,
   stops: [],
+  collectionDate: "",
 };
 
 /**
@@ -146,16 +155,35 @@ export function AdminRouteManagementPage() {
     routes?.filter((route) => route.status === "Not Started").length ?? 0;
 
   function openCreateModal() {
-    assignTruckMutation.reset();
     setSelectedRoute(null);
-    setRouteForm(emptyRouteForm);
+    setModalMode("chooseType");
+  }
+
+  function handleChooseRouteType(kind: RouteKind) {
+    if (kind === "Paid") {
+      setModalMode("createPaid");
+      return;
+    }
+
+    assignTruckMutation.reset();
+    setRouteForm({ ...emptyRouteForm, routeType: "Free" });
     setModalMode("create");
   }
 
   function openEditModal(route: Route) {
     setSelectedRoute(route);
     setRouteForm({
-      name: route.name,
+      // Weekly routes take the name built from their barangay, day and time.
+      name:
+        route.routeType === "Paid"
+          ? route.name
+          : buildFreeRouteName(
+              route.barangay,
+              route.wasteType,
+              route.collectionDay,
+              route.startTime,
+            ) ||
+            route.name,
       barangay: route.barangay,
       waypoints: route.waypoints,
       wasteType: route.wasteType,
@@ -165,6 +193,7 @@ export function AdminRouteManagementPage() {
       assignedEcoAideId: route.assignedEcoAideId ?? null,
       assignedTruckId: route.assignedTruckId ?? null,
       stops: toEditableStops(route),
+      collectionDate: route.collectionDate ?? "",
     });
     assignTruckMutation.reset();
     setModalMode("edit");
@@ -448,6 +477,26 @@ export function AdminRouteManagementPage() {
           <MapPreviewPlaceholder />
         </div>
       </div>
+
+      {modalMode === "chooseType" && (
+        <RouteTypeChooserModal
+          onChoose={handleChooseRouteType}
+          onClose={closeModal}
+        />
+      )}
+
+      {modalMode === "createPaid" && (
+        <PaidRouteFormModal
+          onClose={closeModal}
+          onCreated={(route, request) => {
+            refetch();
+            closeModal();
+            setSuccessMessage(
+              `Paid route ${route.routeDisplayNumber} created for ${request.requestNumber}.`,
+            );
+          }}
+        />
+      )}
 
       {modalMode === "create" && (
         <RouteFormModal

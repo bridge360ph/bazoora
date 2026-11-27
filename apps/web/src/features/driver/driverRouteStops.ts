@@ -114,7 +114,11 @@ export async function buildAssignedRouteStops(
     }
   }
 
-  for (const request of haulingStops) {
+  // A Paid route is built from hauling requests, so its checkpoints already
+  // are those pickups; adding them again would visit each one twice.
+  const extraHaulingStops = route.routeType === "Paid" ? [] : haulingStops;
+
+  for (const request of extraHaulingStops) {
     for (const address of splitPickupAddresses(request.requestAddress)) {
       entries.push({
         name: address,

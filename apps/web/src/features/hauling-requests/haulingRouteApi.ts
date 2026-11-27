@@ -1,4 +1,9 @@
-import type { HaulingRequest, HaulingRouteOption } from "@bazoora/shared";
+import type {
+  CreatePaidHaulingRouteInput,
+  HaulingRequest,
+  HaulingRouteOption,
+  Route,
+} from "@bazoora/shared";
 
 import { apiClient } from "@/lib/api-client";
 import { toHaulingRequestError } from "./haulingRequestError";
@@ -41,10 +46,32 @@ export async function assignHaulingRequestRoute({
 }
 
 export function formatHaulingRouteOption(route: HaulingRouteOption): string {
+  const schedule =
+    route.routeType === "Paid" && route.collectionDate
+      ? `Paid · ${route.collectionDate}`
+      : route.collectionDay;
+
   return [
     route.routeDisplayNumber,
     route.name,
-    route.collectionDay,
+    schedule,
     route.ecoAideName ?? "No eco-aide yet",
   ].join(" · ");
+}
+
+// POST /hauling-requests/paid-route
+// Creates a one-time Paid route for one request, puts the truck on it, and
+// approves the request if it was pending.
+export async function createPaidHaulingRoute(
+  input: CreatePaidHaulingRouteInput,
+): Promise<Route> {
+  try {
+    const { data } = await apiClient.post<Route>(
+      "/hauling-requests/paid-route",
+      input,
+    );
+    return data;
+  } catch (error) {
+    throw toHaulingRequestError(error, "Failed to create the paid route");
+  }
 }

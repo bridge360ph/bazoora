@@ -1,6 +1,8 @@
 import type { Route } from "@bazoora/shared";
 import { RouteStatusPill } from "./RouteStatusPill";
 import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
+import { describeRouteSchedule } from "../route.types";
+import { formatWasteType } from "../routeFilters.constants";
 import { formatTruckOption } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteCardProps {
@@ -42,13 +44,13 @@ export function RouteCard({
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11.5px] font-medium text-white">
-          {route.collectionDay}
+          {route.routeType === "Paid" ? "Paid" : "Free"} · {describeRouteSchedule(route)}
         </span>
         <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11.5px] font-medium text-white">
           {route.startTime}
         </span>
         <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11.5px] font-medium text-white">
-          {route.wasteType}
+          {formatWasteType(route.wasteType)}
         </span>
         <span className="rounded-full bg-white/15 px-2.5 py-1 text-[11.5px] font-medium text-white">
           {route.stops} Stops

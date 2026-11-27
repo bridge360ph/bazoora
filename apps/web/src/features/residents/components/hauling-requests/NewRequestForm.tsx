@@ -44,6 +44,8 @@ export default function NewRequestForm({
   const [wasteType, setWasteType] = useState<WasteType | "">("");
   const [pickupDate, setPickupDate] = useState("");
   const [note, setNote] = useState("");
+  // False lets the collection team plan the best order of the stops.
+  const [keepStopOrder, setKeepStopOrder] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -55,6 +57,7 @@ export default function NewRequestForm({
     setWasteType("");
     setPickupDate("");
     setNote("");
+    setKeepStopOrder(false);
     pickups.reset();
     photo.clear();
   }
@@ -94,9 +97,17 @@ export default function NewRequestForm({
       }
 
       const trimmedNote = note.trim();
+      const filledAddresses = getFilledAddresses(pickups.addresses);
 
       await createResidentHaulingRequest({
-        requestAddress: combineAddresses(getFilledAddresses(pickups.addresses)),
+        requestAddress: combineAddresses(filledAddresses),
+        pickupLocations: filledAddresses.map((item) => ({
+          address: item.address.trim(),
+          lat: item.position?.[0] ?? null,
+          lng: item.position?.[1] ?? null,
+        })),
+        // Order only matters when there is more than one stop.
+        keepStopOrder: filledAddresses.length > 1 && keepStopOrder,
         // The API also derives this from the account; sent for the shared type.
         senderType: userRole === "business" ? "BUSINESS" : "RESIDENT",
         wasteType,
@@ -230,6 +241,8 @@ export default function NewRequestForm({
             onResolve={(index) => void pickups.resolveAddress(index)}
             onAdd={pickups.addAddress}
             onRemove={pickups.removeAddress}
+            keepStopOrder={keepStopOrder}
+            onKeepStopOrderChange={setKeepStopOrder}
           />
 
           <PickupMap

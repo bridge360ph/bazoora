@@ -4,7 +4,7 @@ import { apiClient } from "@/lib/api-client";
 import { geocode } from "@/lib/geocoding";
 import type { Route } from "@bazoora/shared";
 
-import type { Stop } from "../types";
+import { ROUTE_WASTE_TYPE_LABELS, type Stop } from "../types";
 
 interface UseAssignedDriverRouteResult {
   truckId: string | null;
@@ -97,7 +97,7 @@ export function useAssignedDriverRoute(
               address: stop.address || stop.name,
               lat: stop.lat,
               lng: stop.lng,
-              wasteType: route.wasteType,
+              wasteType: ROUTE_WASTE_TYPE_LABELS[route.wasteType],
               volume: "—",
               priority: "Medium",
             })),
@@ -169,7 +169,7 @@ export function useAssignedDriverRoute(
             address: stopName,
             lat: position.lat,
             lng: position.lng,
-            wasteType: route.wasteType,
+            wasteType: ROUTE_WASTE_TYPE_LABELS[route.wasteType],
             volume: "—",
             priority: "Medium",
           });

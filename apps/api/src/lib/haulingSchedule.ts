@@ -29,17 +29,17 @@ const START_TIME_PATTERN = /^(\d{1,2}):(\d{2})/;
 
 export function getScheduledCollectionAt(
   preferredPickup: Date | null,
-  route: { collectionDay: string; startTime: string },
+  route: {
+    collectionDay: string;
+    startTime: string;
+    /** Set on Paid (one-time) routes: they run on this calendar day only. */
+    collectionDate?: Date | null;
+  },
   notBefore: Date | null = null,
 ): Date | null {
-  if (!preferredPickup) {
-    return null;
-  }
-
-  const routeWeekday = WEEKDAYS.indexOf(route.collectionDay);
   const time = START_TIME_PATTERN.exec(route.startTime.trim());
 
-  if (routeWeekday === -1 || !time) {
+  if (!time) {
     return null;
   }
 
@@ -47,6 +47,29 @@ export function getScheduledCollectionAt(
   const minutes = Number(time[2]);
 
   if (hours > 23 || minutes > 59) {
+    return null;
+  }
+
+  // A one-time route is collected on its date, whatever was preferred.
+  if (route.collectionDate) {
+    return new Date(
+      Date.UTC(
+        route.collectionDate.getUTCFullYear(),
+        route.collectionDate.getUTCMonth(),
+        route.collectionDate.getUTCDate(),
+        hours - MANILA_OFFSET_HOURS,
+        minutes,
+      ),
+    );
+  }
+
+  if (!preferredPickup) {
+    return null;
+  }
+
+  const routeWeekday = WEEKDAYS.indexOf(route.collectionDay);
+
+  if (routeWeekday === -1) {
     return null;
   }
 

@@ -50,13 +50,20 @@ export async function fetchRoutes(): Promise<Route[]> {
  * The route endpoints reject unknown fields, and the truck is assigned
  * through its own endpoint, so the form's truck pick is left out here.
  */
-function toRoutePayload({ assignedTruckId, stops, ...payload }: RouteFormValue) {
+function toRoutePayload({
+  assignedTruckId,
+  stops,
+  collectionDate,
+  ...payload
+}: RouteFormValue) {
   void assignedTruckId;
 
   return {
     ...payload,
     waypoints: waypointsFromStops(stops),
     stopLocations: toStopLocations(stops),
+    // Only Paid routes have a date; the API sets their weekday from it.
+    collectionDate: payload.routeType === "Paid" ? collectionDate : null,
   };
 }
 

@@ -2,6 +2,8 @@ import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 
 import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
+import { describeRouteSchedule } from "../route.types";
+import { formatWasteType } from "../routeFilters.constants";
 import { formatTruckOption } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteDetailsModalProps {
@@ -21,11 +23,11 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
           <DetailItem label="Route Name" value={route.name} />
           <DetailItem label="Barangay Coverage" value={route.barangay} />
           <DetailItem label="Waypoint / Collection Points" value={route.waypoints} />
-          <DetailItem label="Waste Type" value={route.wasteType} />
+          <DetailItem label="Waste Type" value={formatWasteType(route.wasteType)} />
           <DetailItem label="Route Type" value={route.routeType} />
           <DetailItem
             label="Start Time"
-            value={`${route.startTime} (${route.collectionDay})`}
+            value={`${route.startTime} (${describeRouteSchedule(route)})`}
           />
           <DetailItem
             label="Assigned Eco-Aide"

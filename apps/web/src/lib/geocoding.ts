@@ -49,6 +49,10 @@ export interface GeocodeOptions {
   limit?: number;
   /** ISO-3166 country code filter, e.g. "ph" for the Philippines. */
   countryCodes?: string;
+  /** [west, south, east, north]. Results inside it are preferred. */
+  viewbox?: [number, number, number, number];
+  /** With a viewbox, only return results inside it. */
+  bounded?: boolean;
 }
 
 export async function geocode(
@@ -62,9 +66,52 @@ export async function geocode(
       addressdetails: 0,
       limit: options.limit ?? 5,
       ...(options.countryCodes && { countrycodes: options.countryCodes }),
+      ...(options.viewbox && { viewbox: options.viewbox.join(",") }),
+      ...(options.viewbox && options.bounded && { bounded: 1 }),
     },
   });
   return z.array(searchResultSchema).parse(response.data);
+}
+
+const areaResultSchema = z.object({
+  class: z.string().optional(),
+  type: z.string().optional(),
+  lat: z.coerce.number(),
+  lon: z.coerce.number(),
+  boundingbox: z.array(z.coerce.number()).length(4),
+  geojson: z
+    .object({
+      type: z.string(),
+      coordinates: z.unknown(),
+    })
+    .optional(),
+});
+
+export type AreaResult = z.infer<typeof areaResultSchema>;
+
+/**
+ * Looks up an area such as a barangay with its outline when OpenStreetMap
+ * has one. Results with an outline come first.
+ */
+export async function geocodeArea(query: string): Promise<AreaResult[]> {
+  const response = await nominatim.get<unknown>("/search", {
+    params: {
+      q: query,
+      format: "json",
+      polygon_geojson: 1,
+      limit: 3,
+      countrycodes: "ph",
+    },
+  });
+  const results = z.array(areaResultSchema).parse(response.data);
+  const hasOutline = (result: AreaResult) =>
+    result.geojson?.type === "Polygon" || result.geojson?.type === "MultiPolygon";
+  // Administrative boundaries (barangays, cities) first, then other outlines.
+  const rank = (result: AreaResult) =>
+    (result.class === "boundary" && result.type === "administrative" ? 0 : 2) +
+    (hasOutline(result) ? 0 : 1);
+
+  return [...results].sort((a, b) => rank(a) - rank(b));
 }
 
 /**

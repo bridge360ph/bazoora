@@ -13,5 +13,9 @@ export function mapRouteToResponse(route: RouteWithRelations) {
     routeDisplayNumber: generateRouteNumber(route.routeNumber),
     // Stored as JSON; the route schema validates the shape on every write.
     stopLocations: (route.stopLocations ?? null) as RouteStopLocation[] | null,
+    // A calendar day; sent as YYYY-MM-DD so time zones cannot shift it.
+    collectionDate: route.collectionDate
+      ? route.collectionDate.toISOString().slice(0, 10)
+      : null,
   };
 }

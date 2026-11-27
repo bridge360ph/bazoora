@@ -8,7 +8,7 @@ import type {
  */
 export type ModalMode =
   | "detail"
-  | "approve"
+  | "createRoute"
   | "deny"
   | "assignRoute"
   | null;

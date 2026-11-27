@@ -1,3 +1,5 @@
+import type { WasteType as SharedWasteType } from "@bazoora/shared";
+
 export type StopStatus =
   | "DONE"
   | "NOW"
@@ -11,15 +13,18 @@ export type Priority =
   | "Low";
 
 export type WasteType =
-  // Categories used by the older mock driver screens.
   | "Residual"
   | "Hazardous"
   | "Non-Bio"
-  | "Biodegradable"
-  // Categories the Route API actually returns, per @bazoora/shared.
-  | "Regular"
-  | "Recyclable"
-  | "Regular/Non-Recyclable";
+  | "Biodegradable";
+
+/** The labels the driver screens show for each route waste type. */
+export const ROUTE_WASTE_TYPE_LABELS: Record<SharedWasteType, WasteType> = {
+  BIODEGRADABLE: "Biodegradable",
+  RESIDUAL: "Residual",
+  NON_BIODEGRADABLE: "Non-Bio",
+  HAZARDOUS: "Hazardous",
+};
 
 export type Stop = {
   stopNumber: string;
