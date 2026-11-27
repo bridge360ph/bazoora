@@ -28,6 +28,9 @@ export function useTruckTracking() {
   const { data: initialTrucks = [], ...rest } = useQuery({
     queryKey: truckKeys.tracking(),
     queryFn: listLiveTrucks,
+    // Truck positions are live data: always load fresh starting positions
+    // when the map opens instead of reusing ones up to 30s old.
+    staleTime: 0,
   });
 
   const { socket, isConnected } = useSocket();
