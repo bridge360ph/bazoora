@@ -2,6 +2,7 @@ import { MapPreviewPlaceholder, Modal, ModalFooter } from "@bazoora/ui";
 import type { Route } from "@bazoora/shared";
 
 import { formatAssignedEcoAide } from "../formatAssignedEcoAide";
+import { formatTruckOption } from "../../route-assignment/routeAssignmentApi";
 
 interface RouteDetailsModalProps {
   route: Route;
@@ -32,7 +33,11 @@ export function RouteDetailsModal({ route, onClose }: RouteDetailsModalProps) {
           />
           <DetailItem
             label="Fleet Assignment"
-            value={"Not yet available"}
+            value={
+              route.assignedTruck
+                ? formatTruckOption(route.assignedTruck)
+                : "Unassigned"
+            }
           />
         </div>
 
