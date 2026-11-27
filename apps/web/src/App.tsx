@@ -117,7 +117,7 @@ function AppContent() {
       <div className="flex h-screen flex-col overflow-hidden bg-gray-50 dark:bg-slate-950">
       {/* Role Simulator banner - development builds only, never shipped to production */}
       {import.meta.env.DEV && (
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-gray-200 bg-white/85 px-3 py-2 sm:px-6 sm:py-3 shadow-sm backdrop-blur-md dark:border-gray-800 dark:bg-slate-900/85 shrink-0 z-50">
           <div className="flex items-center gap-2">
             <span className="text-lg font-black tracking-wider text-brand dark:text-brand-accent">
                BAZOORA
@@ -127,8 +127,8 @@ function AppContent() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
+            <span className="hidden text-xs font-bold sm:inline text-gray-500 dark:text-gray-400">
               Role Simulator:
             </span>
             <div className="flex rounded-lg bg-gray-150 p-0.5 dark:bg-slate-800">
@@ -138,7 +138,7 @@ function AppContent() {
                   <button
                     key={r}
                     onClick={() => handleRoleChange(r)}
-                    className={`rounded-md px-3 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                    className={`rounded-md px-2 py-1 text-[11px] sm:px-3 sm:text-xs font-bold transition-all active:scale-95 cursor-pointer ${
                       activeKey === r
                         ? "bg-brand text-white shadow-md"
                         : "text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-slate-700"
@@ -151,7 +151,7 @@ function AppContent() {
             </div>
             <button
               onClick={() => void signOut()}
-              className="ml-3 rounded-md border border-gray-300 bg-white hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 px-3 py-1 text-xs font-black text-red-500 transition-all active:scale-95 cursor-pointer"
+              className="rounded-md sm:ml-3 border border-gray-300 bg-white hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 px-3 py-1 text-xs font-black text-red-500 transition-all active:scale-95 cursor-pointer"
             >
               RESET
             </button>
