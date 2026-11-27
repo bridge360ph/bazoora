@@ -101,3 +101,26 @@ export const haulingRequestPhotoUploadSchema = {
     },
   },
 } as const;
+
+export const assignHaulingRequestRouteSchema = {
+  params: {
+    type: "object",
+    additionalProperties: false,
+    required: ["id"],
+    properties: {
+      id: {
+        type: "string",
+      },
+    },
+  },
+  body: {
+    type: "object",
+    additionalProperties: false,
+    required: ["routeId"],
+    properties: {
+      routeId: {
+        type: ["string", "null"],
+      },
+    },
+  },
+} as const;

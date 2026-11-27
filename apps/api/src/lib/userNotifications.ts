@@ -12,6 +12,7 @@ export const HAULING_NOTIFICATION_TYPES = {
   pending: "HAULING_REQUEST_PENDING",
   approved: "HAULING_REQUEST_APPROVED",
   denied: "HAULING_REQUEST_DENIED",
+  scheduled: "HAULING_REQUEST_SCHEDULED",
 } as const;
 
 interface DirectNotificationInput {
