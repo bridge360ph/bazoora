@@ -19,6 +19,7 @@ export { default as EcoAideIcon } from "./icons/sidebar-eco-aide-management.svg"
 export { default as FleetManagementIcon } from "./icons/sidebar-truck.svg";
 export { default as RouteManagementIcon } from "./icons/sidebar-route-management.svg";
 export { default as HaulingRequestManagementIcon } from "./icons/sidebar-hauling-request-management.svg";
+export { default as IncidentReportsIcon } from "./icons/sidebar-incident-reports.svg";
 export { default as AnalyticsIcon } from "./icons/sidebar-analytics.svg";
 export { default as NotificationsIcon } from "./icons/sidebar-notifications.svg";
 export { default as SettingsIcon } from "./icons/sidebar-settings.svg";
