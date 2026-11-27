@@ -1,110 +1,62 @@
-# Bazoora — Local Database Setup
+# @bazoora/db
 
-This branch contains the **local development database infrastructure only**. It sets up a PostgreSQL database using Docker for consistent development across all environments.
+Prisma schema, migrations and the shared Prisma client used by `@bazoora/api`.
 
----
+```
+packages/db/
+├── prisma/
+│   ├── schema.prisma     # data model
+│   └── migrations/       # applied in order by prisma migrate
+├── prisma.config.ts      # reads DATABASE_URL from packages/db/.env
+└── src/                  # exports the shared `prisma` client
+```
 
-## 📦 What This Includes
+## Local database
 
-* Dockerized PostgreSQL 17 instance
-* Preconfigured database (`bazoora`)
-* Standardized environment variables
-* Persistent database volume
-
----
-
-## ⚙️ Prerequisites
-
-Make sure you have installed:
-
-* Docker Desktop
-* Node.js 20+ (for app development, not required for DB alone)
-* pnpm (for full monorepo usage)
-
----
-
-## 🚀 Getting Started
-
-### 1. Start the database
-
-From the project root:
+Postgres runs in Docker. From the repo root:
 
 ```bash
-docker compose up -d
+docker compose up -d     # starts Postgres 17 as container "bazoora-db" on port 5432
+docker ps                # bazoora-db should show "Up (healthy)"
 ```
 
-This will start a PostgreSQL container named `bazoora-db`.
+Credentials (local only): user `postgres`, password `postgres`, database
+`bazoora`.
 
----
+## Environment
 
-### 2. Verify the container is running
+Prisma CLI commands run from this package, so they read **this package's**
+`.env`, not the API's:
 
 ```bash
-docker ps
+cp packages/db/.env.example packages/db/.env
 ```
 
-You should see the `bazoora-db` container with status `Up`.
+The API reads its own `DATABASE_URL` from `apps/api/.env`. Both should point at
+the same database.
 
----
+## Scripts
 
-### 3. Environment setup
+Run from the repo root with `pnpm --filter @bazoora/db <script>`.
 
-Copy the example environment file:
+| Script        | What it does                                                        |
+| ------------- | ------------------------------------------------------------------- |
+| `db:deploy`   | Apply all existing migrations. Use this on a fresh database.        |
+| `db:migrate`  | Create a new migration from schema changes, then apply it.          |
+| `db:generate` | Regenerate the Prisma client (also runs on `pnpm install`).         |
+| `db:studio`   | Open Prisma Studio to browse the data in a browser.                 |
 
-```bash
-cp .env.example .env
-```
+Read the migration rules in [`docs/git-workflow.md`](../../docs/git-workflow.md#database-migrations)
+before creating or changing a migration.
 
-Then ensure it contains:
+## Resetting the database
 
-```env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bazoora"
-```
-
----
-
-## 🧹 Resetting the Database
-
-To fully reset the database (⚠️ deletes all data):
+This deletes all local data:
 
 ```bash
 docker compose down -v
 docker compose up -d
+pnpm --filter @bazoora/db db:deploy
 ```
 
----
-
-## 📁 Files Overview
-
-```
-.
-├── docker-compose.yml   # PostgreSQL container setup
-├── .env                 # Local environment variables (ignored in git)
-├── .env.example        # Template for environment variables
-```
-
----
-
-## ⚠️ Important Notes
-
-* This setup only provides the database infrastructure.
-* No ORM (Prisma), schema, or migrations are included in this branch.
-* Application-level database setup will be added separately.
-* Data persists unless explicitly removed using `docker compose down -v`.
-
----
-
-## 🧭 Next Steps (Future Work)
-
-The following will be added in a future database layer:
-
-* Prisma schema setup
-* Database models and migrations
-* Shared database package (`@bazoora/db`)
-* Seed scripts for development data
-
----
-
-## 🧑‍💻 Purpose of This Branch
-
-This branch ensures all developers can run a **consistent PostgreSQL environment locally** without manual database installation or configuration.
+Then re-run the seed scripts (see the root README).
