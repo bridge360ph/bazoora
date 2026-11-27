@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Home, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import type { PickupAddress } from "./types";
 import { FieldLabel } from "./FormUi";
@@ -17,6 +18,9 @@ export default function PickupAddressList({
   canAdd = true,
   keepStopOrder,
   onKeepStopOrderChange,
+  savedAddress,
+  isSavedAddressLoading,
+  onUseSavedAddress,
 }: {
   addresses: PickupAddress[];
   activeIndex: number;
@@ -29,6 +33,10 @@ export default function PickupAddressList({
   canAdd?: boolean;
   keepStopOrder: boolean;
   onKeepStopOrderChange: (value: boolean) => void;
+  /** The address saved in Settings, or null when there is none. */
+  savedAddress: string | null;
+  isSavedAddressLoading: boolean;
+  onUseSavedAddress: () => void;
 }): ReactNode {
   const canRemove = addresses.length > 1;
 
@@ -40,6 +48,40 @@ export default function PickupAddressList({
         <span className="text-[8px] text-gray-400">
           {addresses.length} {addresses.length === 1 ? "location" : "locations"}
         </span>
+      </div>
+
+      <div className="mb-2 rounded-lg border border-dashed border-surface-border bg-[#f8fbf9] p-2.5">
+        {isSavedAddressLoading ? (
+          <p className="text-[9px] text-gray-400">Loading your saved address...</p>
+        ) : savedAddress ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0">
+              <span className="block text-[8px] font-semibold text-gray-500">
+                YOUR SAVED ADDRESS
+              </span>
+              <span className="block truncate text-[10px] text-gray-700" title={savedAddress}>
+                {savedAddress}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={onUseSavedAddress}
+              disabled={isResolving}
+              className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md border border-brand-secondary px-2 py-1 text-[9px] font-semibold text-brand-secondary transition hover:bg-brand-secondary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Home className="h-3 w-3" />
+              USE THIS ADDRESS
+            </button>
+          </div>
+        ) : (
+          <p className="text-[9px] text-gray-500">
+            No saved address yet.{" "}
+            <Link to="/resident/settings" className="font-semibold text-brand-secondary hover:underline">
+              Add one in Settings
+            </Link>{" "}
+            to use it here.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

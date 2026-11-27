@@ -159,6 +159,9 @@ model UserSettingsProfile {
   cityMunicipality   String?
   province           String?
   postalCode         String?
+  // Map position of the saved address, placed by the user in Settings.
+  latitude           Float?
+  longitude          Float?
   emailNotifications Boolean  @default(true)
   pushNotifications  Boolean  @default(true)
   dailySummary       Boolean  @default(false)
