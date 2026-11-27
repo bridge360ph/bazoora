@@ -292,7 +292,12 @@ export function RouteStopsEditor({
 
       setPlannedBranch(result.branch);
 
-      const from = `${result.branch.name} (nearest of ${result.branchesCompared} branches by driving time)`;
+      // Only name a comparison when there was one. With a single depot
+      // "nearest of 1 branches" is both wrong and misleading.
+      const from =
+        result.branchesCompared > 1
+          ? `${result.branch.name} (nearest of ${result.branchesCompared} branches by driving time)`
+          : result.branch.name;
       const summary = keepOrder
         ? `Starts from ${from}, keeping the resident's order: about ${formatDuration(result.after.seconds)} (${formatDistance(result.after.meters)}).`
         : unchanged

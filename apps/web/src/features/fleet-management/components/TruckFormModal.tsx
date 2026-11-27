@@ -9,6 +9,8 @@ interface TruckFormModalProps {
   setFormValue: Dispatch<SetStateAction<TruckFormValue>>;
   saveLabel: string;
   driverOptions: FleetAssignmentOption[];
+  isSaving: boolean;
+  error: string;
   onSave: () => void;
   onClose: () => void;
 }
@@ -43,6 +45,8 @@ export function TruckFormModal({
   setFormValue,
   saveLabel,
   driverOptions,
+  isSaving,
+  error,
   onSave,
   onClose,
 }: TruckFormModalProps) {
@@ -335,8 +339,18 @@ export function TruckFormModal({
         </FormField>
       </div>
 
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+        >
+          {error}
+        </p>
+      )}
+
       <ModalFooter
         saveLabel={saveLabel}
+        saving={isSaving}
         onSave={handleSave}
         onClose={onClose}
       />

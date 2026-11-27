@@ -41,7 +41,7 @@ export function RemoveTruckModal({
 
       <ModalFooter
         saveLabel={isSaving ? "Removing..." : "Remove"}
-        saveDisabled={isSaving}
+        saving={isSaving}
         onSave={onConfirm}
         onClose={onClose}
       />

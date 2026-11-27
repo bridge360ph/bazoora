@@ -144,7 +144,9 @@ export async function checkPickupPath(request: HaulingRequest): Promise<PickupPa
 
   return {
     status: "pass",
-    message: `About ${formatKm(route.distance)} and ${formatMinutes(route.duration)} from ${plan.branch.name} (nearest branch) through ${
+    message: `About ${formatKm(route.distance)} and ${formatMinutes(route.duration)} from ${plan.branch.name}${
+      plan.branchesCompared > 1 ? " (nearest branch)" : ""
+    } through ${
       stops.length === 1 ? "the stop" : `all ${stops.length} stops`
     }.`,
     stops,

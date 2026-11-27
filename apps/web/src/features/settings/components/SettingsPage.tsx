@@ -866,7 +866,7 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isSavingProfile}>
+                <Button type="submit" loading={isSavingProfile}>
                   {isSavingProfile ? "Saving..." : "Save Changes"}
                 </Button>
               </form>
@@ -946,7 +946,7 @@ export function SettingsPage() {
                   />
                 </div>
 
-                <Button type="submit" disabled={isUpdatingPassword}>
+                <Button type="submit" loading={isUpdatingPassword}>
                   {isUpdatingPassword ? "Updating..." : "Update Password"}
                 </Button>
               </form>
@@ -1014,7 +1014,8 @@ export function SettingsPage() {
             <div className="mt-6 flex flex-col items-center gap-2">
               <Button
                 type="button"
-                disabled={!hasNotificationChanges || isSavingPreferences}
+                disabled={!hasNotificationChanges}
+                loading={isSavingPreferences}
                 onClick={() => {
                   void savePreferences("Notification preferences saved.");
                 }}
@@ -1080,7 +1081,8 @@ export function SettingsPage() {
               <div className="mt-6 flex flex-col items-center gap-2">
                 <Button
                   type="button"
-                  disabled={!hasSystemChanges || isSavingPreferences}
+                  disabled={!hasSystemChanges}
+                  loading={isSavingPreferences}
                   onClick={() => {
                     void savePreferences("System preferences saved.");
                   }}

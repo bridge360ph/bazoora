@@ -1,8 +1,13 @@
-import type { IncidentReport as PrismaIncidentReport, User } from "@bazoora/db";
+import type {
+  IncidentReport as PrismaIncidentReport,
+  Route,
+  User,
+} from "@bazoora/db";
 import type { IncidentReport as SharedIncidentReport } from "@bazoora/shared";
 
 type IncidentWithReporter = PrismaIncidentReport & {
   reporter?: Pick<User, "name"> | null;
+  route?: Pick<Route, "name"> | null;
 };
 
 export function mapIncidentReport(
@@ -22,6 +27,9 @@ export function mapIncidentReport(
     }),
     ...(report.routeId !== null && {
       routeId: report.routeId,
+    }),
+    ...(report.route?.name && {
+      routeName: report.route.name,
     }),
     ...(report.stopName !== null && {
       stopName: report.stopName,
