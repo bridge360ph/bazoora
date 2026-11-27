@@ -1462,7 +1462,8 @@ export default function DriverRoute(): React.ReactNode {
               )}
               <Button
                 onClick={startCollection}
-                disabled={stops.length === 0 || isStarting}
+                disabled={stops.length === 0}
+                loading={isStarting}
                 className="h-14 w-full rounded-2xl bg-[#0f2419] text-xs font-black tracking-widest text-white uppercase shadow-xl disabled:opacity-50"
               >
                 {isStarting ? "Initializing..." : "Start Collecting"}
@@ -1471,7 +1472,7 @@ export default function DriverRoute(): React.ReactNode {
           ) : allStopsDone ? (
             <Button
               onClick={finishCollection}
-              disabled={isStarting}
+              loading={isStarting}
               className="h-14 w-full rounded-2xl bg-emerald-600 text-xs font-black tracking-widest text-white uppercase shadow-xl"
             >
               {isStarting ? "Finishing..." : "Finish Collecting"}

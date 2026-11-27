@@ -218,7 +218,7 @@ export function DriverFormModal({
 
       <ModalFooter
         saveLabel={isSaving ? "Adding..." : "Add Driver"}
-        saveDisabled={isSaving}
+        saving={isSaving}
         onSave={handleSave}
         onClose={onClose}
       />

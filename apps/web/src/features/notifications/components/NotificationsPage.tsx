@@ -107,6 +107,11 @@ export function NotificationsPage() {
   }
 
   function handleSend() {
+    // A second click while sending would send the announcement twice.
+    if (createNotificationMutation.isPending) {
+      return;
+    }
+
     const isInvalid =
       !title.trim() ||
       !message.trim() ||
@@ -255,9 +260,12 @@ export function NotificationsPage() {
             <Button
               type="button"
               onClick={handleSend}
+              loading={createNotificationMutation.isPending}
               className="w-full !bg-brand px-3 py-[13px] text-sm font-bold tracking-[0.5px] text-white hover:!bg-brand-dark"
             >
-              SEND NOTIFICATION
+              {createNotificationMutation.isPending
+                ? "SENDING..."
+                : "SEND NOTIFICATION"}
             </Button>
           </div>
         )}
